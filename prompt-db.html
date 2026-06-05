@@ -1,0 +1,2254 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>프롬프트 DB</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #10110f;
+      --surface: #171915;
+      --surface-strong: #20231d;
+      --surface-soft: #26291f;
+      --line: #363a31;
+      --line-strong: #4b5244;
+      --text: #f2f3ec;
+      --muted: #a9aea1;
+      --muted-strong: #c9cec1;
+      --accent: #7bdca8;
+      --accent-strong: #35bf86;
+      --accent-soft: rgba(123, 220, 168, 0.14);
+      --warn: #f3bd62;
+      --danger: #ff7b72;
+      --danger-soft: rgba(255, 123, 114, 0.12);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+      --radius: 8px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        var(--bg);
+      background-size: 28px 28px;
+      color: var(--text);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:disabled,
+    input:disabled,
+    textarea:disabled,
+    select:disabled {
+      cursor: not-allowed;
+      opacity: 0.62;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      margin-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.45rem, 2.2vw, 2.15rem);
+      letter-spacing: 0;
+      line-height: 1.05;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 0.94rem;
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      max-width: min(46vw, 520px);
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: rgba(23, 25, 21, 0.9);
+      font-size: 0.85rem;
+      line-height: 1.25;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status[data-type="success"] {
+      border-color: rgba(123, 220, 168, 0.45);
+      color: var(--accent);
+    }
+
+    .status[data-type="error"] {
+      border-color: rgba(255, 123, 114, 0.48);
+      color: var(--danger);
+    }
+
+    .status[data-type="loading"]::before {
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--warn);
+      content: "";
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--muted-strong);
+      background: var(--surface);
+      transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .icon-button:hover {
+      border-color: var(--line-strong);
+      color: var(--text);
+      background: var(--surface-strong);
+      transform: translateY(-1px);
+    }
+
+    .login-view {
+      display: grid;
+      place-items: center;
+      min-height: min(640px, calc(100vh - 160px));
+    }
+
+    .login-panel {
+      width: min(430px, 100%);
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(23, 25, 21, 0.94);
+      box-shadow: var(--shadow);
+    }
+
+    .login-panel h2 {
+      margin: 0 0 10px;
+      font-size: 1.24rem;
+      letter-spacing: 0;
+    }
+
+    .login-panel p {
+      margin: 0 0 22px;
+      color: var(--muted);
+      line-height: 1.55;
+      word-break: keep-all;
+    }
+
+    .primary-button,
+    .ghost-button,
+    .danger-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      font-weight: 700;
+      line-height: 1;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+    }
+
+    .primary-button {
+      color: #07140e;
+      background: var(--accent);
+      border-color: var(--accent-strong);
+    }
+
+    .primary-button:hover {
+      background: #91e7b8;
+      transform: translateY(-1px);
+    }
+
+    .ghost-button {
+      color: var(--muted-strong);
+      border-color: var(--line);
+      background: var(--surface);
+    }
+
+    .ghost-button:hover {
+      color: var(--text);
+      border-color: var(--line-strong);
+      background: var(--surface-strong);
+    }
+
+    .danger-button {
+      color: var(--danger);
+      border-color: rgba(255, 123, 114, 0.42);
+      background: var(--danger-soft);
+    }
+
+    .danger-button:hover {
+      border-color: var(--danger);
+      background: rgba(255, 123, 114, 0.18);
+    }
+
+    .app-view[hidden],
+    .login-view[hidden],
+    .modal-backdrop[hidden],
+    .toast[hidden],
+    [hidden] {
+      display: none !important;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .search-wrap {
+      position: relative;
+      min-width: 0;
+    }
+
+    .search-wrap span {
+      position: absolute;
+      top: 50%;
+      left: 14px;
+      color: var(--muted);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      height: 44px;
+      padding: 0 16px 0 40px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      outline: none;
+      color: var(--text);
+      background: rgba(23, 25, 21, 0.94);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .owner-row,
+    .category-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .tabs,
+    .owner-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(23, 25, 21, 0.72);
+      scrollbar-width: thin;
+    }
+
+    .owner-tabs {
+      margin-bottom: 0;
+    }
+
+    .category-row {
+      margin-bottom: 14px;
+    }
+
+    .category-row .tabs {
+      margin-bottom: 0;
+    }
+
+    .sub-filters {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin: -4px 0 14px;
+      align-items: start;
+    }
+
+    .sub-filter-list {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    .checkbox-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .checkbox-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: rgba(23, 25, 21, 0.7);
+      font-weight: 700;
+    }
+
+    .checkbox-pill input {
+      width: auto;
+      height: auto;
+      accent-color: var(--accent);
+    }
+
+    .tab-button,
+    .owner-button,
+    .filter-button {
+      flex: 0 0 auto;
+      min-height: 36px;
+      padding: 0 13px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: var(--muted-strong);
+      background: transparent;
+      white-space: nowrap;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+
+    .filter-button {
+      min-height: 32px;
+      color: var(--muted);
+      border-color: var(--line);
+      background: rgba(23, 25, 21, 0.7);
+      font-size: 0.86rem;
+    }
+
+    .tab-button:hover,
+    .owner-button:hover,
+    .filter-button:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .tab-button[aria-selected="true"],
+    .owner-button[aria-selected="true"],
+    .filter-button[aria-pressed="true"] {
+      color: #07140e;
+      background: var(--accent);
+      border-color: var(--accent-strong);
+      font-weight: 800;
+    }
+
+    .list-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .prompt-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+      gap: 12px;
+    }
+
+    .prompt-card {
+      position: relative;
+      min-width: 0;
+    }
+
+    .copy-card {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      min-height: 154px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--text);
+      text-align: left;
+      background: var(--surface-strong);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .copy-card:hover {
+      border-color: var(--line-strong);
+      background: var(--surface-soft);
+      transform: translateY(-2px);
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+    }
+
+    .copy-card.copied {
+      border-color: var(--accent-strong);
+      background: linear-gradient(180deg, rgba(123, 220, 168, 0.18), var(--surface-strong));
+    }
+
+    .card-category {
+      display: inline-flex;
+      max-width: calc(100% - 42px);
+      margin-bottom: 12px;
+      padding: 4px 8px;
+      border: 1px solid rgba(123, 220, 168, 0.22);
+      border-radius: 999px;
+      color: var(--accent);
+      background: rgba(123, 220, 168, 0.08);
+      font-size: 0.74rem;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-owner {
+      display: inline-flex;
+      max-width: calc(100% - 42px);
+      margin-bottom: 8px;
+      color: var(--muted-strong);
+      font-size: 0.78rem;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-title {
+      width: 100%;
+      margin: 0 0 10px;
+      font-size: 1.03rem;
+      font-weight: 800;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .card-preview {
+      display: -webkit-box;
+      width: 100%;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.48;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+
+    .copied-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 24px;
+      margin-top: auto;
+      padding-top: 12px;
+      color: var(--accent);
+      font-size: 0.86rem;
+      font-weight: 800;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .copy-card.copied .copied-label {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .edit-card {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 7px;
+      color: var(--muted-strong);
+      background: rgba(16, 17, 15, 0.82);
+      transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+    }
+
+    .edit-card:hover {
+      color: var(--text);
+      border-color: var(--accent-strong);
+      background: #11140f;
+      transform: translateY(-1px);
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: rgba(23, 25, 21, 0.62);
+      text-align: center;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(0, 0, 0, 0.68);
+    }
+
+    .modal {
+      width: min(560px, 100%);
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.16rem;
+      letter-spacing: 0;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 13px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted-strong);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      outline: none;
+      color: var(--text);
+      background: #11130f;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input,
+    select {
+      height: 42px;
+      padding: 0 12px;
+    }
+
+    textarea {
+      min-height: 160px;
+      padding: 12px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--accent-strong);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .modal-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .modal-actions .right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 80;
+      max-width: min(460px, calc(100% - 36px));
+      padding: 12px 14px;
+      border: 1px solid rgba(123, 220, 168, 0.42);
+      border-radius: var(--radius);
+      color: var(--text);
+      background: rgba(23, 25, 21, 0.96);
+      box-shadow: var(--shadow);
+      line-height: 1.4;
+    }
+
+    .toast.error {
+      border-color: rgba(255, 123, 114, 0.5);
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.45;
+        transform: scale(0.88);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100% - 24px, 1180px);
+        padding-top: 16px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 14px;
+      }
+
+      .brand {
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .brand span {
+        white-space: normal;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .status {
+        max-width: calc(100vw - 84px);
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .owner-row,
+      .category-row {
+        grid-template-columns: 1fr;
+      }
+
+      .sub-filters {
+        grid-template-columns: 1fr;
+      }
+
+      .controls .primary-button {
+        width: 100%;
+      }
+
+      .owner-row .ghost-button,
+      .category-row .ghost-button,
+      .sub-filters .ghost-button {
+        width: 100%;
+      }
+
+      .modal-actions,
+      .modal-actions .right {
+        align-items: stretch;
+        flex-direction: column-reverse;
+      }
+
+      .modal-actions button,
+      .modal-actions .right button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1>프롬프트 DB</h1>
+        <span>Google Drive JSON</span>
+      </div>
+      <div class="top-actions">
+        <div id="status" class="status" data-type="info" title="준비 중">준비 중</div>
+        <button id="logoutButton" class="icon-button" type="button" title="로그아웃" aria-label="로그아웃" hidden>⎋</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="loginView" class="login-view">
+        <div class="login-panel">
+          <h2>Google 로그인</h2>
+          <p>Drive의 prompts.json 파일과 연결합니다.</p>
+          <button id="loginButton" class="primary-button" type="button" disabled>
+            <span>G</span>
+            <span>Google로 로그인</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="appView" class="app-view" hidden>
+        <div class="owner-row">
+          <nav id="ownerTabs" class="owner-tabs" aria-label="사용자"></nav>
+          <button id="addOwnerButton" class="ghost-button" type="button">
+            <span>+</span>
+            <span>사용자</span>
+          </button>
+        </div>
+        <div class="category-row">
+          <nav id="tabs" class="tabs" aria-label="카테고리"></nav>
+          <button id="addCategoryButton" class="ghost-button" type="button">
+            <span>+</span>
+            <span>영역태그</span>
+          </button>
+        </div>
+        <div id="codexFilters" class="sub-filters" aria-label="구분태그" hidden>
+          <nav id="subTagFilters" class="sub-filter-list" aria-label="구분태그 필터"></nav>
+          <button id="addSubTagButton" class="ghost-button" type="button">
+            <span>+</span>
+            <span>구분태그</span>
+          </button>
+        </div>
+
+        <div class="controls">
+          <label class="search-wrap" aria-label="검색">
+            <span>⌕</span>
+            <input id="searchInput" type="search" placeholder="검색" autocomplete="off">
+          </label>
+          <button id="addButton" class="primary-button" type="button">
+            <span>+</span>
+            <span>새 프롬프트</span>
+          </button>
+        </div>
+
+        <div class="list-meta">
+          <span id="countLabel">0개</span>
+          <span id="fileLabel">prompts.json</span>
+        </div>
+
+        <div id="promptGrid" class="prompt-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <div id="ownerModalBackdrop" class="modal-backdrop" hidden>
+    <form id="ownerForm" class="modal">
+      <div class="modal-header">
+        <h2>사용자 추가</h2>
+        <button id="closeOwnerModalButton" class="icon-button" type="button" title="닫기" aria-label="닫기">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          사용자 이름
+          <input id="newOwnerInput" name="newOwner" type="text" maxlength="40" required>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <span></span>
+        <div class="right">
+          <button id="cancelOwnerButton" class="ghost-button" type="button">취소</button>
+          <button id="saveOwnerButton" class="primary-button" type="submit">저장</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="categoryModalBackdrop" class="modal-backdrop" hidden>
+    <form id="categoryForm" class="modal">
+      <div class="modal-header">
+        <h2>영역태그 추가</h2>
+        <button id="closeCategoryModalButton" class="icon-button" type="button" title="닫기" aria-label="닫기">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          영역태그 이름
+          <input id="newCategoryInput" name="newCategory" type="text" maxlength="40" required>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <span></span>
+        <div class="right">
+          <button id="cancelCategoryButton" class="ghost-button" type="button">취소</button>
+          <button id="saveCategoryButton" class="primary-button" type="submit">저장</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="subTagModalBackdrop" class="modal-backdrop" hidden>
+    <form id="subTagForm" class="modal">
+      <div class="modal-header">
+        <h2>구분태그 추가</h2>
+        <button id="closeSubTagModalButton" class="icon-button" type="button" title="닫기" aria-label="닫기">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          영역태그
+          <select id="subTagCategoryInput" name="subTagCategory" required></select>
+        </label>
+
+        <label>
+          구분태그 이름
+          <input id="newSubTagInput" name="newSubTag" type="text" maxlength="40" required>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <span></span>
+        <div class="right">
+          <button id="cancelSubTagButton" class="ghost-button" type="button">취소</button>
+          <button id="saveSubTagButton" class="primary-button" type="submit">저장</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop" hidden>
+    <form id="promptForm" class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">새 프롬프트</h2>
+        <button id="closeModalButton" class="icon-button" type="button" title="닫기" aria-label="닫기">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          사용자 이름
+          <input id="ownerInput" name="owner" type="text" list="ownerOptions" maxlength="40" required>
+          <datalist id="ownerOptions"></datalist>
+        </label>
+
+        <label>
+          제목
+          <input id="titleInput" name="title" type="text" maxlength="80" required>
+        </label>
+
+        <label>
+          카테고리
+          <select id="categoryInput" name="category" required></select>
+        </label>
+
+        <label>
+          구분태그
+          <div id="promptTagOptions" class="checkbox-grid"></div>
+        </label>
+
+        <label>
+          내용
+          <textarea id="contentInput" name="content" required></textarea>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button id="deleteButton" class="danger-button" type="button" hidden>삭제</button>
+        <div class="right">
+          <button id="cancelButton" class="ghost-button" type="button">취소</button>
+          <button id="saveButton" class="primary-button" type="submit">저장</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const CLIENT_ID = "663209950196-ok6tpctvo0udfj32tt4s36sa3umq8o4h.apps.googleusercontent.com";
+    const DRIVE_FOLDER_ID = "11xi2c-ZIa-r5oGg2VIBqZhvhSgYE4G5K";
+    const DB_FILE_NAME = "prompts.json";
+    const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+    const OAUTH_REDIRECT_URI = "http://127.0.0.1:8080";
+    const TOKEN_STORAGE_KEY = "prompt-db-google-token";
+    const TOKEN_REFRESH_LEEWAY_MS = 5 * 60 * 1000;
+    const DEFAULT_TOKEN_LIFETIME_MS = 60 * 60 * 1000;
+    const DEFAULT_OWNER = "이한솔";
+    const DEFAULT_CATEGORIES = ["CODEX", "진행·확인", "전시기획", "번역"];
+    const DEFAULT_TAG_GROUPS = {
+      "CODEX": ["CODEX", "디버깅"]
+    };
+
+    const defaultSeeds = [
+      ["디버깅", "콘솔코드줘", "콘솔코드줘"],
+      ["디버깅", "F12 필요?", "F12 필요?"],
+      ["디버깅", "이거봐", "이거봐"],
+      ["디버깅", "이렇게 나왔어", "이렇게 나왔어"],
+      ["디버깅", "왜 안돼?", "왜 안돼?"],
+      ["디버깅", "에러났어", "에러났어"],
+      ["CODEX", "CODEX 프롬프트 작성", "CODEX 프롬프트 작성"],
+      ["CODEX", "코덱스 프롬프트 :", "코덱스 프롬프트 : "],
+      ["CODEX", "코덱스한테 뭐라해", "코덱스한테 뭐라해"],
+      ["CODEX", "node --check 해줘", "node --check 해줘"],
+      ["CODEX", "변경한 부분만 알려줘", "변경한 부분만 알려줘"],
+      ["CODEX", "다른 로직은 건드리지 마", "다른 로직은 건드리지 마"],
+      ["진행·확인", "ㅇㅋ", "ㅇㅋ"],
+      ["진행·확인", "이 방향으로 진행", "이 방향으로 진행"],
+      ["진행·확인", "다시 처음부터 논의", "다시 처음부터 논의"],
+      ["진행·확인", "재작성", "재작성"],
+      ["진행·확인", "이 방향 맞아?", "이 방향 맞아?"],
+      ["진행·확인", "더 있을까?", "더 있을까?"],
+      ["전시기획", "컨셉:", "컨셉: "],
+      ["전시기획", "국가관 컨셉잡기", "국가관 컨셉잡기"],
+      ["전시기획", "첫 접근이 이 방향 아닌 것 같아", "첫 접근이 이 방향 아닌 것 같아"],
+      ["전시기획", "엑스포 주제 → 맥락 연결", "엑스포 주제 → 베오그라드 맥락 연결"],
+      ["전시기획", "재작성", "재작성"],
+      ["전시기획", "사례 찾아줘", "사례 찾아줘"],
+      ["전시기획", "연결고리 찾아줘", "연결고리 찾아줘"],
+      ["전시기획", "더 있을까?", "더 있을까?"],
+      ["번역", "번역", "번역"],
+      ["번역", "이메일용으로 번역해줘", "이메일용으로 번역해줘"],
+      ["번역", "메신저용으로 번역해줘", "메신저용으로 번역해줘"],
+      ["번역", "한글 빼서 줘", "한글을 아예 빼서 줘"],
+      ["번역", "영문으로 하면?", "영문으로 하면?"],
+      ["번역", "영문 메일 작성해줘", "영문 메일 작성해줘"],
+      ["번역", "뉘앙스 설명해줘", "뉘앙스 설명해줘"]
+    ];
+
+    const state = {
+      accessToken: "",
+      tokenClient: null,
+      tokenRefreshTimer: 0,
+      authRequestReason: "",
+      dbFileId: "",
+      owners: [DEFAULT_OWNER],
+      categories: [...DEFAULT_CATEGORIES],
+      tagGroups: { ...DEFAULT_TAG_GROUPS },
+      prompts: [],
+      activeOwner: "전체",
+      activeCategory: "전체",
+      activeSubTag: "전체",
+      searchTerm: "",
+      copiedId: "",
+      editingId: "",
+      toastTimer: 0,
+      copyTimer: 0,
+      isSaving: false
+    };
+
+    const $ = (selector) => document.querySelector(selector);
+    const els = {};
+
+    document.addEventListener("DOMContentLoaded", () => {
+      bindElements();
+      renderTabs();
+      renderCategoryOptions();
+      renderSubTagCategoryOptions();
+      attachEvents();
+      tryAutoConnectFromStoredToken();
+      waitForGoogleIdentity();
+    });
+
+    function bindElements() {
+      els.loginView = $("#loginView");
+      els.appView = $("#appView");
+      els.loginButton = $("#loginButton");
+      els.logoutButton = $("#logoutButton");
+      els.status = $("#status");
+      els.ownerTabs = $("#ownerTabs");
+      els.addOwnerButton = $("#addOwnerButton");
+      els.tabs = $("#tabs");
+      els.addCategoryButton = $("#addCategoryButton");
+      els.codexFilters = $("#codexFilters");
+      els.subTagFilters = $("#subTagFilters");
+      els.addSubTagButton = $("#addSubTagButton");
+      els.promptGrid = $("#promptGrid");
+      els.countLabel = $("#countLabel");
+      els.fileLabel = $("#fileLabel");
+      els.searchInput = $("#searchInput");
+      els.addButton = $("#addButton");
+      els.toast = $("#toast");
+      els.ownerModalBackdrop = $("#ownerModalBackdrop");
+      els.ownerForm = $("#ownerForm");
+      els.closeOwnerModalButton = $("#closeOwnerModalButton");
+      els.cancelOwnerButton = $("#cancelOwnerButton");
+      els.saveOwnerButton = $("#saveOwnerButton");
+      els.newOwnerInput = $("#newOwnerInput");
+      els.categoryModalBackdrop = $("#categoryModalBackdrop");
+      els.categoryForm = $("#categoryForm");
+      els.closeCategoryModalButton = $("#closeCategoryModalButton");
+      els.cancelCategoryButton = $("#cancelCategoryButton");
+      els.saveCategoryButton = $("#saveCategoryButton");
+      els.newCategoryInput = $("#newCategoryInput");
+      els.subTagModalBackdrop = $("#subTagModalBackdrop");
+      els.subTagForm = $("#subTagForm");
+      els.closeSubTagModalButton = $("#closeSubTagModalButton");
+      els.cancelSubTagButton = $("#cancelSubTagButton");
+      els.saveSubTagButton = $("#saveSubTagButton");
+      els.subTagCategoryInput = $("#subTagCategoryInput");
+      els.newSubTagInput = $("#newSubTagInput");
+      els.modalBackdrop = $("#modalBackdrop");
+      els.promptForm = $("#promptForm");
+      els.modalTitle = $("#modalTitle");
+      els.closeModalButton = $("#closeModalButton");
+      els.cancelButton = $("#cancelButton");
+      els.deleteButton = $("#deleteButton");
+      els.saveButton = $("#saveButton");
+      els.ownerInput = $("#ownerInput");
+      els.ownerOptions = $("#ownerOptions");
+      els.titleInput = $("#titleInput");
+      els.categoryInput = $("#categoryInput");
+      els.promptTagOptions = $("#promptTagOptions");
+      els.contentInput = $("#contentInput");
+    }
+
+    function attachEvents() {
+      els.loginButton.addEventListener("click", signIn);
+      els.logoutButton.addEventListener("click", signOut);
+      els.searchInput.addEventListener("input", (event) => {
+        state.searchTerm = event.target.value.trim();
+        renderPrompts();
+      });
+      els.addButton.addEventListener("click", () => openPromptModal());
+      els.addOwnerButton.addEventListener("click", openOwnerModal);
+      els.addCategoryButton.addEventListener("click", openCategoryModal);
+      els.addSubTagButton.addEventListener("click", openSubTagModal);
+      els.closeOwnerModalButton.addEventListener("click", closeOwnerModal);
+      els.cancelOwnerButton.addEventListener("click", closeOwnerModal);
+      els.ownerModalBackdrop.addEventListener("click", (event) => {
+        if (event.target === els.ownerModalBackdrop) closeOwnerModal();
+      });
+      els.ownerForm.addEventListener("submit", handleOwnerFormSubmit);
+      els.closeCategoryModalButton.addEventListener("click", closeCategoryModal);
+      els.cancelCategoryButton.addEventListener("click", closeCategoryModal);
+      els.categoryModalBackdrop.addEventListener("click", (event) => {
+        if (event.target === els.categoryModalBackdrop) closeCategoryModal();
+      });
+      els.categoryForm.addEventListener("submit", handleCategoryFormSubmit);
+      els.closeSubTagModalButton.addEventListener("click", closeSubTagModal);
+      els.cancelSubTagButton.addEventListener("click", closeSubTagModal);
+      els.subTagModalBackdrop.addEventListener("click", (event) => {
+        if (event.target === els.subTagModalBackdrop) closeSubTagModal();
+      });
+      els.subTagForm.addEventListener("submit", handleSubTagFormSubmit);
+      els.categoryInput.addEventListener("change", () => renderPromptTagOptions());
+      els.closeModalButton.addEventListener("click", closePromptModal);
+      els.cancelButton.addEventListener("click", closePromptModal);
+      els.modalBackdrop.addEventListener("click", (event) => {
+        if (event.target === els.modalBackdrop) closePromptModal();
+      });
+      els.promptForm.addEventListener("submit", handleFormSubmit);
+      els.deleteButton.addEventListener("click", handleDelete);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !els.ownerModalBackdrop.hidden) closeOwnerModal();
+        if (event.key === "Escape" && !els.categoryModalBackdrop.hidden) closeCategoryModal();
+        if (event.key === "Escape" && !els.subTagModalBackdrop.hidden) closeSubTagModal();
+        if (event.key === "Escape" && !els.modalBackdrop.hidden) closePromptModal();
+      });
+    }
+
+    function waitForGoogleIdentity() {
+      const startedAt = Date.now();
+      const timer = window.setInterval(() => {
+        if (window.google?.accounts?.oauth2) {
+          window.clearInterval(timer);
+          initAuth();
+          return;
+        }
+
+        if (Date.now() - startedAt > 8000) {
+          window.clearInterval(timer);
+          setStatus("Google 로그인 스크립트 로드 실패", "error");
+          showToast("네트워크 상태를 확인한 뒤 새로고침해 주세요.", "error");
+        }
+      }, 120);
+    }
+
+    function initAuth() {
+      state.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        redirect_uri: OAUTH_REDIRECT_URI,
+        callback: async (response) => {
+          if (response.error) {
+            handleTokenError(response);
+            return;
+          }
+
+          if (!response.access_token) {
+            handleTokenError({ error: "access_token 없음" });
+            return;
+          }
+
+          const wasRefresh = state.authRequestReason === "refresh";
+          saveAccessToken(response);
+          state.authRequestReason = "";
+
+          if (wasRefresh && state.prompts.length) {
+            setStatus("토큰 갱신됨", "success");
+            return;
+          }
+
+          await loadDatabase();
+        }
+      });
+
+      if (state.accessToken) {
+        els.loginButton.disabled = true;
+        return;
+      }
+
+      if (tryAutoConnectFromStoredToken()) {
+        return;
+      }
+
+      showLoginRequired("로그인 대기");
+    }
+
+    function signIn() {
+      if (!state.tokenClient) return;
+      setStatus("Google 로그인 중", "loading");
+      state.authRequestReason = "login";
+      state.tokenClient.requestAccessToken({ prompt: state.accessToken ? "" : "consent" });
+    }
+
+    function signOut() {
+      const token = state.accessToken;
+      clearStoredToken();
+      clearTokenRefreshTimer();
+      state.authRequestReason = "";
+      state.accessToken = "";
+      state.dbFileId = "";
+      state.prompts = [];
+      state.searchTerm = "";
+      els.searchInput.value = "";
+      els.loginView.hidden = false;
+      els.appView.hidden = true;
+      els.logoutButton.hidden = true;
+      setStatus("로그아웃됨", "info");
+
+      if (token && window.google?.accounts?.oauth2) {
+        google.accounts.oauth2.revoke(token, () => {});
+      }
+    }
+
+    function saveAccessToken(response) {
+      const expiresInMs = Number(response.expires_in || 0) * 1000 || DEFAULT_TOKEN_LIFETIME_MS;
+      const expiresAt = Date.now() + expiresInMs;
+
+      state.accessToken = response.access_token;
+      localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
+        access_token: response.access_token,
+        expires_at: expiresAt
+      }));
+      scheduleTokenRefresh(expiresAt);
+    }
+
+    function restoreStoredToken() {
+      const storedToken = readStoredToken();
+      if (!storedToken) return false;
+
+      state.accessToken = storedToken.access_token;
+      scheduleTokenRefresh(storedToken.expires_at);
+      return true;
+    }
+
+    function tryAutoConnectFromStoredToken() {
+      if (!restoreStoredToken()) return false;
+
+      setStatus("저장된 로그인으로 연결 중", "loading");
+      els.loginButton.disabled = true;
+      els.loginView.hidden = true;
+      els.appView.hidden = true;
+      loadDatabase();
+      return true;
+    }
+
+    function readStoredToken() {
+      try {
+        const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+        if (!raw) return null;
+
+        const token = JSON.parse(raw);
+        if (!token.access_token || !token.expires_at || token.expires_at <= Date.now()) {
+          clearStoredToken();
+          return null;
+        }
+
+        return token;
+      } catch (error) {
+        clearStoredToken();
+        return null;
+      }
+    }
+
+    function scheduleTokenRefresh(expiresAt) {
+      clearTokenRefreshTimer();
+      const refreshInMs = Math.max(expiresAt - Date.now() - TOKEN_REFRESH_LEEWAY_MS, 0);
+      state.tokenRefreshTimer = window.setTimeout(refreshAccessTokenSilently, refreshInMs);
+    }
+
+    function refreshAccessTokenSilently() {
+      if (!state.tokenClient) {
+        state.tokenRefreshTimer = window.setTimeout(refreshAccessTokenSilently, 1000);
+        return;
+      }
+
+      state.authRequestReason = "refresh";
+      state.tokenClient.requestAccessToken({ prompt: "" });
+    }
+
+    function handleTokenError(response) {
+      clearStoredToken();
+      clearTokenRefreshTimer();
+      state.authRequestReason = "";
+      state.accessToken = "";
+      showLoginRequired("로그인 필요", "error");
+      showToast(response.error_description || response.error || "로그인이 만료되었습니다.", "error");
+    }
+
+    function showLoginRequired(message, type = "info") {
+      els.loginButton.disabled = !state.tokenClient;
+      els.loginView.hidden = false;
+      els.appView.hidden = true;
+      els.logoutButton.hidden = true;
+      setStatus(message, type);
+    }
+
+    function clearStoredToken() {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+
+    function clearTokenRefreshTimer() {
+      window.clearTimeout(state.tokenRefreshTimer);
+      state.tokenRefreshTimer = 0;
+    }
+
+    async function loadDatabase() {
+      try {
+        setStatus("Drive에서 불러오는 중", "loading");
+        setBusy(true);
+
+        const foundFile = await findDbFile();
+        if (foundFile) {
+          state.dbFileId = foundFile.id;
+          const data = await readDbFile(foundFile.id);
+          const needsOwnerMigration = promptsNeedOwnerMigration(data.prompts) || promptsNeedTagMigration(data.prompts) || !Array.isArray(data.owners) || !Array.isArray(data.categories) || !data.tagGroups;
+          state.prompts = normalizePrompts(data.prompts);
+          state.owners = normalizeOwners(data.owners, state.prompts);
+          state.categories = normalizeCategories(data.categories, state.prompts);
+          state.tagGroups = normalizeTagGroups(data.tagGroups, state.prompts);
+          if (needsOwnerMigration) {
+            await updateDbFile(createDatabasePayload());
+          }
+          setStatus("동기화됨", "success");
+        } else {
+          const data = createDefaultDatabase();
+          const createdFile = await createDbFile(data);
+          state.dbFileId = createdFile.id;
+          state.owners = data.owners;
+          state.categories = data.categories;
+          state.tagGroups = data.tagGroups;
+          state.prompts = data.prompts;
+          setStatus("기본 DB 생성됨", "success");
+        }
+
+        els.loginView.hidden = true;
+        els.appView.hidden = false;
+        els.logoutButton.hidden = false;
+        els.fileLabel.textContent = state.dbFileId ? `${DB_FILE_NAME} · ${state.dbFileId}` : DB_FILE_NAME;
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+      } catch (error) {
+        console.error(error);
+        if (isAuthError(error)) {
+          clearStoredToken();
+          clearTokenRefreshTimer();
+          state.accessToken = "";
+          showLoginRequired("로그인 필요", "error");
+        } else {
+          setStatus("Drive 연결 실패", "error");
+        }
+        showToast(toUserError(error), "error");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function findDbFile() {
+      const query = [
+        `name = '${DB_FILE_NAME}'`,
+        `'${DRIVE_FOLDER_ID}' in parents`,
+        "trashed = false"
+      ].join(" and ");
+      const params = new URLSearchParams({
+        q: query,
+        spaces: "drive",
+        fields: "files(id,name,modifiedTime)",
+        pageSize: "1"
+      });
+      const result = await driveRequest(`https://www.googleapis.com/drive/v3/files?${params.toString()}`);
+      return result.files?.[0] || null;
+    }
+
+    async function readDbFile(fileId) {
+      return driveRequest(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);
+    }
+
+    async function createDbFile(data) {
+      const metadata = {
+        name: DB_FILE_NAME,
+        mimeType: "application/json",
+        parents: [DRIVE_FOLDER_ID]
+      };
+      const boundary = `prompt-db-${Date.now()}`;
+      const body = [
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        JSON.stringify(metadata),
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        JSON.stringify(data, null, 2),
+        `--${boundary}--`
+      ].join("\r\n");
+
+      return driveRequest("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,modifiedTime", {
+        method: "POST",
+        headers: {
+          "Content-Type": `multipart/related; boundary=${boundary}`
+        },
+        body
+      });
+    }
+
+    async function updateDbFile(data) {
+      if (!state.dbFileId) {
+        const createdFile = await createDbFile(data);
+        state.dbFileId = createdFile.id;
+        els.fileLabel.textContent = `${DB_FILE_NAME} · ${state.dbFileId}`;
+        return createdFile;
+      }
+
+      return driveRequest(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(state.dbFileId)}?uploadType=media&fields=id,name,modifiedTime`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json; charset=UTF-8"
+        },
+        body: JSON.stringify(data, null, 2)
+      });
+    }
+
+    async function driveRequest(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      headers.set("Authorization", `Bearer ${state.accessToken}`);
+
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      if (!response.ok) {
+        await throwDriveError(response);
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return response.json();
+      }
+
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
+    }
+
+    async function throwDriveError(response) {
+      const text = await response.text();
+      let message = response.statusText || "요청 실패";
+
+      try {
+        const parsed = JSON.parse(text);
+        message = parsed.error?.message || message;
+      } catch (error) {
+        if (text) message = text;
+      }
+
+      if (response.status === 401) {
+        message = "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+      }
+
+      throw new Error(message);
+    }
+
+    function createDefaultDatabase() {
+      const createdAt = today();
+      return {
+        owners: [DEFAULT_OWNER],
+        categories: [...DEFAULT_CATEGORIES],
+        tagGroups: { ...DEFAULT_TAG_GROUPS },
+        prompts: defaultSeeds.map(([category, title, content]) => ({
+          id: createId(),
+          owner: DEFAULT_OWNER,
+          category: normalizePromptCategory(category),
+          tags: defaultTagsForCategory(category),
+          title,
+          content,
+          createdAt
+        }))
+      };
+    }
+
+    function normalizePrompts(value) {
+      if (!Array.isArray(value)) return [];
+
+      return value.map((prompt) => ({
+        id: prompt.id || createId(),
+        owner: String(prompt.owner || DEFAULT_OWNER).trim() || DEFAULT_OWNER,
+        category: normalizePromptCategory(prompt.category || "CODEX"),
+        tags: normalizePromptTags(prompt),
+        title: String(prompt.title || "").trim() || "제목 없음",
+        content: String(prompt.content || ""),
+        createdAt: prompt.createdAt || today()
+      }));
+    }
+
+    function promptsNeedOwnerMigration(value) {
+      return Array.isArray(value) && value.some((prompt) => !prompt.owner);
+    }
+
+    function promptsNeedTagMigration(value) {
+      return Array.isArray(value) && value.some((prompt) => !Array.isArray(prompt.tags) || prompt.category === "디버깅");
+    }
+
+    function normalizeOwners(value, prompts = state.prompts) {
+      const ownerSet = new Set(Array.isArray(value) ? value.map((owner) => String(owner || "").trim()).filter(Boolean) : []);
+      prompts.forEach((prompt) => {
+        if (prompt.owner) ownerSet.add(prompt.owner);
+      });
+      ownerSet.add(DEFAULT_OWNER);
+      return [...ownerSet].sort((a, b) => a.localeCompare(b, "ko-KR"));
+    }
+
+    function normalizeCategories(value, prompts = state.prompts) {
+      const categorySet = new Set(DEFAULT_CATEGORIES);
+      if (Array.isArray(value)) {
+        value.map((category) => String(category || "").trim()).filter(Boolean).forEach((category) => categorySet.add(category));
+      }
+      prompts.forEach((prompt) => {
+        if (prompt.category) categorySet.add(normalizePromptCategory(prompt.category));
+      });
+      return [...categorySet].sort((a, b) => {
+        const aIndex = DEFAULT_CATEGORIES.indexOf(a);
+        const bIndex = DEFAULT_CATEGORIES.indexOf(b);
+        if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
+        if (aIndex >= 0) return -1;
+        if (bIndex >= 0) return 1;
+        return a.localeCompare(b, "ko-KR");
+      });
+    }
+
+    function normalizeTagGroups(value, prompts = state.prompts) {
+      const groups = {};
+      Object.entries(DEFAULT_TAG_GROUPS).forEach(([category, tags]) => {
+        groups[category] = [...tags];
+      });
+
+      if (value && typeof value === "object") {
+        Object.entries(value).forEach(([category, tags]) => {
+          const normalizedCategory = normalizePromptCategory(category);
+          groups[normalizedCategory] = mergeTagNames(groups[normalizedCategory] || [], Array.isArray(tags) ? tags : []);
+        });
+      }
+
+      prompts.forEach((prompt) => {
+        const category = normalizePromptCategory(prompt.category);
+        groups[category] = mergeTagNames(groups[category] || [], prompt.tags || []);
+      });
+
+      return groups;
+    }
+
+    function createDatabasePayload() {
+      return {
+        owners: normalizeOwners(state.owners, state.prompts),
+        categories: normalizeCategories(state.categories, state.prompts),
+        tagGroups: normalizeTagGroups(state.tagGroups, state.prompts),
+        prompts: state.prompts
+      };
+    }
+
+    function normalizePromptCategory(category) {
+      return category === "디버깅" ? "CODEX" : (category || "CODEX");
+    }
+
+    function normalizePromptTags(prompt) {
+      const rawTags = Array.isArray(prompt.tags) ? prompt.tags : defaultTagsForCategory(prompt.category);
+      return mergeTagNames([], rawTags);
+    }
+
+    function defaultTagsForCategory(category) {
+      if (category === "디버깅") return ["디버깅"];
+      if (category === "CODEX") return ["CODEX"];
+      return [];
+    }
+
+    function mergeTagNames(baseTags, nextTags) {
+      return [...new Set([...(baseTags || []), ...(nextTags || [])].map((tag) => String(tag || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "ko-KR"));
+    }
+
+    function renderTabs() {
+      const categories = ["전체", ...getVisibleCategories()];
+      if (!categories.includes(state.activeCategory)) {
+        state.activeCategory = "전체";
+      }
+
+      els.tabs.innerHTML = categories.map((category) => `
+        <button class="tab-button" type="button" role="tab" aria-selected="${category === state.activeCategory}" data-category="${escapeHtml(category)}">
+          ${escapeHtml(category)}
+        </button>
+      `).join("");
+
+      els.tabs.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.activeCategory = button.dataset.category;
+          state.activeSubTag = "전체";
+          renderTabs();
+          renderCodexFilters();
+          renderPrompts();
+        });
+      });
+    }
+
+    function renderOwnerTabs() {
+      const owners = ["전체", ...getOwners()];
+      if (!owners.includes(state.activeOwner)) {
+        state.activeOwner = "전체";
+      }
+
+      els.ownerTabs.innerHTML = owners.map((owner) => `
+        <button class="owner-button" type="button" role="tab" aria-selected="${owner === state.activeOwner}" data-owner="${escapeHtml(owner)}">
+          ${escapeHtml(owner)}
+        </button>
+      `).join("");
+
+      els.ownerTabs.querySelectorAll(".owner-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.activeOwner = button.dataset.owner;
+          renderOwnerTabs();
+          renderPrompts();
+        });
+      });
+    }
+
+    function renderOwnerOptions() {
+      els.ownerOptions.innerHTML = getOwners().map((owner) => `
+        <option value="${escapeHtml(owner)}"></option>
+      `).join("");
+    }
+
+    function renderCodexFilters() {
+      const tags = getTagsForCategory(state.activeCategory);
+      const hasActiveCategory = state.activeCategory !== "전체";
+      els.codexFilters.hidden = !hasActiveCategory;
+
+      if (!hasActiveCategory) {
+        state.activeSubTag = "전체";
+        els.subTagFilters.innerHTML = "";
+        return;
+      }
+
+      const filters = ["전체", ...tags];
+      if (!filters.includes(state.activeSubTag)) {
+        state.activeSubTag = "전체";
+      }
+
+      els.subTagFilters.innerHTML = filters.map((tag) => `
+        <button class="filter-button" type="button" aria-pressed="${tag === state.activeSubTag}" data-sub-tag="${escapeHtml(tag)}">
+          ${escapeHtml(tag)}
+        </button>
+      `).join("");
+
+      els.subTagFilters.querySelectorAll(".filter-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.activeSubTag = button.dataset.subTag;
+          renderCodexFilters();
+          renderPrompts();
+        });
+      });
+    }
+
+    function renderCategoryOptions() {
+      els.categoryInput.innerHTML = getCategories().map((category) => `
+        <option value="${escapeHtml(category)}">${escapeHtml(category)}</option>
+      `).join("");
+    }
+
+    function renderSubTagCategoryOptions() {
+      els.subTagCategoryInput.innerHTML = getCategories().map((category) => `
+        <option value="${escapeHtml(category)}">${escapeHtml(category)}</option>
+      `).join("");
+    }
+
+    function renderPromptTagOptions(selectedTags = []) {
+      const tags = getTagsForCategory(els.categoryInput.value);
+      if (tags.length === 0) {
+        els.promptTagOptions.innerHTML = "<span class=\"card-preview\">구분태그 없음</span>";
+        return;
+      }
+
+      const selectedSet = new Set(selectedTags);
+      els.promptTagOptions.innerHTML = tags.map((tag) => `
+        <label class="checkbox-pill">
+          <input type="checkbox" value="${escapeHtml(tag)}" ${selectedSet.has(tag) ? "checked" : ""}>
+          <span>${escapeHtml(tag)}</span>
+        </label>
+      `).join("");
+    }
+
+    function renderPrompts() {
+      const prompts = getFilteredPrompts();
+      els.countLabel.textContent = `${prompts.length}개`;
+
+      if (prompts.length === 0) {
+        els.promptGrid.className = "empty-state";
+        els.promptGrid.innerHTML = "<span>표시할 프롬프트가 없습니다.</span>";
+        return;
+      }
+
+      els.promptGrid.className = "prompt-grid";
+      els.promptGrid.innerHTML = prompts.map((prompt) => {
+        const copied = prompt.id === state.copiedId;
+        return `
+          <article class="prompt-card">
+            <button class="copy-card ${copied ? "copied" : ""}" type="button" data-copy-id="${escapeHtml(prompt.id)}">
+              <span class="card-owner">${escapeHtml(prompt.owner)}</span>
+              <span class="card-category">${escapeHtml(formatPromptTags(prompt))}</span>
+              <strong class="card-title">${escapeHtml(prompt.title)}</strong>
+              <span class="card-preview">${escapeHtml(prompt.content)}</span>
+              <span class="copied-label" aria-hidden="${copied ? "false" : "true"}">✓ 복사됨</span>
+            </button>
+            <button class="edit-card" type="button" data-edit-id="${escapeHtml(prompt.id)}" title="수정" aria-label="${escapeHtml(prompt.title)} 수정">✎</button>
+          </article>
+        `;
+      }).join("");
+
+      els.promptGrid.querySelectorAll("[data-copy-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const prompt = state.prompts.find((item) => item.id === button.dataset.copyId);
+          if (prompt) copyPrompt(prompt);
+        });
+      });
+
+      els.promptGrid.querySelectorAll("[data-edit-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const prompt = state.prompts.find((item) => item.id === button.dataset.editId);
+          if (prompt) openPromptModal(prompt);
+        });
+      });
+    }
+
+    function getFilteredPrompts() {
+      const keyword = state.searchTerm.toLocaleLowerCase("ko-KR");
+      return state.prompts.filter((prompt) => {
+        const matchesOwner = state.activeOwner === "전체" || prompt.owner === state.activeOwner;
+        let matchesCategory = state.activeCategory === "전체" || prompt.category === state.activeCategory;
+        if (state.activeCategory !== "전체" && state.activeSubTag !== "전체") {
+          matchesCategory = matchesCategory && prompt.tags.includes(state.activeSubTag);
+        }
+        const haystack = `${prompt.title} ${prompt.content}`.toLocaleLowerCase("ko-KR");
+        return matchesOwner && matchesCategory && (!keyword || haystack.includes(keyword));
+      });
+    }
+
+    function getOwners() {
+      return normalizeOwners(state.owners, state.prompts);
+    }
+
+    function getCategories() {
+      return normalizeCategories(state.categories, state.prompts);
+    }
+
+    function getVisibleCategories() {
+      return getCategories();
+    }
+
+    function getTagsForCategory(category) {
+      if (!category || category === "전체") return [];
+      return mergeTagNames([], state.tagGroups[category] || []);
+    }
+
+    function formatPromptTags(prompt) {
+      return prompt.tags?.length ? `${prompt.category} · ${prompt.tags.join(", ")}` : prompt.category;
+    }
+
+    function openOwnerModal() {
+      els.newOwnerInput.value = "";
+      els.ownerModalBackdrop.hidden = false;
+      els.newOwnerInput.focus();
+    }
+
+    function closeOwnerModal() {
+      els.ownerModalBackdrop.hidden = true;
+      els.ownerForm.reset();
+      setBusy(false);
+    }
+
+    async function handleOwnerFormSubmit(event) {
+      event.preventDefault();
+      const owner = els.newOwnerInput.value.trim();
+
+      if (!owner) {
+        showToast("사용자 이름을 입력해 주세요.", "error");
+        return;
+      }
+
+      const saved = await persistOwner(owner);
+      if (saved) closeOwnerModal();
+    }
+
+    async function persistOwner(owner) {
+      const snapshotOwners = [...state.owners];
+      const snapshotActiveOwner = state.activeOwner;
+
+      try {
+        setBusy(true);
+        setStatus("Drive에 저장 중", "loading");
+
+        const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
+        const latestPrompts = normalizePrompts(latestData.prompts);
+        const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
+        state.prompts = latestPrompts;
+        state.owners = mergeOwners(latestOwners, [owner]);
+        state.activeOwner = owner;
+
+        await updateDbFile(createDatabasePayload());
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderPrompts();
+        setStatus("동기화됨", "success");
+        showToast("사용자 추가됨", "success");
+        return true;
+      } catch (error) {
+        console.error(error);
+        state.owners = snapshotOwners;
+        state.activeOwner = snapshotActiveOwner;
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderPrompts();
+        setStatus("저장 실패", "error");
+        showToast(toUserError(error), "error");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function openCategoryModal() {
+      els.newCategoryInput.value = "";
+      els.categoryModalBackdrop.hidden = false;
+      els.newCategoryInput.focus();
+    }
+
+    function closeCategoryModal() {
+      els.categoryModalBackdrop.hidden = true;
+      els.categoryForm.reset();
+      setBusy(false);
+    }
+
+    async function handleCategoryFormSubmit(event) {
+      event.preventDefault();
+      const category = els.newCategoryInput.value.trim();
+
+      if (!category) {
+        showToast("영역태그 이름을 입력해 주세요.", "error");
+        return;
+      }
+
+      const saved = await persistCategory(category);
+      if (saved) closeCategoryModal();
+    }
+
+    async function persistCategory(category) {
+      const snapshotCategories = [...state.categories];
+      const snapshotActiveCategory = state.activeCategory;
+
+      try {
+        setBusy(true);
+        setStatus("Drive에 저장 중", "loading");
+
+        const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
+        const latestPrompts = normalizePrompts(latestData.prompts);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        state.prompts = latestPrompts;
+        state.categories = mergeCategories(latestCategories, [category]);
+        state.tagGroups = { ...latestTagGroups, [category]: latestTagGroups[category] || [] };
+        state.activeCategory = category === "디버깅" ? "CODEX" : category;
+
+        await updateDbFile(createDatabasePayload());
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("동기화됨", "success");
+        showToast("영역태그 추가됨", "success");
+        return true;
+      } catch (error) {
+        console.error(error);
+        state.categories = snapshotCategories;
+        state.activeCategory = snapshotActiveCategory;
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("저장 실패", "error");
+        showToast(toUserError(error), "error");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function openSubTagModal() {
+      renderSubTagCategoryOptions();
+      els.subTagCategoryInput.value = state.activeCategory === "전체" ? "CODEX" : state.activeCategory;
+      els.newSubTagInput.value = "";
+      els.subTagModalBackdrop.hidden = false;
+      els.newSubTagInput.focus();
+    }
+
+    function closeSubTagModal() {
+      els.subTagModalBackdrop.hidden = true;
+      els.subTagForm.reset();
+      setBusy(false);
+    }
+
+    async function handleSubTagFormSubmit(event) {
+      event.preventDefault();
+      const category = els.subTagCategoryInput.value;
+      const tag = els.newSubTagInput.value.trim();
+
+      if (!category || !tag) {
+        showToast("영역태그와 구분태그 이름을 입력해 주세요.", "error");
+        return;
+      }
+
+      const saved = await persistSubTag(category, tag);
+      if (saved) closeSubTagModal();
+    }
+
+    async function persistSubTag(category, tag) {
+      const snapshotTagGroups = structuredCloneSafe(state.tagGroups);
+      const snapshotActiveCategory = state.activeCategory;
+      const snapshotActiveSubTag = state.activeSubTag;
+
+      try {
+        setBusy(true);
+        setStatus("Drive에 저장 중", "loading");
+
+        const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
+        const latestPrompts = normalizePrompts(latestData.prompts);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        state.prompts = latestPrompts;
+        state.categories = mergeCategories(latestCategories, [category]);
+        state.tagGroups = mergeTagGroups(latestTagGroups, category, [tag]);
+        state.activeCategory = category;
+        state.activeSubTag = tag;
+
+        await updateDbFile(createDatabasePayload());
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("동기화됨", "success");
+        showToast("구분태그 추가됨", "success");
+        return true;
+      } catch (error) {
+        console.error(error);
+        state.tagGroups = snapshotTagGroups;
+        state.activeCategory = snapshotActiveCategory;
+        state.activeSubTag = snapshotActiveSubTag;
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("저장 실패", "error");
+        showToast(toUserError(error), "error");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function copyPrompt(prompt) {
+      try {
+        await copyText(prompt.content);
+        state.copiedId = prompt.id;
+        window.clearTimeout(state.copyTimer);
+        renderPrompts();
+        state.copyTimer = window.setTimeout(() => {
+          if (state.copiedId === prompt.id) {
+            state.copiedId = "";
+            renderPrompts();
+          }
+        }, 1500);
+      } catch (error) {
+        console.error(error);
+        showToast("클립보드 복사에 실패했습니다.", "error");
+      }
+    }
+
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+      const ok = document.execCommand("copy");
+      textarea.remove();
+
+      if (!ok) {
+        throw new Error("Copy command failed");
+      }
+    }
+
+    function openPromptModal(prompt = null) {
+      state.editingId = prompt?.id || "";
+      els.modalTitle.textContent = prompt ? "프롬프트 수정" : "새 프롬프트";
+      els.ownerInput.value = prompt?.owner || getDefaultNewOwner();
+      els.titleInput.value = prompt?.title || "";
+      els.categoryInput.value = prompt?.category || getDefaultNewCategory();
+      renderPromptTagOptions(prompt?.tags || defaultTagsForCategory(els.categoryInput.value));
+      els.contentInput.value = prompt?.content || "";
+      els.deleteButton.hidden = !prompt;
+      els.modalBackdrop.hidden = false;
+      els.titleInput.focus();
+    }
+
+    function getDefaultNewCategory() {
+      return state.activeCategory === "전체" ? "CODEX" : state.activeCategory;
+    }
+
+    function getDefaultNewOwner() {
+      return state.activeOwner === "전체" ? DEFAULT_OWNER : state.activeOwner;
+    }
+
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+
+      const owner = els.ownerInput.value.trim();
+      const title = els.titleInput.value.trim();
+      const content = els.contentInput.value;
+      const category = els.categoryInput.value;
+      const tags = getSelectedPromptTags();
+
+      if (!owner || !title || !content.trim()) {
+        showToast("사용자 이름, 제목, 내용을 입력해 주세요.", "error");
+        return;
+      }
+
+      const saved = await persistChange(() => {
+        if (state.editingId) {
+          state.prompts = state.prompts.map((prompt) => {
+            if (prompt.id !== state.editingId) return prompt;
+            return {
+              ...prompt,
+              owner,
+              title,
+              content,
+              category,
+              tags
+            };
+          });
+        } else {
+          state.prompts = [{
+            id: createId(),
+            owner,
+            category,
+            tags,
+            title,
+            content,
+            createdAt: today()
+          }, ...state.prompts];
+        }
+        state.owners = mergeOwners(state.owners, [owner]);
+        state.categories = mergeCategories(state.categories, [category]);
+        state.tagGroups = mergeTagGroups(state.tagGroups, category, tags);
+      }, "저장됨");
+
+      if (saved) closePromptModal();
+    }
+
+    async function handleDelete() {
+      if (!state.editingId) return;
+      const prompt = state.prompts.find((item) => item.id === state.editingId);
+      const ok = window.confirm(`"${prompt?.title || "프롬프트"}"을 삭제할까요?`);
+      if (!ok) return;
+
+      const saved = await persistChange(() => {
+        state.prompts = state.prompts.filter((item) => item.id !== state.editingId);
+      }, "삭제됨");
+
+      if (saved) closePromptModal();
+    }
+
+    async function persistChange(mutator, successMessage) {
+      const snapshot = state.prompts.map((prompt) => ({ ...prompt }));
+      const snapshotOwners = [...state.owners];
+      const snapshotCategories = [...state.categories];
+      const snapshotTagGroups = structuredCloneSafe(state.tagGroups);
+
+      try {
+        setBusy(true);
+        mutator();
+        renderPrompts();
+        setStatus("Drive에 저장 중", "loading");
+        const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
+        const latestPrompts = normalizePrompts(latestData.prompts);
+        const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
+        state.owners = mergeOwners(latestOwners, state.owners);
+        state.categories = mergeCategories(latestCategories, state.categories);
+        state.tagGroups = mergeAllTagGroups(latestTagGroups, state.tagGroups);
+        await updateDbFile(createDatabasePayload());
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("동기화됨", "success");
+        showToast(successMessage, "success");
+        return true;
+      } catch (error) {
+        console.error(error);
+        state.prompts = snapshot;
+        state.owners = snapshotOwners;
+        state.categories = snapshotCategories;
+        state.tagGroups = snapshotTagGroups;
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
+        renderPrompts();
+        setStatus("저장 실패", "error");
+        showToast(toUserError(error), "error");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function mergePromptChanges(beforePrompts, afterPrompts, latestPrompts) {
+      const beforeById = new Map(beforePrompts.map((prompt) => [prompt.id, prompt]));
+      const afterById = new Map(afterPrompts.map((prompt) => [prompt.id, prompt]));
+      const deletedIds = new Set(beforePrompts.filter((prompt) => !afterById.has(prompt.id)).map((prompt) => prompt.id));
+      const changedPrompts = afterPrompts.filter((prompt) => {
+        const beforePrompt = beforeById.get(prompt.id);
+        return !beforePrompt || JSON.stringify(beforePrompt) !== JSON.stringify(prompt);
+      });
+      const merged = latestPrompts.filter((prompt) => !deletedIds.has(prompt.id));
+
+      changedPrompts.forEach((prompt) => {
+        const index = merged.findIndex((item) => item.id === prompt.id);
+        if (index >= 0) {
+          merged[index] = prompt;
+        } else {
+          merged.unshift(prompt);
+        }
+      });
+
+      return merged;
+    }
+
+    function mergeOwners(baseOwners, nextOwners) {
+      return normalizeOwners([...(baseOwners || []), ...(nextOwners || [])], state.prompts);
+    }
+
+    function mergeCategories(baseCategories, nextCategories) {
+      return normalizeCategories([...(baseCategories || []), ...(nextCategories || [])], state.prompts);
+    }
+
+    function mergeTagGroups(baseGroups, category, tags) {
+      const groups = normalizeTagGroups(baseGroups, state.prompts);
+      groups[category] = mergeTagNames(groups[category] || [], tags);
+      return groups;
+    }
+
+    function mergeAllTagGroups(baseGroups, nextGroups) {
+      const groups = normalizeTagGroups(baseGroups, state.prompts);
+      Object.entries(nextGroups || {}).forEach(([category, tags]) => {
+        groups[category] = mergeTagNames(groups[category] || [], tags);
+      });
+      return groups;
+    }
+
+    function getSelectedPromptTags() {
+      return Array.from(els.promptTagOptions.querySelectorAll("input[type='checkbox']:checked"))
+        .map((input) => input.value);
+    }
+
+    function structuredCloneSafe(value) {
+      return JSON.parse(JSON.stringify(value || {}));
+    }
+
+    function closePromptModal() {
+      els.modalBackdrop.hidden = true;
+      els.promptForm.reset();
+      state.editingId = "";
+      setBusy(false);
+    }
+
+    function setBusy(isBusy) {
+      state.isSaving = isBusy;
+      els.loginButton.disabled = isBusy || !state.tokenClient;
+      els.addButton.disabled = isBusy;
+      els.addOwnerButton.disabled = isBusy;
+      els.addCategoryButton.disabled = isBusy;
+      els.addSubTagButton.disabled = isBusy;
+      els.saveOwnerButton.disabled = isBusy;
+      els.saveCategoryButton.disabled = isBusy;
+      els.saveSubTagButton.disabled = isBusy;
+      els.saveButton.disabled = isBusy;
+      els.deleteButton.disabled = isBusy;
+      els.searchInput.disabled = isBusy && !state.prompts.length;
+    }
+
+    function setStatus(message, type = "info") {
+      els.status.textContent = message;
+      els.status.title = message;
+      els.status.dataset.type = type;
+    }
+
+    function showToast(message, type = "success") {
+      window.clearTimeout(state.toastTimer);
+      els.toast.textContent = message;
+      els.toast.className = type === "error" ? "toast error" : "toast";
+      els.toast.hidden = false;
+      state.toastTimer = window.setTimeout(() => {
+        els.toast.hidden = true;
+      }, 3200);
+    }
+
+    function today() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function createId() {
+      if (window.crypto && typeof window.crypto.randomUUID === "function") {
+        return window.crypto.randomUUID();
+      }
+
+      return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function toUserError(error) {
+      return error?.message || "알 수 없는 오류가 발생했습니다.";
+    }
+
+    function isAuthError(error) {
+      return toUserError(error).includes("로그인이 만료되었습니다");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+  </script>
+</body>
+</html>
