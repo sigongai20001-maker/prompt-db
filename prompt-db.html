@@ -1366,11 +1366,12 @@
           const needsOwnerMigration = promptsNeedOwnerMigration(data.prompts) || promptsNeedTagMigration(data.prompts) || !Array.isArray(data.owners) || !Array.isArray(data.categories) || !Array.isArray(data.deletedCategories) || !data.tagGroups;
           state.deletedCategories = normalizeDeletedCategories(data.deletedCategories);
           state.prompts = normalizePrompts(data.prompts);
+          const needsDeletedCategoryRepair = restoreUsedDeletedCategories();
           state.owners = normalizeOwners(data.owners, state.prompts);
           state.categories = normalizeCategories(data.categories, state.prompts, state.deletedCategories);
           state.tagGroups = normalizeTagGroups(data.tagGroups, state.prompts, state.deletedCategories);
           const needsCategoryRepair = repairHiddenPromptCategories();
-          if (needsOwnerMigration || needsCategoryRepair) {
+          if (needsOwnerMigration || needsDeletedCategoryRepair || needsCategoryRepair) {
             await updateDbFile(createDatabasePayload());
           }
           setStatus("동기화됨", "success");
@@ -1632,6 +1633,22 @@
 
     function normalizePromptCategory(category) {
       return category === "디버깅" ? "CODEX" : (category || "CODEX");
+    }
+
+    function restoreUsedDeletedCategories() {
+      const usedCategories = new Set(state.prompts.map((prompt) => normalizePromptCategory(prompt.category)));
+      const deletedCategories = normalizeDeletedCategories(state.deletedCategories);
+      state.deletedCategories = deletedCategories.filter((category) => !usedCategories.has(category));
+      return state.deletedCategories.length !== deletedCategories.length;
+    }
+
+    function reviveDeletedCategoryName(category) {
+      state.deletedCategories = normalizeDeletedCategories(state.deletedCategories).filter((item) => item !== category);
+    }
+
+    function hideRenamedDefaultCategory(category) {
+      if (!DEFAULT_CATEGORIES.includes(category)) return;
+      state.deletedCategories = mergeTagNames(state.deletedCategories, [category]);
     }
 
     function repairHiddenPromptCategories() {
@@ -2295,9 +2312,8 @@
       if (!value || value === current) return;
 
       await persistChange(() => {
-        if (DEFAULT_CATEGORIES.includes(current)) {
-          state.deletedCategories = mergeTagNames(state.deletedCategories, [current]).filter((category) => category !== value);
-        }
+        reviveDeletedCategoryName(value);
+        hideRenamedDefaultCategory(current);
         state.categories = state.categories.map((category) => category === current ? value : category);
         state.tagGroups = renameObjectKey(state.tagGroups, current, value);
         state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
@@ -2426,9 +2442,8 @@
 
       if (!value || value === current) return;
       await persistChange(() => {
-        if (DEFAULT_CATEGORIES.includes(current)) {
-          state.deletedCategories = mergeTagNames(state.deletedCategories, [current]).filter((category) => category !== value);
-        }
+        reviveDeletedCategoryName(value);
+        hideRenamedDefaultCategory(current);
         state.categories = state.categories.map((category) => category === current ? value : category);
         state.tagGroups = renameObjectKey(state.tagGroups, current, value);
         state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
@@ -2598,7 +2613,9 @@
         const latestPrompts = normalizePrompts(latestData.prompts);
         const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
         const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories);
-        state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories);
+        const revivedDeletedCategories = snapshotDeletedCategories.filter((category) => !state.deletedCategories.includes(category));
+        state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories)
+          .filter((category) => !revivedDeletedCategories.includes(category));
         const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
         const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
         state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
