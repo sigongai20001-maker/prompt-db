@@ -478,13 +478,15 @@
     }
 
     .card-title {
-      flex: 0 1 220px;
-      min-width: 120px;
+      flex: 0 0 clamp(180px, 24vw, 320px);
+      min-width: 0;
       margin: 0;
       font-size: 0.98rem;
       font-weight: 800;
       line-height: 1.35;
-      overflow-wrap: anywhere;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .card-preview {
@@ -756,6 +758,10 @@
         flex: none;
         width: 100%;
         max-width: 100%;
+      }
+
+      .card-title {
+        white-space: nowrap;
       }
 
       .copied-label {
