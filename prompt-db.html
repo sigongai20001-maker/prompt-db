@@ -1049,6 +1049,7 @@
       dbFileId: "",
       owners: [DEFAULT_OWNER],
       categories: [...DEFAULT_CATEGORIES],
+      deletedCategories: [],
       tagGroups: { ...DEFAULT_TAG_GROUPS },
       prompts: [],
       activeOwner: "전체",
@@ -1362,11 +1363,12 @@
         if (foundFile) {
           state.dbFileId = foundFile.id;
           const data = await readDbFile(foundFile.id);
-          const needsOwnerMigration = promptsNeedOwnerMigration(data.prompts) || promptsNeedTagMigration(data.prompts) || !Array.isArray(data.owners) || !Array.isArray(data.categories) || !data.tagGroups;
+          const needsOwnerMigration = promptsNeedOwnerMigration(data.prompts) || promptsNeedTagMigration(data.prompts) || !Array.isArray(data.owners) || !Array.isArray(data.categories) || !Array.isArray(data.deletedCategories) || !data.tagGroups;
+          state.deletedCategories = normalizeDeletedCategories(data.deletedCategories);
           state.prompts = normalizePrompts(data.prompts);
           state.owners = normalizeOwners(data.owners, state.prompts);
-          state.categories = normalizeCategories(data.categories, state.prompts);
-          state.tagGroups = normalizeTagGroups(data.tagGroups, state.prompts);
+          state.categories = normalizeCategories(data.categories, state.prompts, state.deletedCategories);
+          state.tagGroups = normalizeTagGroups(data.tagGroups, state.prompts, state.deletedCategories);
           if (needsOwnerMigration) {
             await updateDbFile(createDatabasePayload());
           }
@@ -1377,6 +1379,7 @@
           state.dbFileId = createdFile.id;
           state.owners = data.owners;
           state.categories = data.categories;
+          state.deletedCategories = data.deletedCategories;
           state.tagGroups = data.tagGroups;
           state.prompts = data.prompts;
           setStatus("기본 DB 생성됨", "success");
@@ -1519,6 +1522,7 @@
       return {
         owners: [DEFAULT_OWNER],
         categories: [...DEFAULT_CATEGORIES],
+        deletedCategories: [],
         tagGroups: { ...DEFAULT_TAG_GROUPS },
         prompts: defaultSeeds.map(([category, title, content]) => ({
           id: createId(),
@@ -1567,7 +1571,12 @@
       return [...ownerSet].sort((a, b) => a.localeCompare(b, "ko-KR"));
     }
 
-    function normalizeCategories(value, prompts = state.prompts) {
+    function normalizeDeletedCategories(value) {
+      return mergeTagNames([], Array.isArray(value) ? value : []);
+    }
+
+    function normalizeCategories(value, prompts = state.prompts, deletedCategories = state.deletedCategories) {
+      const deletedSet = new Set(normalizeDeletedCategories(deletedCategories));
       const categorySet = new Set(DEFAULT_CATEGORIES);
       if (Array.isArray(value)) {
         value.map((category) => String(category || "").trim()).filter(Boolean).forEach((category) => categorySet.add(category));
@@ -1575,7 +1584,7 @@
       prompts.forEach((prompt) => {
         if (prompt.category) categorySet.add(normalizePromptCategory(prompt.category));
       });
-      return [...categorySet].sort((a, b) => {
+      return [...categorySet].filter((category) => !deletedSet.has(category)).sort((a, b) => {
         const aIndex = DEFAULT_CATEGORIES.indexOf(a);
         const bIndex = DEFAULT_CATEGORIES.indexOf(b);
         if (aIndex >= 0 && bIndex >= 0) return aIndex - bIndex;
@@ -1585,21 +1594,25 @@
       });
     }
 
-    function normalizeTagGroups(value, prompts = state.prompts) {
+    function normalizeTagGroups(value, prompts = state.prompts, deletedCategories = state.deletedCategories) {
+      const deletedSet = new Set(normalizeDeletedCategories(deletedCategories));
       const groups = {};
       Object.entries(DEFAULT_TAG_GROUPS).forEach(([category, tags]) => {
+        if (deletedSet.has(category)) return;
         groups[category] = [...tags];
       });
 
       if (value && typeof value === "object") {
         Object.entries(value).forEach(([category, tags]) => {
           const normalizedCategory = normalizePromptCategory(category);
+          if (deletedSet.has(normalizedCategory)) return;
           groups[normalizedCategory] = mergeTagNames(groups[normalizedCategory] || [], Array.isArray(tags) ? tags : []);
         });
       }
 
       prompts.forEach((prompt) => {
         const category = normalizePromptCategory(prompt.category);
+        if (deletedSet.has(category)) return;
         groups[category] = mergeTagNames(groups[category] || [], prompt.tags || []);
       });
 
@@ -1609,8 +1622,9 @@
     function createDatabasePayload() {
       return {
         owners: normalizeOwners(state.owners, state.prompts),
-        categories: normalizeCategories(state.categories, state.prompts),
-        tagGroups: normalizeTagGroups(state.tagGroups, state.prompts),
+        categories: normalizeCategories(state.categories, state.prompts, state.deletedCategories),
+        deletedCategories: normalizeDeletedCategories(state.deletedCategories),
+        tagGroups: normalizeTagGroups(state.tagGroups, state.prompts, state.deletedCategories),
         prompts: state.prompts
       };
     }
@@ -1941,6 +1955,7 @@
 
     async function persistCategory(category) {
       const snapshotCategories = [...state.categories];
+      const snapshotDeletedCategories = [...state.deletedCategories];
       const snapshotActiveCategory = state.activeCategory;
 
       try {
@@ -1949,8 +1964,10 @@
 
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
         const latestPrompts = normalizePrompts(latestData.prompts);
-        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
-        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories).filter((item) => item !== category);
+        state.deletedCategories = latestDeletedCategories.filter((item) => item !== category);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
         state.prompts = latestPrompts;
         state.categories = mergeCategories(latestCategories, [category]);
         state.tagGroups = { ...latestTagGroups, [category]: latestTagGroups[category] || [] };
@@ -1968,6 +1985,7 @@
       } catch (error) {
         console.error(error);
         state.categories = snapshotCategories;
+        state.deletedCategories = snapshotDeletedCategories;
         state.activeCategory = snapshotActiveCategory;
         renderTabs();
         renderCategoryOptions();
@@ -2012,6 +2030,7 @@
 
     async function persistSubTag(category, tag) {
       const snapshotTagGroups = structuredCloneSafe(state.tagGroups);
+      const snapshotDeletedCategories = [...state.deletedCategories];
       const snapshotActiveCategory = state.activeCategory;
       const snapshotActiveSubTag = state.activeSubTag;
 
@@ -2021,8 +2040,10 @@
 
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
         const latestPrompts = normalizePrompts(latestData.prompts);
-        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
-        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories).filter((item) => item !== category);
+        state.deletedCategories = latestDeletedCategories.filter((item) => item !== category);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
         state.prompts = latestPrompts;
         state.categories = mergeCategories(latestCategories, [category]);
         state.tagGroups = mergeTagGroups(latestTagGroups, category, [tag]);
@@ -2041,6 +2062,7 @@
       } catch (error) {
         console.error(error);
         state.tagGroups = snapshotTagGroups;
+        state.deletedCategories = snapshotDeletedCategories;
         state.activeCategory = snapshotActiveCategory;
         state.activeSubTag = snapshotActiveSubTag;
         renderTabs();
@@ -2103,8 +2125,9 @@
       const latestData = await readDbFile(state.dbFileId);
       const latestPrompts = normalizePrompts(latestData.prompts);
       const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
-      const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
-      const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+      state.deletedCategories = mergeTagNames(normalizeDeletedCategories(latestData.deletedCategories), state.deletedCategories);
+      const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
+      const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
       const localUsage = Number(localPrompt.usageCount || 0);
 
       state.prompts = latestPrompts.map((prompt) => {
@@ -2175,6 +2198,10 @@
       return state.activeCategory !== "전체" && categories.includes(state.activeCategory) ? state.activeCategory : "";
     }
 
+    function getCategoryDeleteFallback(category) {
+      return getCategories().filter((item) => item !== category)[0] || "공통";
+    }
+
     function getActiveSubTagForAction() {
       const category = getActiveCategoryForAction();
       if (!category) return { category: "", tag: "" };
@@ -2240,17 +2267,15 @@
       const current = getActiveCategoryForAction();
       if (!current) return;
 
-      if (current === "CODEX") {
-        showToast("CODEX 영역태그는 삭제할 수 없습니다.", "error");
-        return;
-      }
-      if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 CODEX로 이동합니다.`)) return;
+      const fallbackCategory = getCategoryDeleteFallback(current);
+      if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 ${fallbackCategory}로 이동합니다.`)) return;
 
       await persistChange(() => {
-        state.categories = state.categories.filter((category) => category !== current);
+        state.deletedCategories = mergeTagNames(state.deletedCategories, [current]);
+        state.categories = mergeCategories(state.categories.filter((category) => category !== current), [fallbackCategory]);
         const currentTags = state.tagGroups[current] || [];
-        state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { CODEX: currentTags });
-        state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: "CODEX" } : prompt);
+        state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { [fallbackCategory]: currentTags });
+        state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: fallbackCategory } : prompt);
         state.activeCategory = "전체";
         state.activeSubTag = "전체";
       }, "영역태그 삭제됨");
@@ -2343,16 +2368,14 @@
 
       const value = next.trim();
       if (value === "DELETE") {
-        if (current === "CODEX") {
-          showToast("CODEX 영역태그는 삭제할 수 없습니다.", "error");
-          return;
-        }
-        if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 CODEX로 이동합니다.`)) return;
+        const fallbackCategory = getCategoryDeleteFallback(current);
+        if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 ${fallbackCategory}로 이동합니다.`)) return;
         await persistChange(() => {
-          state.categories = state.categories.filter((category) => category !== current);
+          state.deletedCategories = mergeTagNames(state.deletedCategories, [current]);
+          state.categories = mergeCategories(state.categories.filter((category) => category !== current), [fallbackCategory]);
           const currentTags = state.tagGroups[current] || [];
-          state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { CODEX: currentTags });
-          state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: "CODEX" } : prompt);
+          state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { [fallbackCategory]: currentTags });
+          state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: fallbackCategory } : prompt);
           state.activeCategory = "전체";
           state.activeSubTag = "전체";
         }, "영역태그 삭제됨");
@@ -2518,6 +2541,7 @@
       const snapshot = state.prompts.map((prompt) => ({ ...prompt }));
       const snapshotOwners = [...state.owners];
       const snapshotCategories = [...state.categories];
+      const snapshotDeletedCategories = [...state.deletedCategories];
       const snapshotTagGroups = structuredCloneSafe(state.tagGroups);
 
       try {
@@ -2528,8 +2552,10 @@
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
         const latestPrompts = normalizePrompts(latestData.prompts);
         const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
-        const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
-        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+        const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories);
+        state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories);
+        const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
+        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
         state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
         state.owners = mergeOwners(latestOwners, state.owners);
         state.categories = mergeCategories(latestCategories, state.categories);
@@ -2550,6 +2576,7 @@
         state.prompts = snapshot;
         state.owners = snapshotOwners;
         state.categories = snapshotCategories;
+        state.deletedCategories = snapshotDeletedCategories;
         state.tagGroups = snapshotTagGroups;
         renderOwnerTabs();
         renderOwnerOptions();
