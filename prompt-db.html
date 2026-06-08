@@ -802,6 +802,9 @@
             <span>+</span>
             <span>사용자</span>
           </button>
+          <button id="manageOwnerButton" class="ghost-button" type="button">
+            <span>관리</span>
+          </button>
         </div>
         <div class="category-row">
           <nav id="tabs" class="tabs" aria-label="카테고리"></nav>
@@ -809,12 +812,18 @@
             <span>+</span>
             <span>영역태그</span>
           </button>
+          <button id="manageCategoryButton" class="ghost-button" type="button">
+            <span>관리</span>
+          </button>
         </div>
         <div id="codexFilters" class="sub-filters" aria-label="구분태그" hidden>
           <nav id="subTagFilters" class="sub-filter-list" aria-label="구분태그 필터"></nav>
           <button id="addSubTagButton" class="ghost-button" type="button">
             <span>+</span>
             <span>구분태그</span>
+          </button>
+          <button id="manageSubTagButton" class="ghost-button" type="button">
+            <span>관리</span>
           </button>
         </div>
 
@@ -1056,11 +1065,14 @@
       els.status = $("#status");
       els.ownerTabs = $("#ownerTabs");
       els.addOwnerButton = $("#addOwnerButton");
+      els.manageOwnerButton = $("#manageOwnerButton");
       els.tabs = $("#tabs");
       els.addCategoryButton = $("#addCategoryButton");
+      els.manageCategoryButton = $("#manageCategoryButton");
       els.codexFilters = $("#codexFilters");
       els.subTagFilters = $("#subTagFilters");
       els.addSubTagButton = $("#addSubTagButton");
+      els.manageSubTagButton = $("#manageSubTagButton");
       els.promptGrid = $("#promptGrid");
       els.countLabel = $("#countLabel");
       els.fileLabel = $("#fileLabel");
@@ -1110,8 +1122,11 @@
       });
       els.addButton.addEventListener("click", () => openPromptModal());
       els.addOwnerButton.addEventListener("click", openOwnerModal);
+      els.manageOwnerButton.addEventListener("click", manageOwner);
       els.addCategoryButton.addEventListener("click", openCategoryModal);
+      els.manageCategoryButton.addEventListener("click", manageCategory);
       els.addSubTagButton.addEventListener("click", openSubTagModal);
+      els.manageSubTagButton.addEventListener("click", manageSubTag);
       els.closeOwnerModalButton.addEventListener("click", closeOwnerModal);
       els.cancelOwnerButton.addEventListener("click", closeOwnerModal);
       els.ownerForm.addEventListener("submit", handleOwnerFormSubmit);
@@ -2038,6 +2053,149 @@
       return state.activeOwner === "전체" ? DEFAULT_OWNER : state.activeOwner;
     }
 
+    async function manageOwner() {
+      const owners = getOwners();
+      const current = chooseValue("관리할 사용자 이름", owners, state.activeOwner === "전체" ? owners[0] : state.activeOwner);
+      if (!current) return;
+
+      const next = window.prompt(`"${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (value === "DELETE") {
+        if (current === DEFAULT_OWNER) {
+          showToast("기본 사용자는 삭제할 수 없습니다.", "error");
+          return;
+        }
+        if (!window.confirm(`"${current}" 사용자를 삭제할까요? 해당 프롬프트는 ${DEFAULT_OWNER}(으)로 이동합니다.`)) return;
+        await persistChange(() => {
+          state.owners = state.owners.filter((owner) => owner !== current);
+          state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: DEFAULT_OWNER } : prompt);
+          state.activeOwner = "전체";
+        }, "사용자 삭제됨");
+        return;
+      }
+
+      if (!value || value === current) return;
+      await persistChange(() => {
+        state.owners = state.owners.map((owner) => owner === current ? value : owner);
+        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: value } : prompt);
+        state.activeOwner = value;
+      }, "사용자 이름 변경됨");
+    }
+
+    async function manageCategory() {
+      const categories = getCategories();
+      const current = chooseValue("관리할 영역태그 이름", categories, state.activeCategory === "전체" ? categories[0] : state.activeCategory);
+      if (!current) return;
+
+      const next = window.prompt(`"${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (value === "DELETE") {
+        if (current === "CODEX") {
+          showToast("CODEX 영역태그는 삭제할 수 없습니다.", "error");
+          return;
+        }
+        if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 CODEX로 이동합니다.`)) return;
+        await persistChange(() => {
+          state.categories = state.categories.filter((category) => category !== current);
+          const currentTags = state.tagGroups[current] || [];
+          state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { CODEX: currentTags });
+          state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: "CODEX" } : prompt);
+          state.activeCategory = "전체";
+          state.activeSubTag = "전체";
+        }, "영역태그 삭제됨");
+        return;
+      }
+
+      if (!value || value === current) return;
+      await persistChange(() => {
+        state.categories = state.categories.map((category) => category === current ? value : category);
+        state.tagGroups = renameObjectKey(state.tagGroups, current, value);
+        state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
+        state.activeCategory = value;
+      }, "영역태그 이름 변경됨");
+    }
+
+    async function manageSubTag() {
+      const category = state.activeCategory === "전체" ? chooseValue("구분태그를 관리할 영역태그", getCategories(), "CODEX") : state.activeCategory;
+      if (!category) return;
+
+      const tags = getTagsForCategory(category);
+      const current = chooseValue("관리할 구분태그 이름", tags, state.activeSubTag === "전체" ? tags[0] : state.activeSubTag);
+      if (!current) return;
+
+      const next = window.prompt(`"${category} · ${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (value === "DELETE") {
+        if (!window.confirm(`"${current}" 구분태그를 삭제할까요? 프롬프트에서는 해당 태그만 제거됩니다.`)) return;
+        await persistChange(() => {
+          state.tagGroups = {
+            ...state.tagGroups,
+            [category]: (state.tagGroups[category] || []).filter((tag) => tag !== current)
+          };
+          state.prompts = state.prompts.map((prompt) => prompt.category === category ? {
+            ...prompt,
+            tags: prompt.tags.filter((tag) => tag !== current)
+          } : prompt);
+          state.activeSubTag = "전체";
+        }, "구분태그 삭제됨");
+        return;
+      }
+
+      if (!value || value === current) return;
+      await persistChange(() => {
+        state.tagGroups = {
+          ...state.tagGroups,
+          [category]: (state.tagGroups[category] || []).map((tag) => tag === current ? value : tag)
+        };
+        state.prompts = state.prompts.map((prompt) => prompt.category === category ? {
+          ...prompt,
+          tags: prompt.tags.map((tag) => tag === current ? value : tag)
+        } : prompt);
+        state.activeSubTag = value;
+      }, "구분태그 이름 변경됨");
+    }
+
+    function chooseValue(label, values, preferredValue) {
+      if (!values.length) {
+        showToast("관리할 항목이 없습니다.", "error");
+        return "";
+      }
+
+      const message = `${label}\n\n${values.map((value, index) => `${index + 1}. ${value}`).join("\n")}`;
+      const input = window.prompt(message, preferredValue || values[0]);
+      if (input === null) return "";
+
+      const trimmed = input.trim();
+      const index = Number(trimmed);
+      if (Number.isInteger(index) && index >= 1 && index <= values.length) {
+        return values[index - 1];
+      }
+
+      return values.includes(trimmed) ? trimmed : "";
+    }
+
+    function renameObjectKey(object, oldKey, newKey) {
+      const result = {};
+      Object.entries(object || {}).forEach(([key, value]) => {
+        result[key === oldKey ? newKey : key] = value;
+      });
+      return result;
+    }
+
+    function omitKey(object, omittedKey) {
+      const result = {};
+      Object.entries(object || {}).forEach(([key, value]) => {
+        if (key !== omittedKey) result[key] = value;
+      });
+      return result;
+    }
+
     async function handleFormSubmit(event) {
       event.preventDefault();
 
@@ -2214,8 +2372,11 @@
       els.loginButton.disabled = isBusy || !state.tokenClient;
       els.addButton.disabled = isBusy;
       els.addOwnerButton.disabled = isBusy;
+      els.manageOwnerButton.disabled = isBusy;
       els.addCategoryButton.disabled = isBusy;
+      els.manageCategoryButton.disabled = isBusy;
       els.addSubTagButton.disabled = isBusy;
+      els.manageSubTagButton.disabled = isBusy;
       els.saveOwnerButton.disabled = isBusy;
       els.saveCategoryButton.disabled = isBusy;
       els.saveSubTagButton.disabled = isBusy;
