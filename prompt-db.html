@@ -1500,6 +1500,8 @@
           tags: defaultTagsForCategory(category),
           title,
           content,
+          usageCount: 0,
+          lastUsedAt: "",
           createdAt
         }))
       };
@@ -1515,6 +1517,8 @@
         tags: normalizePromptTags(prompt),
         title: String(prompt.title || "").trim() || "제목 없음",
         content: String(prompt.content || ""),
+        usageCount: Number(prompt.usageCount || 0),
+        lastUsedAt: prompt.lastUsedAt || "",
         createdAt: prompt.createdAt || today()
       }));
     }
@@ -1765,7 +1769,22 @@
         }
         const haystack = `${prompt.title} ${prompt.content}`.toLocaleLowerCase("ko-KR");
         return matchesOwner && matchesCategory && (!keyword || haystack.includes(keyword));
-      });
+      }).sort(comparePromptUsage);
+    }
+
+    function comparePromptUsage(a, b) {
+      const usageDiff = Number(b.usageCount || 0) - Number(a.usageCount || 0);
+      if (usageDiff !== 0) return usageDiff;
+
+      const usedDiff = parseDateValue(b.lastUsedAt) - parseDateValue(a.lastUsedAt);
+      if (usedDiff !== 0) return usedDiff;
+
+      return parseDateValue(b.createdAt) - parseDateValue(a.createdAt);
+    }
+
+    function parseDateValue(value) {
+      const time = Date.parse(value || "");
+      return Number.isNaN(time) ? 0 : time;
     }
 
     function getOwners() {
@@ -1996,9 +2015,14 @@
     async function copyPrompt(prompt) {
       try {
         await copyText(prompt.content);
+        bumpPromptUsage(prompt.id);
         state.copiedId = prompt.id;
         window.clearTimeout(state.copyTimer);
         renderPrompts();
+        persistPromptUsage(prompt.id).catch((error) => {
+          console.error(error);
+          showToast("사용 횟수 저장에 실패했습니다.", "error");
+        });
         state.copyTimer = window.setTimeout(() => {
           if (state.copiedId === prompt.id) {
             state.copiedId = "";
@@ -2009,6 +2033,50 @@
         console.error(error);
         showToast("클립보드 복사에 실패했습니다.", "error");
       }
+    }
+
+    function bumpPromptUsage(promptId) {
+      const usedAt = new Date().toISOString();
+      state.prompts = state.prompts.map((prompt) => {
+        if (prompt.id !== promptId) return prompt;
+        return {
+          ...prompt,
+          usageCount: Number(prompt.usageCount || 0) + 1,
+          lastUsedAt: usedAt
+        };
+      });
+    }
+
+    async function persistPromptUsage(promptId) {
+      if (!state.dbFileId) {
+        await updateDbFile(createDatabasePayload());
+        return;
+      }
+
+      const localPrompt = state.prompts.find((prompt) => prompt.id === promptId);
+      if (!localPrompt) return;
+
+      const latestData = await readDbFile(state.dbFileId);
+      const latestPrompts = normalizePrompts(latestData.prompts);
+      const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
+      const latestCategories = normalizeCategories(latestData.categories, latestPrompts);
+      const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts);
+      const localUsage = Number(localPrompt.usageCount || 0);
+
+      state.prompts = latestPrompts.map((prompt) => {
+        if (prompt.id !== promptId) return prompt;
+        const latestUsage = Number(prompt.usageCount || 0);
+        return {
+          ...prompt,
+          usageCount: latestUsage >= localUsage ? latestUsage + 1 : localUsage,
+          lastUsedAt: localPrompt.lastUsedAt || new Date().toISOString()
+        };
+      });
+      state.owners = mergeOwners(latestOwners, state.owners);
+      state.categories = mergeCategories(latestCategories, state.categories);
+      state.tagGroups = mergeAllTagGroups(latestTagGroups, state.tagGroups);
+      await updateDbFile(createDatabasePayload());
+      renderPrompts();
     }
 
     async function copyText(text) {
@@ -2231,6 +2299,8 @@
             tags,
             title,
             content,
+            usageCount: 0,
+            lastUsedAt: "",
             createdAt: today()
           }, ...state.prompts];
         }
