@@ -2378,7 +2378,7 @@
           tags: prompt.tags.filter((tag) => tag !== current)
         } : prompt);
         state.activeSubTag = "전체";
-      }, "구분태그 삭제됨");
+      }, "구분태그 삭제됨", { deletedSubTags: [{ category, tag: current }] });
     }
 
     async function manageOwner() {
@@ -2480,7 +2480,7 @@
             tags: prompt.tags.filter((tag) => tag !== current)
           } : prompt);
           state.activeSubTag = "전체";
-        }, "구분태그 삭제됨");
+        }, "구분태그 삭제됨", { deletedSubTags: [{ category, tag: current }] });
         return;
       }
 
@@ -2597,7 +2597,8 @@
       if (saved) closePromptModal();
     }
 
-    async function persistChange(mutator, successMessage) {
+    async function persistChange(mutator, successMessage, options = {}) {
+      const deletedSubTags = normalizeDeletedSubTags(options.deletedSubTags);
       const snapshot = state.prompts.map((prompt) => ({ ...prompt }));
       const snapshotOwners = [...state.owners];
       const snapshotCategories = [...state.categories];
@@ -2610,18 +2611,21 @@
         renderPrompts();
         setStatus("Drive에 저장 중", "loading");
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
-        const latestPrompts = normalizePrompts(latestData.prompts);
+        const latestPrompts = removeDeletedSubTagsFromPrompts(normalizePrompts(latestData.prompts), deletedSubTags);
         const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
         const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories);
         const revivedDeletedCategories = snapshotDeletedCategories.filter((category) => !state.deletedCategories.includes(category));
         state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories)
           .filter((category) => !revivedDeletedCategories.includes(category));
         const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
-        const latestTagGroups = normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories);
+        const latestTagGroups = removeDeletedSubTagsFromTagGroups(
+          normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories),
+          deletedSubTags
+        );
         state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
         state.owners = mergeOwners(latestOwners, state.owners);
         state.categories = mergeCategories(latestCategories, state.categories);
-        state.tagGroups = mergeAllTagGroups(latestTagGroups, state.tagGroups);
+        state.tagGroups = removeDeletedSubTagsFromTagGroups(mergeAllTagGroups(latestTagGroups, state.tagGroups), deletedSubTags);
         await updateDbFile(createDatabasePayload());
         renderOwnerTabs();
         renderOwnerOptions();
@@ -2675,6 +2679,41 @@
       });
 
       return merged;
+    }
+
+    function normalizeDeletedSubTags(value) {
+      if (!Array.isArray(value)) return [];
+
+      return value.map((item) => ({
+        category: String(item?.category || "").trim(),
+        tag: String(item?.tag || "").trim()
+      })).filter((item) => item.category && item.tag);
+    }
+
+    function removeDeletedSubTagsFromPrompts(prompts, deletedSubTags) {
+      if (!deletedSubTags.length) return prompts;
+
+      return prompts.map((prompt) => {
+        const tagsToRemove = deletedSubTags
+          .filter((item) => item.category === prompt.category)
+          .map((item) => item.tag);
+        if (!tagsToRemove.length) return prompt;
+
+        return {
+          ...prompt,
+          tags: prompt.tags.filter((tag) => !tagsToRemove.includes(tag))
+        };
+      });
+    }
+
+    function removeDeletedSubTagsFromTagGroups(tagGroups, deletedSubTags) {
+      if (!deletedSubTags.length) return tagGroups;
+
+      const groups = structuredCloneSafe(tagGroups);
+      deletedSubTags.forEach(({ category, tag }) => {
+        groups[category] = (groups[category] || []).filter((item) => item !== tag);
+      });
+      return groups;
     }
 
     function mergeOwners(baseOwners, nextOwners) {
