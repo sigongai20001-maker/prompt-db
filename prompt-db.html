@@ -335,6 +335,21 @@
       scrollbar-width: thin;
     }
 
+    .tag-actions {
+      display: flex;
+      gap: 8px;
+      margin: -4px 0 10px;
+    }
+
+    .tag-actions[hidden] {
+      display: none;
+    }
+
+    .tag-actions .ghost-button {
+      flex: 0 0 auto;
+      min-width: 96px;
+    }
+
     .checkbox-grid {
       display: flex;
       flex-wrap: wrap;
@@ -802,9 +817,10 @@
             <span>+</span>
             <span>사용자</span>
           </button>
-          <button id="manageOwnerButton" class="ghost-button" type="button">
-            <span>관리</span>
-          </button>
+        </div>
+        <div id="ownerActions" class="tag-actions" hidden>
+          <button id="renameOwnerButton" class="ghost-button" type="button">이름변경</button>
+          <button id="deleteOwnerButton" class="ghost-button" type="button">삭제</button>
         </div>
         <div class="category-row">
           <nav id="tabs" class="tabs" aria-label="카테고리"></nav>
@@ -812,9 +828,10 @@
             <span>+</span>
             <span>영역태그</span>
           </button>
-          <button id="manageCategoryButton" class="ghost-button" type="button">
-            <span>관리</span>
-          </button>
+        </div>
+        <div id="categoryActions" class="tag-actions" hidden>
+          <button id="renameCategoryButton" class="ghost-button" type="button">이름변경</button>
+          <button id="deleteCategoryButton" class="ghost-button" type="button">삭제</button>
         </div>
         <div id="codexFilters" class="sub-filters" aria-label="구분태그" hidden>
           <nav id="subTagFilters" class="sub-filter-list" aria-label="구분태그 필터"></nav>
@@ -822,9 +839,10 @@
             <span>+</span>
             <span>구분태그</span>
           </button>
-          <button id="manageSubTagButton" class="ghost-button" type="button">
-            <span>관리</span>
-          </button>
+        </div>
+        <div id="subTagActions" class="tag-actions" hidden>
+          <button id="renameSubTagButton" class="ghost-button" type="button">이름변경</button>
+          <button id="deleteSubTagButton" class="ghost-button" type="button">삭제</button>
         </div>
 
         <div class="controls">
@@ -1065,14 +1083,20 @@
       els.status = $("#status");
       els.ownerTabs = $("#ownerTabs");
       els.addOwnerButton = $("#addOwnerButton");
-      els.manageOwnerButton = $("#manageOwnerButton");
+      els.ownerActions = $("#ownerActions");
+      els.renameOwnerButton = $("#renameOwnerButton");
+      els.deleteOwnerButton = $("#deleteOwnerButton");
       els.tabs = $("#tabs");
       els.addCategoryButton = $("#addCategoryButton");
-      els.manageCategoryButton = $("#manageCategoryButton");
+      els.categoryActions = $("#categoryActions");
+      els.renameCategoryButton = $("#renameCategoryButton");
+      els.deleteCategoryButton = $("#deleteCategoryButton");
       els.codexFilters = $("#codexFilters");
       els.subTagFilters = $("#subTagFilters");
       els.addSubTagButton = $("#addSubTagButton");
-      els.manageSubTagButton = $("#manageSubTagButton");
+      els.subTagActions = $("#subTagActions");
+      els.renameSubTagButton = $("#renameSubTagButton");
+      els.deleteSubTagButton = $("#deleteSubTagButton");
       els.promptGrid = $("#promptGrid");
       els.countLabel = $("#countLabel");
       els.fileLabel = $("#fileLabel");
@@ -1122,11 +1146,14 @@
       });
       els.addButton.addEventListener("click", () => openPromptModal());
       els.addOwnerButton.addEventListener("click", openOwnerModal);
-      els.manageOwnerButton.addEventListener("click", manageOwner);
+      els.renameOwnerButton.addEventListener("click", renameActiveOwner);
+      els.deleteOwnerButton.addEventListener("click", deleteActiveOwner);
       els.addCategoryButton.addEventListener("click", openCategoryModal);
-      els.manageCategoryButton.addEventListener("click", manageCategory);
+      els.renameCategoryButton.addEventListener("click", renameActiveCategory);
+      els.deleteCategoryButton.addEventListener("click", deleteActiveCategory);
       els.addSubTagButton.addEventListener("click", openSubTagModal);
-      els.manageSubTagButton.addEventListener("click", manageSubTag);
+      els.renameSubTagButton.addEventListener("click", renameActiveSubTag);
+      els.deleteSubTagButton.addEventListener("click", deleteActiveSubTag);
       els.closeOwnerModalButton.addEventListener("click", closeOwnerModal);
       els.cancelOwnerButton.addEventListener("click", closeOwnerModal);
       els.ownerForm.addEventListener("submit", handleOwnerFormSubmit);
@@ -1629,6 +1656,8 @@
           renderPrompts();
         });
       });
+
+      renderManagementActions();
     }
 
     function renderOwnerTabs() {
@@ -1650,6 +1679,8 @@
           renderPrompts();
         });
       });
+
+      renderManagementActions();
     }
 
     function renderOwnerOptions() {
@@ -1666,6 +1697,7 @@
       if (!hasActiveCategory) {
         state.activeSubTag = "전체";
         els.subTagFilters.innerHTML = "";
+        renderManagementActions();
         return;
       }
 
@@ -1687,6 +1719,18 @@
           renderPrompts();
         });
       });
+
+      renderManagementActions();
+    }
+
+    function renderManagementActions() {
+      const hasActiveOwner = state.activeOwner !== "전체" && getOwners().includes(state.activeOwner);
+      const hasActiveCategory = state.activeCategory !== "전체" && getCategories().includes(state.activeCategory);
+      const hasActiveSubTag = hasActiveCategory && state.activeSubTag !== "전체" && getTagsForCategory(state.activeCategory).includes(state.activeSubTag);
+
+      els.ownerActions.hidden = !hasActiveOwner;
+      els.categoryActions.hidden = !hasActiveCategory;
+      els.subTagActions.hidden = !hasActiveSubTag;
     }
 
     function renderCategoryOptions() {
@@ -2121,6 +2165,139 @@
       return state.activeOwner === "전체" ? DEFAULT_OWNER : state.activeOwner;
     }
 
+    function getActiveOwnerForAction() {
+      const owners = getOwners();
+      return state.activeOwner !== "전체" && owners.includes(state.activeOwner) ? state.activeOwner : "";
+    }
+
+    function getActiveCategoryForAction() {
+      const categories = getCategories();
+      return state.activeCategory !== "전체" && categories.includes(state.activeCategory) ? state.activeCategory : "";
+    }
+
+    function getActiveSubTagForAction() {
+      const category = getActiveCategoryForAction();
+      if (!category) return { category: "", tag: "" };
+
+      const tags = getTagsForCategory(category);
+      const tag = state.activeSubTag !== "전체" && tags.includes(state.activeSubTag) ? state.activeSubTag : "";
+      return { category, tag };
+    }
+
+    async function renameActiveOwner() {
+      const current = getActiveOwnerForAction();
+      if (!current) return;
+
+      const next = window.prompt(`"${current}"의 새 이름을 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (!value || value === current) return;
+
+      await persistChange(() => {
+        state.owners = state.owners.map((owner) => owner === current ? value : owner);
+        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: value } : prompt);
+        state.activeOwner = value;
+      }, "사용자 이름 변경됨");
+    }
+
+    async function deleteActiveOwner() {
+      const current = getActiveOwnerForAction();
+      if (!current) return;
+
+      if (current === DEFAULT_OWNER) {
+        showToast("기본 사용자는 삭제할 수 없습니다.", "error");
+        return;
+      }
+      if (!window.confirm(`"${current}" 사용자를 삭제할까요? 해당 프롬프트는 ${DEFAULT_OWNER}(으)로 이동합니다.`)) return;
+
+      await persistChange(() => {
+        state.owners = state.owners.filter((owner) => owner !== current);
+        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: DEFAULT_OWNER } : prompt);
+        state.activeOwner = "전체";
+      }, "사용자 삭제됨");
+    }
+
+    async function renameActiveCategory() {
+      const current = getActiveCategoryForAction();
+      if (!current) return;
+
+      const next = window.prompt(`"${current}"의 새 이름을 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (!value || value === current) return;
+
+      await persistChange(() => {
+        state.categories = state.categories.map((category) => category === current ? value : category);
+        state.tagGroups = renameObjectKey(state.tagGroups, current, value);
+        state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
+        state.activeCategory = value;
+      }, "영역태그 이름 변경됨");
+    }
+
+    async function deleteActiveCategory() {
+      const current = getActiveCategoryForAction();
+      if (!current) return;
+
+      if (current === "CODEX") {
+        showToast("CODEX 영역태그는 삭제할 수 없습니다.", "error");
+        return;
+      }
+      if (!window.confirm(`"${current}" 영역태그를 삭제할까요? 해당 프롬프트는 CODEX로 이동합니다.`)) return;
+
+      await persistChange(() => {
+        state.categories = state.categories.filter((category) => category !== current);
+        const currentTags = state.tagGroups[current] || [];
+        state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, current), { CODEX: currentTags });
+        state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: "CODEX" } : prompt);
+        state.activeCategory = "전체";
+        state.activeSubTag = "전체";
+      }, "영역태그 삭제됨");
+    }
+
+    async function renameActiveSubTag() {
+      const { category, tag: current } = getActiveSubTagForAction();
+      if (!category || !current) return;
+
+      const next = window.prompt(`"${category} · ${current}"의 새 이름을 입력하세요.`, current);
+      if (next === null) return;
+
+      const value = next.trim();
+      if (!value || value === current) return;
+
+      await persistChange(() => {
+        state.tagGroups = {
+          ...state.tagGroups,
+          [category]: (state.tagGroups[category] || []).map((tag) => tag === current ? value : tag)
+        };
+        state.prompts = state.prompts.map((prompt) => prompt.category === category ? {
+          ...prompt,
+          tags: prompt.tags.map((tag) => tag === current ? value : tag)
+        } : prompt);
+        state.activeSubTag = value;
+      }, "구분태그 이름 변경됨");
+    }
+
+    async function deleteActiveSubTag() {
+      const { category, tag: current } = getActiveSubTagForAction();
+      if (!category || !current) return;
+
+      if (!window.confirm(`"${current}" 구분태그를 삭제할까요? 프롬프트에서는 해당 태그만 제거됩니다.`)) return;
+
+      await persistChange(() => {
+        state.tagGroups = {
+          ...state.tagGroups,
+          [category]: (state.tagGroups[category] || []).filter((tag) => tag !== current)
+        };
+        state.prompts = state.prompts.map((prompt) => prompt.category === category ? {
+          ...prompt,
+          tags: prompt.tags.filter((tag) => tag !== current)
+        } : prompt);
+        state.activeSubTag = "전체";
+      }, "구분태그 삭제됨");
+    }
+
     async function manageOwner() {
       const owners = getOwners();
       const current = state.activeOwner !== "전체" && owners.includes(state.activeOwner)
@@ -2454,11 +2631,14 @@
       els.loginButton.disabled = isBusy || !state.tokenClient;
       els.addButton.disabled = isBusy;
       els.addOwnerButton.disabled = isBusy;
-      els.manageOwnerButton.disabled = isBusy;
+      els.renameOwnerButton.disabled = isBusy;
+      els.deleteOwnerButton.disabled = isBusy;
       els.addCategoryButton.disabled = isBusy;
-      els.manageCategoryButton.disabled = isBusy;
+      els.renameCategoryButton.disabled = isBusy;
+      els.deleteCategoryButton.disabled = isBusy;
       els.addSubTagButton.disabled = isBusy;
-      els.manageSubTagButton.disabled = isBusy;
+      els.renameSubTagButton.disabled = isBusy;
+      els.deleteSubTagButton.disabled = isBusy;
       els.saveOwnerButton.disabled = isBusy;
       els.saveCategoryButton.disabled = isBusy;
       els.saveSubTagButton.disabled = isBusy;
