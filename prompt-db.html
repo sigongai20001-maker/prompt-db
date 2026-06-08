@@ -1369,7 +1369,8 @@
           state.owners = normalizeOwners(data.owners, state.prompts);
           state.categories = normalizeCategories(data.categories, state.prompts, state.deletedCategories);
           state.tagGroups = normalizeTagGroups(data.tagGroups, state.prompts, state.deletedCategories);
-          if (needsOwnerMigration) {
+          const needsCategoryRepair = repairHiddenPromptCategories();
+          if (needsOwnerMigration || needsCategoryRepair) {
             await updateDbFile(createDatabasePayload());
           }
           setStatus("동기화됨", "success");
@@ -1631,6 +1632,44 @@
 
     function normalizePromptCategory(category) {
       return category === "디버깅" ? "CODEX" : (category || "CODEX");
+    }
+
+    function repairHiddenPromptCategories() {
+      const deletedSet = new Set(normalizeDeletedCategories(state.deletedCategories));
+      if (!deletedSet.size) return false;
+
+      const moves = new Map();
+      let changed = false;
+      state.prompts = state.prompts.map((prompt) => {
+        const category = normalizePromptCategory(prompt.category);
+        if (!deletedSet.has(category)) {
+          return prompt.category === category ? prompt : { ...prompt, category };
+        }
+
+        const replacement = getCategoryRepairFallback(category);
+        moves.set(category, replacement);
+        changed = true;
+        return { ...prompt, category: replacement };
+      });
+
+      if (!changed) return false;
+
+      moves.forEach((target, source) => {
+        const sourceTags = state.tagGroups[source] || [];
+        state.tagGroups = mergeAllTagGroups(omitKey(state.tagGroups, source), { [target]: sourceTags });
+        state.categories = mergeCategories(state.categories.filter((category) => category !== source), [target]);
+        state.deletedCategories = normalizeDeletedCategories(state.deletedCategories).filter((category) => category !== target);
+      });
+
+      state.categories = normalizeCategories(state.categories, state.prompts, state.deletedCategories);
+      state.tagGroups = normalizeTagGroups(state.tagGroups, state.prompts, state.deletedCategories);
+      return true;
+    }
+
+    function getCategoryRepairFallback(category) {
+      const visibleCategories = normalizeCategories(state.categories, [], state.deletedCategories).filter((item) => item !== category);
+      if (category === "CODEX" && visibleCategories.includes("웹앱개발")) return "웹앱개발";
+      return visibleCategories[0] || "공통";
     }
 
     function normalizePromptTags(prompt) {
@@ -2256,6 +2295,9 @@
       if (!value || value === current) return;
 
       await persistChange(() => {
+        if (DEFAULT_CATEGORIES.includes(current)) {
+          state.deletedCategories = mergeTagNames(state.deletedCategories, [current]).filter((category) => category !== value);
+        }
         state.categories = state.categories.map((category) => category === current ? value : category);
         state.tagGroups = renameObjectKey(state.tagGroups, current, value);
         state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
@@ -2384,6 +2426,9 @@
 
       if (!value || value === current) return;
       await persistChange(() => {
+        if (DEFAULT_CATEGORIES.includes(current)) {
+          state.deletedCategories = mergeTagNames(state.deletedCategories, [current]).filter((category) => category !== value);
+        }
         state.categories = state.categories.map((category) => category === current ? value : category);
         state.tagGroups = renameObjectKey(state.tagGroups, current, value);
         state.prompts = state.prompts.map((prompt) => prompt.category === current ? { ...prompt, category: value } : prompt);
