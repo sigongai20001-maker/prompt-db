@@ -2123,7 +2123,9 @@
 
     async function manageOwner() {
       const owners = getOwners();
-      const current = chooseValue("관리할 사용자 이름", owners, state.activeOwner === "전체" ? owners[0] : state.activeOwner);
+      const current = state.activeOwner !== "전체" && owners.includes(state.activeOwner)
+        ? state.activeOwner
+        : chooseValue("관리할 사용자 이름", owners, owners[0]);
       if (!current) return;
 
       const next = window.prompt(`"${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
@@ -2154,7 +2156,9 @@
 
     async function manageCategory() {
       const categories = getCategories();
-      const current = chooseValue("관리할 영역태그 이름", categories, state.activeCategory === "전체" ? categories[0] : state.activeCategory);
+      const current = state.activeCategory !== "전체" && categories.includes(state.activeCategory)
+        ? state.activeCategory
+        : chooseValue("관리할 영역태그 이름", categories, categories[0]);
       if (!current) return;
 
       const next = window.prompt(`"${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
@@ -2188,11 +2192,16 @@
     }
 
     async function manageSubTag() {
-      const category = state.activeCategory === "전체" ? chooseValue("구분태그를 관리할 영역태그", getCategories(), "CODEX") : state.activeCategory;
+      const categories = getCategories();
+      const category = state.activeCategory !== "전체" && categories.includes(state.activeCategory)
+        ? state.activeCategory
+        : chooseValue("구분태그를 관리할 영역태그", categories, "CODEX");
       if (!category) return;
 
       const tags = getTagsForCategory(category);
-      const current = chooseValue("관리할 구분태그 이름", tags, state.activeSubTag === "전체" ? tags[0] : state.activeSubTag);
+      const current = state.activeSubTag !== "전체" && tags.includes(state.activeSubTag)
+        ? state.activeSubTag
+        : chooseValue("관리할 구분태그 이름", tags, tags[0]);
       if (!current) return;
 
       const next = window.prompt(`"${category} · ${current}"의 새 이름을 입력하세요.\n삭제하려면 DELETE를 입력하세요.`, current);
@@ -2245,7 +2254,10 @@
         return values[index - 1];
       }
 
-      return values.includes(trimmed) ? trimmed : "";
+      if (values.includes(trimmed)) return trimmed;
+
+      showToast("목록에서 번호나 기존 이름을 선택해 주세요.", "error");
+      return "";
     }
 
     function renameObjectKey(object, oldKey, newKey) {
