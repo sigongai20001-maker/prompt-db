@@ -995,9 +995,9 @@
     const DRIVE_FOLDER_ID = "11xi2c-ZIa-r5oGg2VIBqZhvhSgYE4G5K";
     const DB_FILE_NAME = "prompts.json";
     const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
-    const OAUTH_REDIRECT_URI = "http://127.0.0.1:8080";
     const TOKEN_STORAGE_KEY = "prompt-db-google-token";
     const TOKEN_REFRESH_LEEWAY_MS = 5 * 60 * 1000;
+    const TOKEN_RESUME_CHECK_LEEWAY_MS = 10 * 60 * 1000;
     const DEFAULT_TOKEN_LIFETIME_MS = 60 * 60 * 1000;
     const DEFAULT_OWNER = "이한솔";
     const DEFAULT_CATEGORIES = ["CODEX", "진행·확인", "전시기획", "번역"];
@@ -1045,6 +1045,7 @@
       accessToken: "",
       tokenClient: null,
       tokenRefreshTimer: 0,
+      tokenRefreshInFlight: false,
       authRequestReason: "",
       dbFileId: "",
       owners: [DEFAULT_OWNER],
@@ -1165,6 +1166,10 @@
       els.cancelSubTagButton.addEventListener("click", closeSubTagModal);
       els.subTagForm.addEventListener("submit", handleSubTagFormSubmit);
       els.categoryInput.addEventListener("change", () => renderPromptTagOptions());
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) handleLongLivedTabResume();
+      });
+      window.addEventListener("focus", handleLongLivedTabResume);
       els.closeModalButton.addEventListener("click", closePromptModal);
       els.cancelButton.addEventListener("click", closePromptModal);
       els.promptForm.addEventListener("submit", handleFormSubmit);
@@ -1198,8 +1203,8 @@
       state.tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: DRIVE_SCOPE,
-        redirect_uri: OAUTH_REDIRECT_URI,
         callback: async (response) => {
+          state.tokenRefreshInFlight = false;
           if (response.error) {
             handleTokenError(response);
             return;
@@ -1248,6 +1253,7 @@
       clearTokenRefreshTimer();
       state.authRequestReason = "";
       state.accessToken = "";
+      state.tokenRefreshInFlight = false;
       state.dbFileId = "";
       state.prompts = [];
       state.searchTerm = "";
@@ -1269,6 +1275,7 @@
       state.accessToken = response.access_token;
       localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
         access_token: response.access_token,
+        issued_at: Date.now(),
         expires_at: expiresAt
       }));
       scheduleTokenRefresh(expiresAt);
@@ -1296,10 +1303,8 @@
 
     function readStoredToken() {
       try {
-        const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
-        if (!raw) return null;
-
-        const token = JSON.parse(raw);
+        const token = getStoredTokenSnapshot();
+        if (!token) return null;
         if (!token.access_token || !token.expires_at || token.expires_at <= Date.now()) {
           clearStoredToken();
           return null;
@@ -1312,6 +1317,11 @@
       }
     }
 
+    function getStoredTokenSnapshot() {
+      const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }
+
     function scheduleTokenRefresh(expiresAt) {
       clearTokenRefreshTimer();
       const refreshInMs = Math.max(expiresAt - Date.now() - TOKEN_REFRESH_LEEWAY_MS, 0);
@@ -1319,13 +1329,44 @@
     }
 
     function refreshAccessTokenSilently() {
+      if (state.tokenRefreshInFlight) return;
+
       if (!state.tokenClient) {
         state.tokenRefreshTimer = window.setTimeout(refreshAccessTokenSilently, 1000);
         return;
       }
 
       state.authRequestReason = "refresh";
-      state.tokenClient.requestAccessToken({ prompt: "" });
+      state.tokenRefreshInFlight = true;
+      try {
+        state.tokenClient.requestAccessToken({ prompt: "" });
+      } catch (error) {
+        handleTokenError({ error: error?.message || "토큰 갱신 실패" });
+      }
+    }
+
+    function handleLongLivedTabResume() {
+      if (!state.accessToken && els.appView.hidden) return;
+
+      let token = null;
+      try {
+        token = getStoredTokenSnapshot();
+      } catch (error) {
+        clearStoredToken();
+      }
+
+      if (!token?.expires_at) {
+        refreshAccessTokenSilently();
+        return;
+      }
+
+      const remainingMs = token.expires_at - Date.now();
+      if (remainingMs <= TOKEN_RESUME_CHECK_LEEWAY_MS) {
+        refreshAccessTokenSilently();
+        return;
+      }
+
+      scheduleTokenRefresh(token.expires_at);
     }
 
     function handleTokenError(response) {
@@ -1333,6 +1374,7 @@
       clearTokenRefreshTimer();
       state.authRequestReason = "";
       state.accessToken = "";
+      state.tokenRefreshInFlight = false;
       showLoginRequired("로그인 필요", "error");
       showToast(response.error_description || response.error || "로그인이 만료되었습니다.", "error");
     }
