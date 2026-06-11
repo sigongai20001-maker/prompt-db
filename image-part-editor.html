@@ -1940,7 +1940,7 @@
             before: edit.shapeOriginal,
             after: edit.shape
           });
-          summary.push("Change shape to \"" + compactText(edit.shape) + "\".");
+          summary.push("형태를 \"" + compactText(edit.shape) + "\"로 변경.");
         }
 
         Object.keys(edit.sizes).forEach(function (key) {
@@ -2081,7 +2081,19 @@
           return "";
         }
 
-        var value = part.shape;
+        var value = part.shape_ko;
+        if (value == null) {
+          value = part.shape_description_ko;
+        }
+        if (value == null) {
+          value = part.form_ko;
+        }
+        if (value == null) {
+          value = part.form_description_ko;
+        }
+        if (value == null) {
+          value = part.shape;
+        }
         if (value == null) {
           value = part.shape_description;
         }
@@ -2095,9 +2107,66 @@
           return "";
         }
         if (typeof value === "string") {
-          return value;
+          return translateShapeTextToKorean(value);
         }
-        return JSON.stringify(value);
+        return translateShapeTextToKorean(JSON.stringify(value));
+      }
+
+      function translateShapeTextToKorean(text) {
+        var value = compactText(text);
+        var replacements = [
+          [/large rectangular/gi, "큰 직사각형"],
+          [/small rectangular/gi, "작은 직사각형"],
+          [/rectangular/gi, "직사각형"],
+          [/square/gi, "정사각형"],
+          [/circular/gi, "원형"],
+          [/round/gi, "둥근"],
+          [/oval/gi, "타원형"],
+          [/curved/gi, "곡면"],
+          [/arched/gi, "아치형"],
+          [/flat/gi, "평평한"],
+          [/vertical/gi, "수직"],
+          [/horizontal/gi, "수평"],
+          [/linear/gi, "선형"],
+          [/straight/gi, "직선"],
+          [/slanted/gi, "기울어진"],
+          [/stepped/gi, "단차형"],
+          [/layered/gi, "겹층형"],
+          [/panel/gi, "패널"],
+          [/field/gi, "면"],
+          [/case/gi, "케이스"],
+          [/display/gi, "전시"],
+          [/glass/gi, "유리"],
+          [/metal/gi, "금속"],
+          [/wood(en)?/gi, "목재"],
+          [/brass/gi, "황동"],
+          [/trim/gi, "테두리"],
+          [/border/gi, "경계"],
+          [/frame/gi, "프레임"],
+          [/opening/gi, "개구부"],
+          [/fixture/gi, "고정물"],
+          [/spot/gi, "스폿"],
+          [/top/gi, "상부"],
+          [/bottom/gi, "하부"],
+          [/left/gi, "좌측"],
+          [/right/gi, "우측"],
+          [/front/gi, "전면"],
+          [/rear|back/gi, "후면"],
+          [/ceiling/gi, "천장"],
+          [/floor/gi, "바닥"],
+          [/wall/gi, "벽면"],
+          [/dense/gi, "촘촘한"],
+          [/geometric/gi, "기하학적"],
+          [/pattern/gi, "패턴"],
+          [/cream-white|cream white/gi, "크림 화이트"],
+          [/with/gi, "및"],
+          [/and/gi, "와"]
+        ];
+
+        replacements.forEach(function (pair) {
+          value = value.replace(pair[0], pair[1]);
+        });
+        return value.replace(/\s+/g, " ").trim();
       }
 
       function getParentPathLabel(part) {
