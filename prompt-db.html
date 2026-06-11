@@ -720,6 +720,53 @@
       border-color: rgba(255, 123, 114, 0.5);
     }
 
+    .sync-toast {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 79;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: min(360px, calc(100% - 36px));
+      min-height: 34px;
+      padding: 8px 11px;
+      border: 1px solid rgba(123, 220, 168, 0.36);
+      border-radius: var(--radius);
+      color: var(--muted-strong);
+      background: rgba(23, 25, 21, 0.94);
+      box-shadow: var(--shadow);
+      font-size: 0.84rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .sync-toast::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .sync-toast[data-type="loading"]::before {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(123, 220, 168, 0.28);
+      border-top-color: var(--accent);
+      background: transparent;
+      animation: spin 760ms linear infinite;
+    }
+
+    .sync-toast[data-type="error"] {
+      color: var(--danger);
+      border-color: rgba(255, 123, 114, 0.5);
+    }
+
+    .sync-toast[data-type="error"]::before {
+      background: var(--danger);
+    }
+
     @keyframes pulse {
       0%, 100% {
         opacity: 0.45;
@@ -912,6 +959,7 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="syncToast" class="sync-toast" role="status" aria-live="polite" hidden></div>
 
   <div id="ownerModalBackdrop" class="modal-backdrop" hidden>
     <form id="ownerForm" class="modal">
@@ -1106,8 +1154,11 @@
       copiedId: "",
       editingId: "",
       toastTimer: 0,
+      syncToastTimer: 0,
       copyTimer: 0,
-      isSaving: false
+      isSaving: false,
+      pendingSaves: 0,
+      saveQueue: Promise.resolve()
     };
 
     const $ = (selector) => document.querySelector(selector);
@@ -1151,6 +1202,7 @@
       els.searchInput = $("#searchInput");
       els.addButton = $("#addButton");
       els.toast = $("#toast");
+      els.syncToast = $("#syncToast");
       els.ownerModalBackdrop = $("#ownerModalBackdrop");
       els.ownerForm = $("#ownerForm");
       els.closeOwnerModalButton = $("#closeOwnerModalButton");
@@ -2677,6 +2729,7 @@
         return;
       }
 
+      const isNewPrompt = !state.editingId;
       const saved = await persistChange(() => {
         if (state.editingId) {
           state.prompts = state.prompts.map((prompt) => {
@@ -2706,7 +2759,7 @@
         state.owners = mergeOwners(state.owners, [owner]);
         state.categories = mergeCategories(state.categories, [category]);
         state.tagGroups = mergeTagGroups(state.tagGroups, category, tags);
-      }, "저장됨");
+      }, "저장됨", { background: isNewPrompt });
 
       if (saved) closePromptModal();
     }
@@ -2725,6 +2778,7 @@
     }
 
     async function persistChange(mutator, successMessage, options = {}) {
+      const saveInBackground = Boolean(options.background);
       const deletedSubTags = normalizeDeletedSubTags(options.deletedSubTags);
       const snapshot = state.prompts.map((prompt) => ({ ...prompt }));
       const snapshotOwners = [...state.owners];
@@ -2733,35 +2787,29 @@
       const snapshotTagGroups = structuredCloneSafe(state.tagGroups);
 
       try {
-        setBusy(true);
+        if (!saveInBackground) setBusy(true);
         mutator();
         renderPrompts();
+
+        const syncContext = {
+          snapshot,
+          snapshotOwners,
+          snapshotCategories,
+          snapshotDeletedCategories,
+          snapshotTagGroups,
+          deletedSubTags,
+          successMessage
+        };
+
+        if (saveInBackground) {
+          setModalProgress("화면에 등록됨. Drive 저장 중");
+          queueBackgroundSave(syncContext);
+          return true;
+        }
+
         setModalProgress("Drive에 저장 중");
         setStatus("Drive에 저장 중", "loading");
-        const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
-        const latestPrompts = removeDeletedSubTagsFromPrompts(normalizePrompts(latestData.prompts), deletedSubTags);
-        const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
-        const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories);
-        const revivedDeletedCategories = snapshotDeletedCategories.filter((category) => !state.deletedCategories.includes(category));
-        state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories)
-          .filter((category) => !revivedDeletedCategories.includes(category));
-        const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
-        const latestTagGroups = removeDeletedSubTagsFromTagGroups(
-          normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories),
-          deletedSubTags
-        );
-        state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
-        state.owners = mergeOwners(latestOwners, state.owners);
-        state.categories = mergeCategories(latestCategories, state.categories);
-        state.tagGroups = removeDeletedSubTagsFromTagGroups(mergeAllTagGroups(latestTagGroups, state.tagGroups), deletedSubTags);
-        await updateDbFile(createDatabasePayload());
-        renderOwnerTabs();
-        renderOwnerOptions();
-        renderTabs();
-        renderCategoryOptions();
-        renderSubTagCategoryOptions();
-        renderCodexFilters();
-        renderPrompts();
+        await syncDriveChanges(syncContext);
         setStatus("동기화됨", "success");
         setModalProgress("저장 완료");
         showToast(successMessage, "success");
@@ -2785,8 +2833,64 @@
         showToast(toUserError(error), "error");
         return false;
       } finally {
-        setBusy(false);
+        if (!saveInBackground) setBusy(false);
       }
+    }
+
+    function queueBackgroundSave(syncContext) {
+      state.pendingSaves += 1;
+      showSyncToast(`Drive 저장 중 (${state.pendingSaves})`, "loading", 0);
+      setStatus("백그라운드 저장 중", "loading");
+
+      state.saveQueue = state.saveQueue.catch(() => {}).then(async () => {
+        try {
+          await syncDriveChanges(syncContext);
+          state.pendingSaves = Math.max(state.pendingSaves - 1, 0);
+          if (state.pendingSaves > 0) {
+            showSyncToast(`Drive 저장 중 (${state.pendingSaves})`, "loading", 0);
+          } else {
+            setStatus("동기화됨", "success");
+            showSyncToast("Drive 저장 완료", "success", 1800);
+          }
+        } catch (error) {
+          console.error(error);
+          state.pendingSaves = Math.max(state.pendingSaves - 1, 0);
+          setStatus("저장 실패", "error");
+          showSyncToast(`Drive 저장 실패: ${toUserError(error)}`, "error", 0);
+        }
+      });
+    }
+
+    async function syncDriveChanges(syncContext) {
+      const {
+        snapshot,
+        snapshotDeletedCategories,
+        deletedSubTags
+      } = syncContext;
+      const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
+      const latestPrompts = removeDeletedSubTagsFromPrompts(normalizePrompts(latestData.prompts), deletedSubTags);
+      const latestOwners = normalizeOwners(latestData.owners, latestPrompts);
+      const latestDeletedCategories = normalizeDeletedCategories(latestData.deletedCategories);
+      const revivedDeletedCategories = snapshotDeletedCategories.filter((category) => !state.deletedCategories.includes(category));
+      state.deletedCategories = mergeTagNames(latestDeletedCategories, state.deletedCategories)
+        .filter((category) => !revivedDeletedCategories.includes(category));
+      const latestCategories = normalizeCategories(latestData.categories, latestPrompts, state.deletedCategories);
+      const latestTagGroups = removeDeletedSubTagsFromTagGroups(
+        normalizeTagGroups(latestData.tagGroups, latestPrompts, state.deletedCategories),
+        deletedSubTags
+      );
+      state.prompts = mergePromptChanges(snapshot, state.prompts, latestPrompts);
+      state.owners = mergeOwners(latestOwners, state.owners);
+      state.categories = mergeCategories(latestCategories, state.categories);
+      state.tagGroups = removeDeletedSubTagsFromTagGroups(mergeAllTagGroups(latestTagGroups, state.tagGroups), deletedSubTags);
+      await updateDbFile(createDatabasePayload());
+      renderOwnerTabs();
+      renderOwnerOptions();
+      renderTabs();
+      renderCategoryOptions();
+      renderSubTagCategoryOptions();
+      renderCodexFilters();
+      renderPrompts();
     }
 
     function mergePromptChanges(beforePrompts, afterPrompts, latestPrompts) {
@@ -2957,6 +3061,19 @@
       state.toastTimer = window.setTimeout(() => {
         els.toast.hidden = true;
       }, 3200);
+    }
+
+    function showSyncToast(message, type = "info", duration = 2200) {
+      window.clearTimeout(state.syncToastTimer);
+      els.syncToast.textContent = message;
+      els.syncToast.dataset.type = type;
+      els.syncToast.hidden = false;
+
+      if (duration > 0) {
+        state.syncToastTimer = window.setTimeout(() => {
+          els.syncToast.hidden = true;
+        }, duration);
+      }
     }
 
     function today() {
