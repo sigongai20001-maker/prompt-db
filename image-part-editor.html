@@ -367,7 +367,7 @@
 
     .summary-table {
       width: 100%;
-      min-width: 1360px;
+      min-width: 1120px;
       border-collapse: collapse;
     }
 
@@ -422,12 +422,8 @@
       width: 170px;
     }
 
-    .col-description {
-      min-width: 280px;
-    }
-
-    .col-shape {
-      min-width: 260px;
+    .col-content {
+      min-width: 420px;
     }
 
     .col-tools {
@@ -536,6 +532,7 @@
       resize: vertical;
       padding: 9px 10px;
       line-height: 1.45;
+      overflow: hidden;
     }
 
     .field,
@@ -1145,8 +1142,7 @@
 
       function createEditState(part) {
         var sizes = {};
-        var descriptionText = getDescriptionText(part);
-        var shapeText = getShapeText(part);
+        var contentText = getContentText(part);
         if (isPlainObject(part.real_size_mm)) {
           Object.keys(part.real_size_mm).forEach(function (key) {
             sizes[key] = {
@@ -1163,10 +1159,8 @@
         });
 
         return {
-          descriptionOriginal: descriptionText,
-          description: descriptionText,
-          shapeOriginal: shapeText,
-          shape: shapeText,
+          contentOriginal: contentText,
+          content: contentText,
           sizes: sizes,
           moves: moves
         };
@@ -1211,8 +1205,7 @@
           '<th class="col-location">위치</th>',
           '<th class="col-id">id</th>',
           '<th class="col-name">파트명</th>',
-          '<th class="col-description">설명 수정</th>',
-          '<th class="col-shape">형태 수정</th>',
+          '<th class="col-content">내용 수정</th>',
           '<th class="col-tools">수치/위치 상세</th>',
           "</tr>"
         ].join("");
@@ -1306,6 +1299,11 @@
         return state.parts.map(function (_part, index) { return index; });
       }
 
+      function autoResizeTextarea(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = Math.max(74, textarea.scrollHeight) + "px";
+      }
+
       function createTableRow(part, index) {
         var row = document.createElement("tr");
         row.dataset.index = String(index);
@@ -1314,8 +1312,7 @@
         var locationCell = document.createElement("td");
         var idCell = document.createElement("td");
         var nameCell = document.createElement("td");
-        var descriptionCell = document.createElement("td");
-        var shapeCell = document.createElement("td");
+        var contentCell = document.createElement("td");
         var toolsCell = document.createElement("td");
         var badge = createElement("span", "changed-badge", "원본");
         var location = getPartLocation(part, index);
@@ -1323,8 +1320,7 @@
         var idNode = createElement("div", "part-id", getPartId(part, index));
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var parentId = getParentId(part);
-        var description = createElement("textarea", "table-description");
-        var shape = createElement("textarea", "table-description");
+        var content = createElement("textarea", "table-description");
         var tools = createElement("div", "tool-stack");
         var lockState = getPartLockState(index);
         var lockNote = createElement("div", "lock-note");
@@ -1332,23 +1328,16 @@
         row.classList.toggle("is-child", Boolean(parentId));
         row.classList.toggle("is-locked", lockState.locked);
         badge.dataset.role = "badge";
-        description.value = state.edits[index].description;
-        description.dataset.role = "description";
-        description.dataset.index = String(index);
-        description.spellcheck = false;
-        description.disabled = lockState.locked;
-        description.addEventListener("input", function () {
-          state.edits[index].description = description.value;
-          updateChangeState();
-        });
-        shape.value = state.edits[index].shape;
-        shape.placeholder = "예: 상부를 곡면 유리로, 하부는 동일";
-        shape.dataset.role = "shape";
-        shape.dataset.index = String(index);
-        shape.spellcheck = false;
-        shape.disabled = lockState.locked;
-        shape.addEventListener("input", function () {
-          state.edits[index].shape = shape.value;
+        content.value = state.edits[index].content;
+        content.placeholder = "예: 유리문, 손잡이는 검정";
+        content.dataset.role = "content";
+        content.dataset.index = String(index);
+        content.spellcheck = false;
+        content.disabled = lockState.locked;
+        autoResizeTextarea(content);
+        content.addEventListener("input", function () {
+          state.edits[index].content = content.value;
+          autoResizeTextarea(content);
           updateChangeState();
         });
         lockNote.dataset.role = "lock-note";
@@ -1369,8 +1358,7 @@
           nameCell.appendChild(nameNode);
           nameCell.appendChild(lockNote);
         }
-        descriptionCell.appendChild(description);
-        shapeCell.appendChild(shape);
+        contentCell.appendChild(content);
         if (!parentId) {
           var childToggle = createChildToggleRow(index);
           if (childToggle) {
@@ -1386,8 +1374,7 @@
         row.appendChild(locationCell);
         row.appendChild(idCell);
         row.appendChild(nameCell);
-        row.appendChild(descriptionCell);
-        row.appendChild(shapeCell);
+        row.appendChild(contentCell);
         row.appendChild(toolsCell);
         return row;
       }
@@ -1852,8 +1839,7 @@
           if (row) {
             row.classList.toggle("is-changed", changed);
             row.classList.toggle("is-locked", lockState.locked);
-            var description = row.querySelector('[data-role="description"]');
-            var shape = row.querySelector('[data-role="shape"]');
+            var content = row.querySelector('[data-role="content"]');
             var badge = row.querySelector('[data-role="badge"]');
             var sizeSummary = row.querySelector('[data-role="size-summary"]');
             var moveSummary = row.querySelector('[data-role="move-summary"]');
@@ -1861,10 +1847,9 @@
             var lockNote = row.querySelector('[data-role="lock-note"]');
             var sizeButton = row.querySelector('button[data-action="size"]');
             var moveButton = row.querySelector('button[data-action="move"]');
-            description.disabled = lockState.locked;
-            shape.disabled = lockState.locked;
-            description.classList.toggle("changed-control", isDescriptionChanged(edit));
-            shape.classList.toggle("changed-control", isShapeChanged(edit));
+            content.disabled = lockState.locked;
+            content.classList.toggle("changed-control", isContentChanged(edit));
+            autoResizeTextarea(content);
             badge.classList.toggle("is-on", changed);
             badge.textContent = changed ? "수정됨" : "원본";
             sizeSummary.textContent = getSizeSummary(index);
@@ -2007,18 +1992,13 @@
 
       function isPartChanged(index) {
         var edit = state.edits[index];
-        return isDescriptionChanged(edit) ||
-          isShapeChanged(edit) ||
+        return isContentChanged(edit) ||
           Object.keys(edit.sizes).some(function (key) { return isSizeChanged(edit.sizes[key]); }) ||
           Object.keys(edit.moves).some(function (key) { return isMoveValueChanged(edit.moves[key]); });
       }
 
-      function isDescriptionChanged(edit) {
-        return String(edit.description) !== String(edit.descriptionOriginal);
-      }
-
-      function isShapeChanged(edit) {
-        return String(edit.shape) !== String(edit.shapeOriginal);
+      function isContentChanged(edit) {
+        return String(edit.content) !== String(edit.contentOriginal);
       }
 
       function isSizeChanged(item) {
@@ -2078,22 +2058,21 @@
         var output = {
           "/imagine": true,
           image_edit_instruction: {
-            version: "2.0",
+            version: "3.0",
             edit_summary: buildEditSummary(modify),
-            base_image: "uploaded original image",
+            base_image: "업로드한 원본 이미지",
             modify: modify,
             preserve_ids: promptPlan.preserveIds,
-            preserve_note: "All parts listed in preserve_ids must remain exactly as in the original image.",
+            preserve_note: "preserve_ids의 모든 파트는 원본 이미지와 동일하게 위치·크기·형태·외형을 유지한다.",
             lock_rule: cloneValue(getLockRule())
           },
           quality_checks: [
-            "Only apply changes listed in modify[]",
-            "Every part in preserve_ids must match the original exactly",
-            "Position moves are relative instructions in mm; do not move any part not listed",
-            "Maintain original camera angle, composition, and lighting direction"
+            "modify에 명시된 부분만 수정",
+            "preserve_ids의 모든 파트는 원본과 동일 유지",
+            "원본 카메라 앵글·구도·조명 방향 유지"
           ],
           global_style_lock: cloneValue(state.source.global_style_lock),
-          generation_instruction: "반드시 나노 바나나로 생성. Generate 1 image now based on the JSON above. Apply only modify[] changes to the uploaded image. Preserve everything in preserve_ids and respect global_style_lock. Output a single full-resolution image only. No grid, no collage, no multiple images, no text."
+          generation_instruction: "반드시 나노 바나나로 생성. 위 modify의 한글 지시대로 해당 부분만 수정하고, preserve_ids와 global_style_lock은 원본과 동일하게 유지한다. 풀 해상도 이미지 1장만 출력. 그리드·콜라주·복수 이미지·텍스트 금지."
         };
 
         removeUndefined(output);
@@ -2166,22 +2145,13 @@
         var changes = [];
         var summary = [];
 
-        if (isDescriptionChanged(edit)) {
+        if (isContentChanged(edit)) {
           changes.push({
-            type: "description",
-            before: edit.descriptionOriginal,
-            after: edit.description
+            field: "내용",
+            before: getOutputBeforeText(edit.contentOriginal),
+            after: edit.content
           });
-          summary.push("설명을 \"" + compactText(edit.description) + "\"로 변경.");
-        }
-
-        if (isShapeChanged(edit)) {
-          changes.push({
-            type: "shape",
-            before: edit.shapeOriginal,
-            after: edit.shape
-          });
-          summary.push("형태를 \"" + compactText(edit.shape) + "\"로 변경.");
+          summary.push("내용을 \"" + compactText(edit.content) + "\"로 변경");
         }
 
         Object.keys(edit.sizes).forEach(function (key) {
@@ -2193,13 +2163,13 @@
           var before = item.numeric ? toNumberOrString(item.original) : item.original;
           var after = item.numeric ? toNumberOrString(item.value) : item.value.trim();
           changes.push({
-            type: "size",
+            field: "치수",
             key: key,
             before: before,
             after: after,
             unit: "mm"
           });
-          summary.push("Change " + key + " from " + String(before) + "mm to " + String(after) + "mm.");
+          summary.push(key + " 치수를 " + String(before) + "mm에서 " + String(after) + "mm로 변경");
         });
 
         directionMeta.forEach(function (direction) {
@@ -2209,26 +2179,24 @@
           }
 
           var distance = toNumberOrString(value);
-          var instruction = direction.instruction(distance);
           changes.push({
-            type: "position_move",
-            direction: direction.key,
-            distance_mm: distance,
-            instruction: instruction
+            field: "위치",
+            direction: direction.label,
+            distance_mm: distance
           });
-          summary.push(instruction + ".");
+          summary.push(direction.label + "으로 " + String(distance) + "mm 이동");
         });
 
         var entry = {
           target_id: getPartId(part, index),
           name_ko: getPartName(part, index),
           changes: changes,
-          detail: "Modify " + getPartId(part, index) + " " + getPartName(part, index) + ". " + summary.join(" ") + " Keep all other parts unchanged."
+          detail: getPartId(part, index) + " " + getPartName(part, index) + " 항목을 다음과 같이 수정: " + summary.join(", ") + ". 나머지 파트는 원본 이미지와 동일하게 유지."
         };
 
         if (options.regenerateChildren) {
-          entry.detail += " regenerate child elements to match the parent change.";
-          entry.child_handling = "regenerate child elements to match the parent change";
+          entry.detail += " 하위 요소는 상위 변경에 맞게 재생성.";
+          entry.child_handling = "하위 요소는 상위 변경에 맞게 재생성";
         }
 
         if (getParentId(part)) {
@@ -2238,7 +2206,7 @@
             getParentId(part),
             getPartId(part, index)
           ];
-          entry.detail = "Modify child part " + getPartId(part, index) + " inside parent " + getParentId(part) + ". " + summary.join(" ") + " Keep all other parts unchanged.";
+          entry.detail = entry.target_path + " 항목을 다음과 같이 수정: " + summary.join(", ") + ". 나머지 파트는 원본 이미지와 동일하게 유지.";
         }
 
         return entry;
@@ -2322,12 +2290,19 @@
         return "";
       }
 
-      function getDescriptionText(part) {
+      function getContentText(part) {
         if (!part) {
           return "";
         }
 
-        return part.description == null ? "" : String(part.description);
+        var value = part.shape_ko;
+        if (value == null) {
+          value = part.description;
+        }
+        if (value == null) {
+          return "";
+        }
+        return typeof value === "string" ? value : JSON.stringify(value);
       }
 
       function getShapeText(part) {
@@ -2343,6 +2318,11 @@
           return "";
         }
         return typeof value === "string" ? value : JSON.stringify(value);
+      }
+
+      function getOutputBeforeText(value) {
+        var text = String(value == null ? "" : value);
+        return /[A-Za-z]{3,}/.test(text) ? "원본 내용" : text;
       }
 
       function getParentPathLabel(part) {
