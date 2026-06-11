@@ -2342,8 +2342,9 @@
       els.modalTitle.textContent = prompt ? "프롬프트 수정" : "새 프롬프트";
       els.ownerInput.value = prompt?.owner || getDefaultNewOwner();
       els.titleInput.value = prompt?.title || "";
-      els.categoryInput.value = prompt?.category || getDefaultNewCategory();
-      renderPromptTagOptions(prompt?.tags || defaultTagsForCategory(els.categoryInput.value));
+      const category = prompt?.category || getDefaultNewCategory();
+      els.categoryInput.value = category;
+      renderPromptTagOptions(prompt ? prompt.tags : getDefaultNewPromptTags(category));
       els.contentInput.value = prompt?.content || "";
       els.deleteButton.hidden = !prompt;
       els.modalBackdrop.hidden = false;
@@ -2351,7 +2352,17 @@
     }
 
     function getDefaultNewCategory() {
-      return state.activeCategory === "전체" ? "CODEX" : state.activeCategory;
+      if (state.activeCategory !== "전체") return state.activeCategory;
+      return getCategories()[0] || "CODEX";
+    }
+
+    function getDefaultNewPromptTags(category) {
+      const categoryTags = getTagsForCategory(category);
+      if (state.activeCategory === category && state.activeSubTag !== "전체" && categoryTags.includes(state.activeSubTag)) {
+        return [state.activeSubTag];
+      }
+
+      return [];
     }
 
     function getDefaultNewOwner() {
