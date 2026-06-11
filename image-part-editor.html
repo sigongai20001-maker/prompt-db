@@ -296,6 +296,10 @@
       font-weight: 700;
     }
 
+    .status-line.is-error {
+      color: var(--danger);
+    }
+
     .table-wrap {
       width: 100%;
       overflow: auto;
@@ -362,7 +366,7 @@
 
     .summary-table {
       width: 100%;
-      min-width: 1120px;
+      min-width: 1360px;
       border-collapse: collapse;
     }
 
@@ -393,6 +397,10 @@
       background: var(--accent-soft);
     }
 
+    .summary-table tr.is-child td {
+      background: color-mix(in srgb, var(--surface-soft) 58%, var(--surface));
+    }
+
     .col-state {
       width: 86px;
     }
@@ -410,7 +418,11 @@
     }
 
     .col-description {
-      min-width: 330px;
+      min-width: 280px;
+    }
+
+    .col-shape {
+      min-width: 260px;
     }
 
     .col-tools {
@@ -441,6 +453,27 @@
       color: var(--text-strong);
       font-weight: 760;
       overflow-wrap: anywhere;
+    }
+
+    .part-child-wrap {
+      position: relative;
+      display: grid;
+      gap: 4px;
+      padding-left: 16px;
+      border-left: 2px solid var(--accent);
+    }
+
+    .child-badge {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      font-size: 12px;
+      font-weight: 800;
     }
 
     .part-parent {
@@ -532,6 +565,34 @@
       font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
       font-size: 13px;
       line-height: 1.55;
+    }
+
+    .decompose-request {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .request-box {
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      background: var(--surface-soft);
+      color: var(--text);
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .decompose-paste {
+      display: grid;
+      gap: 8px;
+    }
+
+    .decompose-paste .decompose-area {
+      min-height: 104px;
+      max-height: 180px;
     }
 
     .empty-state {
@@ -1096,6 +1157,8 @@
         return {
           descriptionOriginal: part.description == null ? "" : String(part.description),
           description: part.description == null ? "" : String(part.description),
+          shapeOriginal: getShapeText(part),
+          shape: getShapeText(part),
           sizes: sizes,
           moves: moves
         };
@@ -1141,6 +1204,7 @@
           '<th class="col-id">id</th>',
           '<th class="col-name">파트명</th>',
           '<th class="col-description">설명 수정</th>',
+          '<th class="col-shape">형태 수정</th>',
           '<th class="col-tools">수치/위치 상세</th>',
           "</tr>"
         ].join("");
@@ -1213,16 +1277,16 @@
 
       function getCurrentScopeIndexes() {
         var zoomParentId = state.zoomParentId;
+        if (!zoomParentId) {
+          return state.parts.map(function (_part, index) { return index; });
+        }
+
         var indexes = state.parts
           .map(function (_part, index) { return index; })
           .filter(function (index) {
             var parentId = getParentId(state.parts[index]);
-            return zoomParentId ? parentId === zoomParentId : parentId === "";
+            return parentId === zoomParentId;
           });
-
-        if (!zoomParentId && !indexes.length && state.parts.length) {
-          return state.parts.map(function (_part, index) { return index; });
-        }
 
         return indexes;
       }
@@ -1236,6 +1300,7 @@
         var idCell = document.createElement("td");
         var nameCell = document.createElement("td");
         var descriptionCell = document.createElement("td");
+        var shapeCell = document.createElement("td");
         var toolsCell = document.createElement("td");
         var badge = createElement("span", "changed-badge", "원본");
         var location = getPartLocation(part, index);
@@ -1244,8 +1309,10 @@
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var parentId = getParentId(part);
         var description = createElement("textarea", "table-description");
+        var shape = createElement("textarea", "table-description");
         var tools = createElement("div", "tool-stack");
 
+        row.classList.toggle("is-child", Boolean(parentId));
         badge.dataset.role = "badge";
         description.value = state.edits[index].description;
         description.dataset.role = "description";
@@ -1255,16 +1322,33 @@
           state.edits[index].description = description.value;
           updateChangeState();
         });
+        shape.value = state.edits[index].shape;
+        shape.placeholder = "예: 상부를 곡면 유리로, 하부는 동일";
+        shape.dataset.role = "shape";
+        shape.dataset.index = String(index);
+        shape.spellcheck = false;
+        shape.addEventListener("input", function () {
+          state.edits[index].shape = shape.value;
+          updateChangeState();
+        });
 
         stateCell.appendChild(badge);
         locationCell.appendChild(locationChip);
         idCell.appendChild(idNode);
-        nameCell.appendChild(nameNode);
         if (parentId) {
-          nameCell.appendChild(createElement("div", "part-parent", "부모: " + parentId));
+          var childWrap = createElement("div", "part-child-wrap");
+          childWrap.appendChild(createElement("span", "child-badge", "하위"));
+          childWrap.appendChild(createElement("div", "part-parent", getParentPathLabel(part) + " >"));
+          childWrap.appendChild(nameNode);
+          nameCell.appendChild(childWrap);
+        } else {
+          nameCell.appendChild(nameNode);
         }
         descriptionCell.appendChild(description);
-        tools.appendChild(createZoomRow(index));
+        shapeCell.appendChild(shape);
+        if (!parentId) {
+          tools.appendChild(createZoomRow(index));
+        }
         tools.appendChild(createToolRow(index, "size"));
         tools.appendChild(createToolRow(index, "move"));
         tools.appendChild(createCancelRow(index));
@@ -1275,6 +1359,7 @@
         row.appendChild(idCell);
         row.appendChild(nameCell);
         row.appendChild(descriptionCell);
+        row.appendChild(shapeCell);
         row.appendChild(toolsCell);
         return row;
       }
@@ -1282,18 +1367,14 @@
       function createZoomRow(index) {
         var childCount = getChildIndexes(getPartId(state.parts[index], index)).length;
         var row = createElement("div", "tool-row");
-        var summary = createElement("div", "summary-text", childCount ? childCount + "개 자식 파트" : "분해 JSON 붙여넣기");
-        var button = createElement("button", "btn", childCount ? "자식 보기" : "세부 분해");
+        var summary = createElement("div", "summary-text", childCount ? childCount + "개 하위 파트 펼쳐짐" : "하위 파트 만들기");
+        var button = createElement("button", "btn", childCount ? "분해 다시 적용" : "세부 분해");
         button.type = "button";
         button.dataset.action = "zoom";
         button.dataset.index = String(index);
-        button.prepend(createIcon(childCount ? "ti-zoom-in" : "ti-code-plus"));
+        button.prepend(createIcon("ti-code-plus"));
         button.addEventListener("click", function () {
-          if (childCount) {
-            enterZoom(index);
-          } else {
-            openDecomposeModal(index);
-          }
+          openDecomposeModal(index);
         });
 
         row.appendChild(summary);
@@ -1344,21 +1425,57 @@
       }
 
       function getSortedPartIndexes() {
-        return getCurrentScopeIndexes()
-          .filter(function (index) {
-            if (state.activeLocation === "all") {
-              return true;
-            }
-            return getPartLocation(state.parts[index], index).label === state.activeLocation;
-          })
-          .sort(function (a, b) {
-            var locationA = getPartLocation(state.parts[a], a);
-            var locationB = getPartLocation(state.parts[b], b);
-            if (locationA.order !== locationB.order) {
-              return locationA.order - locationB.order;
-            }
-            return getBboxSortValue(state.parts[a]) - getBboxSortValue(state.parts[b]) || a - b;
+        if (state.zoomParentId) {
+          return sortPartIndexes(getCurrentScopeIndexes().filter(matchesActiveLocation));
+        }
+
+        var result = [];
+        var rootIndexes = state.parts
+          .map(function (_part, index) { return index; })
+          .filter(function (index) { return getParentId(state.parts[index]) === ""; });
+        var sortedRoots = sortPartIndexes(rootIndexes);
+        var knownRootIds = sortedRoots.map(function (index) { return getPartId(state.parts[index], index); });
+
+        sortedRoots.forEach(function (rootIndex) {
+          var rootId = getPartId(state.parts[rootIndex], rootIndex);
+          var childIndexes = sortPartIndexes(getChildIndexes(rootId).filter(matchesActiveLocation));
+          var rootMatches = matchesActiveLocation(rootIndex);
+
+          if (state.activeLocation === "all" || rootMatches || childIndexes.length) {
+            result.push(rootIndex);
+          }
+          childIndexes.forEach(function (childIndex) {
+            result.push(childIndex);
           });
+        });
+
+        sortPartIndexes(state.parts
+          .map(function (_part, index) { return index; })
+          .filter(function (index) {
+            var parentId = getParentId(state.parts[index]);
+            return parentId && knownRootIds.indexOf(parentId) === -1 && matchesActiveLocation(index);
+          }))
+          .forEach(function (index) {
+            result.push(index);
+          });
+
+        return result;
+      }
+
+      function sortPartIndexes(indexes) {
+        return indexes.slice().sort(function (a, b) {
+          var locationA = getPartLocation(state.parts[a], a);
+          var locationB = getPartLocation(state.parts[b], b);
+          if (locationA.order !== locationB.order) {
+            return locationA.order - locationB.order;
+          }
+          return getBboxSortValue(state.parts[a]) - getBboxSortValue(state.parts[b]) || a - b;
+        });
+      }
+
+      function matchesActiveLocation(index) {
+        return state.activeLocation === "all" ||
+          getPartLocation(state.parts[index], index).label === state.activeLocation;
       }
 
       function getLocationOrderLabels() {
@@ -1369,7 +1486,8 @@
         var text = [
           getPartId(part, index),
           getPartName(part, index),
-          part && part.description
+          part && part.description,
+          getShapeText(part)
         ].join(" ").toLowerCase();
 
         var rules = [
@@ -1485,17 +1603,108 @@
         modalTitle.textContent = "파트 세부 분해";
         modalSubtitle.textContent = getPartId(part, index) + " / " + getPartName(part, index);
         modalBody.innerHTML = "";
-        modalStatus.textContent = "외부에서 받은 분해 JSON을 붙여넣으세요.";
+        modalStatus.textContent = "";
+        modalStatus.classList.remove("is-error");
         modalResetBtn.innerHTML = '<i class="ti ti-table-import" aria-hidden="true"></i>분해 적용';
         modalDoneBtn.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>닫기';
 
+        var requestText = buildDecomposeRequest(index);
+        var requestWrap = createElement("div", "decompose-request");
+        var requestHeader = createElement("div", "tool-row");
+        var requestTitle = createElement("div", "summary-text", "이 요청문을 복사해서 Claude에 붙여넣으세요.");
+        var copyRequestButton = createElement("button", "btn", "분해 요청 복사");
+        var requestBox = createElement("div", "request-box", requestText);
+        var pasteWrap = createElement("label", "decompose-paste");
+        var pasteLabel = createElement("span", "field-label");
         var textarea = createElement("textarea", "field decompose-area");
+
+        copyRequestButton.type = "button";
+        copyRequestButton.prepend(createIcon("ti-copy"));
+        copyRequestButton.addEventListener("click", function () {
+          copyPlainText(requestText, function () {
+            modalStatus.classList.remove("is-error");
+            modalStatus.textContent = "분해 요청이 복사됐습니다.";
+          });
+        });
+
+        requestHeader.appendChild(requestTitle);
+        requestHeader.appendChild(copyRequestButton);
+        requestWrap.appendChild(requestHeader);
+        requestWrap.appendChild(requestBox);
+
+        pasteLabel.appendChild(document.createTextNode("여기에 받은 분해 결과를 붙여넣고 적용하세요"));
         textarea.id = "decomposeInput";
         textarea.spellcheck = false;
-        textarea.placeholder = '{\n  "parts": [\n    {\n      "id": "P08_CASE_GLASS",\n      "parent_id": "' + getPartId(part, index) + '",\n      "name_ko": "전시케이스 유리면",\n      "real_size_mm": { "estimated_width": 1200 },\n      "description": "투명 유리 전면"\n    }\n  ]\n}';
-        modalBody.appendChild(textarea);
+        textarea.placeholder = "받은 분해 결과를 그대로 붙여넣기";
+        pasteWrap.appendChild(pasteLabel);
+        pasteWrap.appendChild(textarea);
+
+        modalBody.appendChild(requestWrap);
+        modalBody.appendChild(pasteWrap);
         detailModal.classList.add("is-open");
-        textarea.focus();
+      }
+
+      function buildDecomposeRequest(index) {
+        var part = state.parts[index];
+        var partId = getPartId(part, index);
+        var lines = [
+          "아래 이미지 분석 파트를 더 작은 하위 파트로 분해해 주세요.",
+          "",
+          "목표:",
+          "- 큰 파트 하나를 2단계 하위 파트들로 나눕니다.",
+          "- 각 하위 파트는 실제로 수정 가능한 단위여야 합니다.",
+          "- 결과는 JSON만 반환해 주세요. 설명 문장이나 마크다운 코드펜스는 넣지 마세요.",
+          "",
+          "부모 파트:",
+          "id: " + partId,
+          "name_ko: " + getPartName(part, index),
+          "description: " + (part.description || ""),
+          "shape: " + getShapeText(part),
+          "real_size_mm: " + JSON.stringify(part.real_size_mm || {}),
+          "bbox_px: " + JSON.stringify(part.bbox_px || null),
+          "",
+          "반환 규칙:",
+          "- 최상위는 { \"parts\": [...] } 형태로 반환합니다.",
+          "- 모든 하위 파트에는 parent_id를 \"" + partId + "\"로 넣습니다.",
+          "- 각 하위 파트에는 id, parent_id, name_ko, description을 넣습니다.",
+          "- 알 수 있으면 real_size_mm, bbox_px, shape도 넣습니다.",
+          "- 하위 파트 id는 부모 id를 접두어로 사용해 중복되지 않게 만듭니다."
+        ];
+        return lines.join("\n");
+      }
+
+      function copyPlainText(text, onSuccess) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            if (onSuccess) {
+              onSuccess();
+            }
+          }, function () {
+            fallbackCopyText(text, onSuccess);
+          });
+        } else {
+          fallbackCopyText(text, onSuccess);
+        }
+      }
+
+      function fallbackCopyText(text, onSuccess) {
+        var helper = document.createElement("textarea");
+        helper.value = text;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.left = "-9999px";
+        document.body.appendChild(helper);
+        helper.select();
+        try {
+          document.execCommand("copy");
+          if (onSuccess) {
+            onSuccess();
+          }
+        } catch (error) {
+          modalStatus.classList.add("is-error");
+          modalStatus.textContent = "복사에 실패했습니다.";
+        }
+        document.body.removeChild(helper);
       }
 
       function renderSizeModal(index) {
@@ -1578,6 +1787,11 @@
       }
 
       function closeModal() {
+        if (state.modal && state.modal.type === "decompose") {
+          modalBody.innerHTML = "";
+          modalStatus.textContent = "";
+          modalStatus.classList.remove("is-error");
+        }
         detailModal.classList.remove("is-open");
         state.modal = null;
       }
@@ -1606,12 +1820,14 @@
         try {
           parsed = JSON.parse(stripCodeFence(textarea.value));
         } catch (error) {
+          modalStatus.classList.add("is-error");
           modalStatus.textContent = "JSON 파싱 실패: " + error.message;
           return;
         }
 
         var childParts = extractDecomposeParts(parsed);
         if (!childParts.length) {
+          modalStatus.classList.add("is-error");
           modalStatus.textContent = "분해 JSON에서 parts 배열을 찾을 수 없습니다.";
           return;
         }
@@ -1644,12 +1860,12 @@
         });
 
         syncSourceParts();
-        state.zoomParentId = parentId;
+        state.zoomParentId = "";
         state.activeLocation = "all";
-        modalStatus.textContent = added + "개 추가, " + updated + "개 갱신";
+        textarea.value = "";
         renderSummaryTable();
         updateChangeState();
-        window.setTimeout(closeModal, 450);
+        closeModal();
       }
 
       function extractDecomposeParts(parsed) {
@@ -1717,11 +1933,13 @@
           if (row) {
             row.classList.toggle("is-changed", changed);
             var description = row.querySelector('[data-role="description"]');
+            var shape = row.querySelector('[data-role="shape"]');
             var badge = row.querySelector('[data-role="badge"]');
             var sizeSummary = row.querySelector('[data-role="size-summary"]');
             var moveSummary = row.querySelector('[data-role="move-summary"]');
             var cancelButton = row.querySelector('[data-role="cancel"]');
             description.classList.toggle("changed-control", isDescriptionChanged(edit));
+            shape.classList.toggle("changed-control", isShapeChanged(edit));
             badge.classList.toggle("is-on", changed);
             badge.textContent = changed ? "수정됨" : "원본";
             sizeSummary.textContent = getSizeSummary(index);
@@ -1779,12 +1997,17 @@
       function isPartChanged(index) {
         var edit = state.edits[index];
         return isDescriptionChanged(edit) ||
+          isShapeChanged(edit) ||
           Object.keys(edit.sizes).some(function (key) { return isSizeChanged(edit.sizes[key]); }) ||
           Object.keys(edit.moves).some(function (key) { return isMoveValueChanged(edit.moves[key]); });
       }
 
       function isDescriptionChanged(edit) {
         return String(edit.description) !== String(edit.descriptionOriginal);
+      }
+
+      function isShapeChanged(edit) {
+        return String(edit.shape) !== String(edit.shapeOriginal);
       }
 
       function isSizeChanged(item) {
@@ -1894,6 +2117,15 @@
           summary.push("Change description to \"" + compactText(edit.description) + "\".");
         }
 
+        if (isShapeChanged(edit)) {
+          changes.push({
+            type: "shape",
+            before: edit.shapeOriginal,
+            after: edit.shape
+          });
+          summary.push("Change shape to \"" + compactText(edit.shape) + "\".");
+        }
+
         Object.keys(edit.sizes).forEach(function (key) {
           var item = edit.sizes[key];
           if (!isSizeChanged(item)) {
@@ -1938,6 +2170,11 @@
 
         if (getParentId(part)) {
           entry.parent_id = getParentId(part);
+          entry.target_path = [
+            getParentId(part),
+            getPartId(part, index)
+          ];
+          entry.target_path_label = getParentPathLabel(part) + " > " + getPartName(part, index);
           entry.detail = "Modify child part " + getPartId(part, index) + " inside parent " + getParentId(part) + ". " + summary.join(" ") + " Keep all other parts unchanged.";
         }
 
@@ -2020,6 +2257,38 @@
           return String(part.parent_id);
         }
         return "";
+      }
+
+      function getShapeText(part) {
+        if (!part) {
+          return "";
+        }
+
+        var value = part.shape;
+        if (value == null) {
+          value = part.shape_description;
+        }
+        if (value == null) {
+          value = part.form;
+        }
+        if (value == null) {
+          value = part.form_description;
+        }
+        if (value == null) {
+          return "";
+        }
+        if (typeof value === "string") {
+          return value;
+        }
+        return JSON.stringify(value);
+      }
+
+      function getParentPathLabel(part) {
+        var parentIndex = getPartIndexById(getParentId(part));
+        if (parentIndex < 0) {
+          return getParentId(part);
+        }
+        return getPartName(state.parts[parentIndex], parentIndex);
       }
 
       function getChildIndexes(parentId) {
