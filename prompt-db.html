@@ -217,6 +217,16 @@
       transform: translateY(-1px);
     }
 
+    .primary-button[data-busy="true"]::before {
+      content: "";
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(7, 20, 14, 0.28);
+      border-top-color: #07140e;
+      border-radius: 50%;
+      animation: spin 760ms linear infinite;
+    }
+
     .ghost-button {
       color: var(--muted-strong);
       border-color: var(--line);
@@ -662,6 +672,35 @@
       gap: 10px;
     }
 
+    .modal-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .modal-progress::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-soft);
+    }
+
+    .modal-progress[data-type="error"] {
+      color: var(--danger);
+    }
+
+    .modal-progress[data-type="error"]::before {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px var(--danger-soft);
+    }
+
     .toast {
       position: fixed;
       right: 18px;
@@ -690,6 +729,12 @@
       50% {
         opacity: 1;
         transform: scale(1);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
     }
 
@@ -883,10 +928,10 @@
       </div>
 
       <div class="modal-actions">
-        <span></span>
+        <span id="ownerProgress" class="modal-progress" role="status" aria-live="polite" hidden></span>
         <div class="right">
           <button id="cancelOwnerButton" class="ghost-button" type="button">취소</button>
-          <button id="saveOwnerButton" class="primary-button" type="submit">저장</button>
+          <button id="saveOwnerButton" class="primary-button" type="submit" data-idle-text="저장" data-busy-text="저장 중">저장</button>
         </div>
       </div>
     </form>
@@ -907,10 +952,10 @@
       </div>
 
       <div class="modal-actions">
-        <span></span>
+        <span id="categoryProgress" class="modal-progress" role="status" aria-live="polite" hidden></span>
         <div class="right">
           <button id="cancelCategoryButton" class="ghost-button" type="button">취소</button>
-          <button id="saveCategoryButton" class="primary-button" type="submit">저장</button>
+          <button id="saveCategoryButton" class="primary-button" type="submit" data-idle-text="저장" data-busy-text="저장 중">저장</button>
         </div>
       </div>
     </form>
@@ -936,10 +981,10 @@
       </div>
 
       <div class="modal-actions">
-        <span></span>
+        <span id="subTagProgress" class="modal-progress" role="status" aria-live="polite" hidden></span>
         <div class="right">
           <button id="cancelSubTagButton" class="ghost-button" type="button">취소</button>
-          <button id="saveSubTagButton" class="primary-button" type="submit">저장</button>
+          <button id="saveSubTagButton" class="primary-button" type="submit" data-idle-text="저장" data-busy-text="저장 중">저장</button>
         </div>
       </div>
     </form>
@@ -981,10 +1026,11 @@
       </div>
 
       <div class="modal-actions">
-        <button id="deleteButton" class="danger-button" type="button" hidden>삭제</button>
+        <span id="promptProgress" class="modal-progress" role="status" aria-live="polite" hidden></span>
         <div class="right">
+          <button id="deleteButton" class="danger-button" type="button" hidden>삭제</button>
           <button id="cancelButton" class="ghost-button" type="button">취소</button>
-          <button id="saveButton" class="primary-button" type="submit">저장</button>
+          <button id="saveButton" class="primary-button" type="submit" data-idle-text="저장" data-busy-text="저장 중">저장</button>
         </div>
       </div>
     </form>
@@ -1111,12 +1157,14 @@
       els.cancelOwnerButton = $("#cancelOwnerButton");
       els.saveOwnerButton = $("#saveOwnerButton");
       els.newOwnerInput = $("#newOwnerInput");
+      els.ownerProgress = $("#ownerProgress");
       els.categoryModalBackdrop = $("#categoryModalBackdrop");
       els.categoryForm = $("#categoryForm");
       els.closeCategoryModalButton = $("#closeCategoryModalButton");
       els.cancelCategoryButton = $("#cancelCategoryButton");
       els.saveCategoryButton = $("#saveCategoryButton");
       els.newCategoryInput = $("#newCategoryInput");
+      els.categoryProgress = $("#categoryProgress");
       els.subTagModalBackdrop = $("#subTagModalBackdrop");
       els.subTagForm = $("#subTagForm");
       els.closeSubTagModalButton = $("#closeSubTagModalButton");
@@ -1124,6 +1172,7 @@
       els.saveSubTagButton = $("#saveSubTagButton");
       els.subTagCategoryInput = $("#subTagCategoryInput");
       els.newSubTagInput = $("#newSubTagInput");
+      els.subTagProgress = $("#subTagProgress");
       els.modalBackdrop = $("#modalBackdrop");
       els.promptForm = $("#promptForm");
       els.modalTitle = $("#modalTitle");
@@ -1137,6 +1186,7 @@
       els.categoryInput = $("#categoryInput");
       els.promptTagOptions = $("#promptTagOptions");
       els.contentInput = $("#contentInput");
+      els.promptProgress = $("#promptProgress");
     }
 
     function attachEvents() {
@@ -1965,6 +2015,7 @@
     }
 
     function openOwnerModal() {
+      clearModalProgress();
       els.newOwnerInput.value = "";
       els.ownerModalBackdrop.hidden = false;
       els.newOwnerInput.focus();
@@ -1973,14 +2024,17 @@
     function closeOwnerModal() {
       els.ownerModalBackdrop.hidden = true;
       els.ownerForm.reset();
+      clearModalProgress();
       setBusy(false);
     }
 
     async function handleOwnerFormSubmit(event) {
       event.preventDefault();
+      setModalProgress("입력 확인 중");
       const owner = els.newOwnerInput.value.trim();
 
       if (!owner) {
+        setModalProgress("사용자 이름을 입력해 주세요.", "error");
         showToast("사용자 이름을 입력해 주세요.", "error");
         return;
       }
@@ -1995,6 +2049,7 @@
 
       try {
         setBusy(true);
+        setModalProgress("Drive에 저장 중");
         setStatus("Drive에 저장 중", "loading");
 
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
@@ -2009,6 +2064,7 @@
         renderOwnerOptions();
         renderPrompts();
         setStatus("동기화됨", "success");
+        setModalProgress("등록 완료");
         showToast("사용자 추가됨", "success");
         return true;
       } catch (error) {
@@ -2019,6 +2075,7 @@
         renderOwnerOptions();
         renderPrompts();
         setStatus("저장 실패", "error");
+        setModalProgress("저장 실패", "error");
         showToast(toUserError(error), "error");
         return false;
       } finally {
@@ -2027,6 +2084,7 @@
     }
 
     function openCategoryModal() {
+      clearModalProgress();
       els.newCategoryInput.value = "";
       els.categoryModalBackdrop.hidden = false;
       els.newCategoryInput.focus();
@@ -2035,14 +2093,17 @@
     function closeCategoryModal() {
       els.categoryModalBackdrop.hidden = true;
       els.categoryForm.reset();
+      clearModalProgress();
       setBusy(false);
     }
 
     async function handleCategoryFormSubmit(event) {
       event.preventDefault();
+      setModalProgress("입력 확인 중");
       const category = els.newCategoryInput.value.trim();
 
       if (!category) {
+        setModalProgress("영역태그 이름을 입력해 주세요.", "error");
         showToast("영역태그 이름을 입력해 주세요.", "error");
         return;
       }
@@ -2058,6 +2119,7 @@
 
       try {
         setBusy(true);
+        setModalProgress("Drive에 저장 중");
         setStatus("Drive에 저장 중", "loading");
 
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
@@ -2078,6 +2140,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("동기화됨", "success");
+        setModalProgress("등록 완료");
         showToast("영역태그 추가됨", "success");
         return true;
       } catch (error) {
@@ -2091,6 +2154,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("저장 실패", "error");
+        setModalProgress("저장 실패", "error");
         showToast(toUserError(error), "error");
         return false;
       } finally {
@@ -2099,6 +2163,7 @@
     }
 
     function openSubTagModal() {
+      clearModalProgress();
       renderSubTagCategoryOptions();
       els.subTagCategoryInput.value = state.activeCategory === "전체" ? "CODEX" : state.activeCategory;
       els.newSubTagInput.value = "";
@@ -2109,15 +2174,18 @@
     function closeSubTagModal() {
       els.subTagModalBackdrop.hidden = true;
       els.subTagForm.reset();
+      clearModalProgress();
       setBusy(false);
     }
 
     async function handleSubTagFormSubmit(event) {
       event.preventDefault();
+      setModalProgress("입력 확인 중");
       const category = els.subTagCategoryInput.value;
       const tag = els.newSubTagInput.value.trim();
 
       if (!category || !tag) {
+        setModalProgress("영역태그와 구분태그 이름을 입력해 주세요.", "error");
         showToast("영역태그와 구분태그 이름을 입력해 주세요.", "error");
         return;
       }
@@ -2134,6 +2202,7 @@
 
       try {
         setBusy(true);
+        setModalProgress("Drive에 저장 중");
         setStatus("Drive에 저장 중", "loading");
 
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
@@ -2155,6 +2224,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("동기화됨", "success");
+        setModalProgress("등록 완료");
         showToast("구분태그 추가됨", "success");
         return true;
       } catch (error) {
@@ -2169,6 +2239,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("저장 실패", "error");
+        setModalProgress("저장 실패", "error");
         showToast(toUserError(error), "error");
         return false;
       } finally {
@@ -2266,6 +2337,7 @@
     }
 
     function openPromptModal(prompt = null) {
+      clearModalProgress();
       state.editingId = prompt?.id || "";
       els.modalTitle.textContent = prompt ? "프롬프트 수정" : "새 프롬프트";
       els.ownerInput.value = prompt?.owner || getDefaultNewOwner();
@@ -2580,6 +2652,7 @@
 
     async function handleFormSubmit(event) {
       event.preventDefault();
+      setModalProgress("입력 확인 중");
 
       const owner = els.ownerInput.value.trim();
       const title = els.titleInput.value.trim();
@@ -2588,6 +2661,7 @@
       const tags = getSelectedPromptTags();
 
       if (!owner || !title || !content.trim()) {
+        setModalProgress("필수 항목을 확인해 주세요.", "error");
         showToast("사용자 이름, 제목, 내용을 입력해 주세요.", "error");
         return;
       }
@@ -2651,6 +2725,7 @@
         setBusy(true);
         mutator();
         renderPrompts();
+        setModalProgress("Drive에 저장 중");
         setStatus("Drive에 저장 중", "loading");
         const latestData = state.dbFileId ? await readDbFile(state.dbFileId) : createDatabasePayload();
         const latestPrompts = removeDeletedSubTagsFromPrompts(normalizePrompts(latestData.prompts), deletedSubTags);
@@ -2677,6 +2752,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("동기화됨", "success");
+        setModalProgress("저장 완료");
         showToast(successMessage, "success");
         return true;
       } catch (error) {
@@ -2694,6 +2770,7 @@
         renderCodexFilters();
         renderPrompts();
         setStatus("저장 실패", "error");
+        setModalProgress("저장 실패", "error");
         showToast(toUserError(error), "error");
         return false;
       } finally {
@@ -2793,11 +2870,16 @@
       els.modalBackdrop.hidden = true;
       els.promptForm.reset();
       state.editingId = "";
+      clearModalProgress();
       setBusy(false);
     }
 
     function setBusy(isBusy) {
       state.isSaving = isBusy;
+      setButtonBusy(els.saveOwnerButton, isBusy);
+      setButtonBusy(els.saveCategoryButton, isBusy);
+      setButtonBusy(els.saveSubTagButton, isBusy);
+      setButtonBusy(els.saveButton, isBusy);
       els.loginButton.disabled = isBusy || !state.tokenClient;
       els.addButton.disabled = isBusy;
       els.addOwnerButton.disabled = isBusy;
@@ -2815,6 +2897,39 @@
       els.saveButton.disabled = isBusy;
       els.deleteButton.disabled = isBusy;
       els.searchInput.disabled = isBusy && !state.prompts.length;
+    }
+
+    function setButtonBusy(button, isBusy) {
+      if (!button) return;
+
+      button.dataset.busy = String(isBusy);
+      button.textContent = isBusy ? button.dataset.busyText || "저장 중" : button.dataset.idleText || "저장";
+    }
+
+    function setModalProgress(message, type = "info") {
+      const progress = getVisibleModalProgress();
+      if (!progress) return;
+
+      progress.textContent = message;
+      progress.dataset.type = type;
+      progress.hidden = false;
+    }
+
+    function clearModalProgress() {
+      [els.ownerProgress, els.categoryProgress, els.subTagProgress, els.promptProgress].forEach((progress) => {
+        if (!progress) return;
+        progress.textContent = "";
+        progress.dataset.type = "info";
+        progress.hidden = true;
+      });
+    }
+
+    function getVisibleModalProgress() {
+      if (!els.ownerModalBackdrop.hidden) return els.ownerProgress;
+      if (!els.categoryModalBackdrop.hidden) return els.categoryProgress;
+      if (!els.subTagModalBackdrop.hidden) return els.subTagProgress;
+      if (!els.modalBackdrop.hidden) return els.promptProgress;
+      return null;
     }
 
     function setStatus(message, type = "info") {
