@@ -1340,7 +1340,7 @@
 
       function createChildToggleRow(index) {
         var parentId = getPartId(state.parts[index], index);
-        var childCount = getChildIndexes(parentId).length;
+        var childCount = getVisibleChildIndexes(parentId).length;
         if (!childCount) {
           return null;
         }
@@ -1417,9 +1417,9 @@
 
         sortedRoots.forEach(function (rootIndex) {
           var rootId = getPartId(state.parts[rootIndex], rootIndex);
-          var childIndexes = sortPartIndexes(getChildIndexes(rootId).filter(matchesFilters));
+          var childIndexes = getVisibleChildIndexes(rootId);
           var rootMatches = matchesFilters(rootIndex);
-          var shouldShowChildren = filterActive || Boolean(state.expandedParents[rootId]);
+          var shouldShowChildren = Boolean(state.expandedParents[rootId]);
 
           if (!filterActive || rootMatches || childIndexes.length) {
             result.push(rootIndex);
@@ -1442,6 +1442,14 @@
           });
 
         return result;
+      }
+
+      function getVisibleChildIndexes(parentId) {
+        var childIndexes = getChildIndexes(parentId);
+        if (hasActiveFilters()) {
+          childIndexes = childIndexes.filter(matchesFilters);
+        }
+        return sortPartIndexes(childIndexes);
       }
 
       function sortPartIndexes(indexes) {
