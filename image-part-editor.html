@@ -291,7 +291,7 @@
 
     .summary-table {
       width: 100%;
-      min-width: 980px;
+      min-width: 1120px;
       border-collapse: collapse;
     }
 
@@ -326,6 +326,10 @@
       width: 86px;
     }
 
+    .col-location {
+      width: 110px;
+    }
+
     .col-id {
       width: 210px;
     }
@@ -339,7 +343,20 @@
     }
 
     .col-tools {
-      width: 260px;
+      width: 300px;
+    }
+
+    .location-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      background: var(--surface-soft);
+      color: var(--text-strong);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
     }
 
     .part-id {
@@ -422,6 +439,10 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .cancel-row {
+      justify-self: end;
     }
 
     .empty-state {
@@ -991,6 +1012,7 @@
         thead.innerHTML = [
           "<tr>",
           '<th class="col-state">상태</th>',
+          '<th class="col-location">위치</th>',
           '<th class="col-id">id</th>',
           '<th class="col-name">파트명</th>',
           '<th class="col-description">설명 수정</th>',
@@ -998,8 +1020,8 @@
           "</tr>"
         ].join("");
 
-        state.parts.forEach(function (part, index) {
-          tbody.appendChild(createTableRow(part, index));
+        getSortedPartIndexes().forEach(function (index) {
+          tbody.appendChild(createTableRow(state.parts[index], index));
         });
 
         table.appendChild(thead);
@@ -1013,11 +1035,14 @@
         row.dataset.index = String(index);
 
         var stateCell = document.createElement("td");
+        var locationCell = document.createElement("td");
         var idCell = document.createElement("td");
         var nameCell = document.createElement("td");
         var descriptionCell = document.createElement("td");
         var toolsCell = document.createElement("td");
         var badge = createElement("span", "changed-badge", "원본");
+        var location = getPartLocation(part, index);
+        var locationChip = createElement("span", "location-chip", location.label);
         var idNode = createElement("div", "part-id", getPartId(part, index));
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var description = createElement("textarea", "table-description");
@@ -1034,14 +1059,17 @@
         });
 
         stateCell.appendChild(badge);
+        locationCell.appendChild(locationChip);
         idCell.appendChild(idNode);
         nameCell.appendChild(nameNode);
         descriptionCell.appendChild(description);
         tools.appendChild(createToolRow(index, "size"));
         tools.appendChild(createToolRow(index, "move"));
+        tools.appendChild(createCancelRow(index));
         toolsCell.appendChild(tools);
 
         row.appendChild(stateCell);
+        row.appendChild(locationCell);
         row.appendChild(idCell);
         row.appendChild(nameCell);
         row.appendChild(descriptionCell);
@@ -1071,6 +1099,132 @@
         row.appendChild(summary);
         row.appendChild(button);
         return row;
+      }
+
+      function createCancelRow(index) {
+        var row = createElement("div", "tool-row");
+        var summary = createElement("div", "summary-text", "이 파트만 원본으로 되돌림");
+        var button = createElement("button", "btn cancel-row", "수정 취소");
+        button.type = "button";
+        button.dataset.role = "cancel";
+        button.dataset.index = String(index);
+        button.disabled = true;
+        button.prepend(createIcon("ti-rotate"));
+        button.addEventListener("click", function () {
+          resetPartChanges(index);
+        });
+
+        row.appendChild(summary);
+        row.appendChild(button);
+        return row;
+      }
+
+      function getSortedPartIndexes() {
+        return state.parts
+          .map(function (_part, index) { return index; })
+          .sort(function (a, b) {
+            var locationA = getPartLocation(state.parts[a], a);
+            var locationB = getPartLocation(state.parts[b], b);
+            if (locationA.order !== locationB.order) {
+              return locationA.order - locationB.order;
+            }
+            return getBboxSortValue(state.parts[a]) - getBboxSortValue(state.parts[b]) || a - b;
+          });
+      }
+
+      function getPartLocation(part, index) {
+        var text = [
+          getPartId(part, index),
+          getPartName(part, index),
+          part && part.description
+        ].join(" ").toLowerCase();
+
+        var rules = [
+          { label: "천장", order: 10, keywords: ["천장", "천정", "ceiling", "top", "상부"] },
+          { label: "우측", order: 20, keywords: ["우측", "오른쪽", "오른", "right"] },
+          { label: "좌측", order: 30, keywords: ["좌측", "왼쪽", "왼", "left"] },
+          { label: "전면", order: 35, keywords: ["전면", "앞면", "앞쪽", "front"] },
+          { label: "후면", order: 40, keywords: ["후면", "뒷면", "뒤쪽", "back", "rear"] },
+          { label: "벽면", order: 45, keywords: ["벽면", "벽", "wall"] },
+          { label: "중앙", order: 50, keywords: ["중앙", "센터", "center", "middle"] },
+          { label: "바닥", order: 60, keywords: ["바닥", "floor", "ground"] },
+          { label: "가구/집기", order: 70, keywords: ["가구", "집기", "테이블", "의자", "소파", "책상", "선반", "furniture", "table", "chair", "sofa", "shelf"] }
+        ];
+
+        for (var i = 0; i < rules.length; i += 1) {
+          if (rules[i].keywords.some(function (keyword) { return text.indexOf(keyword) !== -1; })) {
+            return { label: rules[i].label, order: rules[i].order };
+          }
+        }
+
+        return inferLocationFromBbox(part) || { label: "기타", order: 90 };
+      }
+
+      function inferLocationFromBbox(part) {
+        if (!Array.isArray(part && part.bbox_px) || part.bbox_px.length < 4) {
+          return null;
+        }
+
+        var x1 = Number(part.bbox_px[0]);
+        var y1 = Number(part.bbox_px[1]);
+        var x2 = Number(part.bbox_px[2]);
+        var y2 = Number(part.bbox_px[3]);
+        if (![x1, y1, x2, y2].every(Number.isFinite)) {
+          return null;
+        }
+
+        var centerX = (x1 + x2) / 2;
+        var centerY = (y1 + y2) / 2;
+        var extent = getBboxCanvasExtent();
+        var width = extent.width;
+        var height = extent.height;
+
+        if (centerY <= height * 0.22) {
+          return { label: "천장", order: 10 };
+        }
+        if (centerY >= height * 0.78) {
+          return { label: "바닥", order: 60 };
+        }
+        if (centerX >= width * 0.68) {
+          return { label: "우측", order: 20 };
+        }
+        if (centerX <= width * 0.32) {
+          return { label: "좌측", order: 30 };
+        }
+
+        return { label: "중앙", order: 50 };
+      }
+
+      function getBboxCanvasExtent() {
+        var width = 1;
+        var height = 1;
+
+        state.parts.forEach(function (part) {
+          if (!Array.isArray(part && part.bbox_px) || part.bbox_px.length < 4) {
+            return;
+          }
+
+          var x2 = Number(part.bbox_px[2]);
+          var y2 = Number(part.bbox_px[3]);
+          if (Number.isFinite(x2)) {
+            width = Math.max(width, x2);
+          }
+          if (Number.isFinite(y2)) {
+            height = Math.max(height, y2);
+          }
+        });
+
+        return { width: width, height: height };
+      }
+
+      function getBboxSortValue(part) {
+        if (!Array.isArray(part && part.bbox_px) || part.bbox_px.length < 4) {
+          return 0;
+        }
+
+        var x1 = Number(part.bbox_px[0]);
+        var y1 = Number(part.bbox_px[1]);
+        return (Number.isFinite(y1) ? y1 : 0) * 100000 + (Number.isFinite(x1) ? x1 : 0);
       }
 
       function openModal(index, type) {
@@ -1210,11 +1364,13 @@
             var badge = row.querySelector('[data-role="badge"]');
             var sizeSummary = row.querySelector('[data-role="size-summary"]');
             var moveSummary = row.querySelector('[data-role="move-summary"]');
+            var cancelButton = row.querySelector('[data-role="cancel"]');
             description.classList.toggle("changed-control", isDescriptionChanged(edit));
             badge.classList.toggle("is-on", changed);
             badge.textContent = changed ? "수정됨" : "원본";
             sizeSummary.textContent = getSizeSummary(index);
             moveSummary.textContent = getMoveSummary(index);
+            cancelButton.disabled = !changed;
           }
         });
 
@@ -1299,6 +1455,21 @@
         resultCode.textContent = "";
         copyFeedback.textContent = "";
         copyBtn.disabled = true;
+        updateChangeState();
+      }
+
+      function resetPartChanges(index) {
+        state.edits[index] = createEditState(state.parts[index]);
+        resultCode.textContent = "";
+        copyFeedback.textContent = "";
+        copyBtn.disabled = true;
+
+        if (state.modal && state.modal.index === index) {
+          openModal(index, state.modal.type);
+        } else {
+          renderSummaryTable();
+        }
+
         updateChangeState();
       }
 
