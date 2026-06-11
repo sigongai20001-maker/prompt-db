@@ -1103,6 +1103,8 @@
 
       function createEditState(part) {
         var sizes = {};
+        var descriptionText = getDescriptionText(part);
+        var shapeText = getShapeText(part);
         if (isPlainObject(part.real_size_mm)) {
           Object.keys(part.real_size_mm).forEach(function (key) {
             sizes[key] = {
@@ -1119,10 +1121,10 @@
         });
 
         return {
-          descriptionOriginal: part.description == null ? "" : String(part.description),
-          description: part.description == null ? "" : String(part.description),
-          shapeOriginal: getShapeText(part),
-          shape: getShapeText(part),
+          descriptionOriginal: descriptionText,
+          description: descriptionText,
+          shapeOriginal: shapeText,
+          shape: shapeText,
           sizes: sizes,
           moves: moves
         };
@@ -1939,7 +1941,7 @@
             before: edit.descriptionOriginal,
             after: edit.description
           });
-          summary.push("Change description to \"" + compactText(edit.description) + "\".");
+          summary.push("설명을 \"" + compactText(edit.description) + "\"로 변경.");
         }
 
         if (isShapeChanged(edit)) {
@@ -2084,6 +2086,30 @@
         return "";
       }
 
+      function getDescriptionText(part) {
+        if (!part) {
+          return "";
+        }
+
+        var value = part.description_ko;
+        if (value == null) {
+          value = part.desc_ko;
+        }
+        if (value == null) {
+          value = part.description;
+        }
+        if (value == null) {
+          value = part.desc;
+        }
+        if (value == null) {
+          return "";
+        }
+        if (typeof value === "string") {
+          return translateEditableTextToKorean(value);
+        }
+        return translateEditableTextToKorean(JSON.stringify(value));
+      }
+
       function getShapeText(part) {
         if (!part) {
           return "";
@@ -2115,14 +2141,39 @@
           return "";
         }
         if (typeof value === "string") {
-          return translateShapeTextToKorean(value);
+          return translateEditableTextToKorean(value);
         }
-        return translateShapeTextToKorean(JSON.stringify(value));
+        return translateEditableTextToKorean(JSON.stringify(value));
       }
 
-      function translateShapeTextToKorean(text) {
+      function translateEditableTextToKorean(text) {
         var value = compactText(text);
         var replacements = [
+          [/right recessed display compartment/gi, "우측 매립 전시칸"],
+          [/left recessed display compartment/gi, "좌측 매립 전시칸"],
+          [/central recessed display compartment/gi, "중앙 매립 전시칸"],
+          [/center recessed display compartment/gi, "중앙 매립 전시칸"],
+          [/recessed display compartment/gi, "매립 전시칸"],
+          [/right recessed compartment/gi, "우측 매립 수납칸"],
+          [/left recessed compartment/gi, "좌측 매립 수납칸"],
+          [/central recessed compartment/gi, "중앙 매립 수납칸"],
+          [/center recessed compartment/gi, "중앙 매립 수납칸"],
+          [/recessed compartment/gi, "매립 수납칸"],
+          [/display niche/gi, "전시 니치"],
+          [/niche compartment/gi, "니치 수납칸"],
+          [/dark walnut lining/gi, "짙은 월넛 마감"],
+          [/walnut frame/gi, "월넛 프레임"],
+          [/walnut lining/gi, "월넛 내부 마감"],
+          [/brass edge/gi, "황동 테두리"],
+          [/rounded glass/gi, "둥근 유리"],
+          [/round glass/gi, "둥근 유리"],
+          [/warm internal light/gi, "따뜻한 내부 조명"],
+          [/internal light/gi, "내부 조명"],
+          [/pale map/gi, "연한 지도"],
+          [/framed document/gi, "액자형 문서"],
+          [/strolling woman/gi, "지나가는 여성"],
+          [/partially blocked by/gi, "일부 가려짐"],
+          [/visible/gi, "보이는"],
           [/large rectangular/gi, "큰 직사각형"],
           [/small rectangular/gi, "작은 직사각형"],
           [/rectangular/gi, "직사각형"],
@@ -2130,6 +2181,7 @@
           [/circular/gi, "원형"],
           [/round/gi, "둥근"],
           [/oval/gi, "타원형"],
+          [/recessed/gi, "매립형"],
           [/curved/gi, "곡면"],
           [/arched/gi, "아치형"],
           [/flat/gi, "평평한"],
@@ -2140,6 +2192,14 @@
           [/slanted/gi, "기울어진"],
           [/stepped/gi, "단차형"],
           [/layered/gi, "겹층형"],
+          [/compartment/gi, "수납칸"],
+          [/document/gi, "문서"],
+          [/map/gi, "지도"],
+          [/pale/gi, "연한"],
+          [/lining/gi, "내부 마감"],
+          [/warm/gi, "따뜻한"],
+          [/internal/gi, "내부"],
+          [/light/gi, "조명"],
           [/panel/gi, "패널"],
           [/field/gi, "면"],
           [/case/gi, "케이스"],
@@ -2166,15 +2226,30 @@
           [/dense/gi, "촘촘한"],
           [/geometric/gi, "기하학적"],
           [/pattern/gi, "패턴"],
+          [/partially/gi, "부분적으로"],
+          [/blocked/gi, "가려진"],
+          [/woman/gi, "여성"],
           [/cream-white|cream white/gi, "크림 화이트"],
           [/with/gi, "및"],
-          [/and/gi, "와"]
+          [/and/gi, "와"],
+          [/[;:,]/g, ", "],
+          [/\s+와\s+/g, "와 "],
+          [/\s+및\s+/g, " 및 "]
         ];
 
         replacements.forEach(function (pair) {
           value = value.replace(pair[0], pair[1]);
         });
-        return value.replace(/\s+/g, " ").trim();
+        return value
+          .replace(/프레임와/g, "프레임과")
+          .replace(/수납칸와/g, "수납칸과")
+          .replace(/전시칸와/g, "전시칸과")
+          .replace(/문서와 연한 지도/g, "문서와 연한 지도")
+          .replace(/보이는/g, "보임")
+          .replace(/\s+,/g, ",")
+          .replace(/,\s*,/g, ",")
+          .replace(/\s+/g, " ")
+          .trim();
       }
 
       function getParentPathLabel(part) {
