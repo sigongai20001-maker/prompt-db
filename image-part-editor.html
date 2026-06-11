@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>이미지 부분수정 프롬프트 생성기</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.35.0/tabler-icons.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
     :root {
@@ -93,6 +94,7 @@
 
     button,
     input,
+    select,
     textarea {
       font: inherit;
     }
@@ -477,6 +479,24 @@
       font-weight: 800;
     }
 
+    .pattern-badge {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      min-height: 22px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: color-mix(in srgb, #7c3aed 18%, var(--surface));
+      color: #6d28d9;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    [data-theme="dark"] .pattern-badge {
+      background: color-mix(in srgb, #a78bfa 22%, var(--surface));
+      color: #ddd6fe;
+    }
+
     .part-parent {
       margin-top: 4px;
       color: var(--muted);
@@ -518,6 +538,8 @@
 
     .table-description,
     .field,
+    .pattern-select,
+    .pattern-direct,
     .move-input {
       width: 100%;
       border: 1px solid var(--border);
@@ -536,9 +558,39 @@
     }
 
     .field,
+    .pattern-select,
+    .pattern-direct,
     .move-input {
       height: 40px;
       padding: 0 10px;
+    }
+
+    .pattern-editor {
+      display: grid;
+      grid-template-columns: minmax(92px, 0.7fr) minmax(130px, 1fr) minmax(130px, 1fr);
+      gap: 10px;
+      align-items: start;
+    }
+
+    .pattern-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .pattern-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .pattern-direct {
+      display: none;
+      margin-top: 6px;
+    }
+
+    .pattern-direct.is-visible {
+      display: block;
     }
 
     .changed-control {
@@ -549,6 +601,8 @@
 
     .table-description:disabled,
     .field:disabled,
+    .pattern-select:disabled,
+    .pattern-direct:disabled,
     .move-input:disabled {
       background: var(--surface-soft);
       color: var(--muted);
@@ -832,6 +886,10 @@
         grid-template-columns: 1fr;
       }
 
+      .pattern-editor {
+        grid-template-columns: 1fr;
+      }
+
       h1 {
         font-size: 23px;
       }
@@ -1014,6 +1072,11 @@
         { key: "backward", label: "뒤로", icon: "ti-zoom-out", instruction: function (value) { return "move " + value + "mm backward away from the camera"; } }
       ];
 
+      var patternOptionState = {
+        type: ["투각", "음각", "양각", "평면프린트", "라인에칭"],
+        style: ["기하학", "아라베스크", "식물문", "격자", "줄무늬"]
+      };
+
       initialize();
 
       function initialize() {
@@ -1143,6 +1206,7 @@
       function createEditState(part) {
         var sizes = {};
         var contentText = getContentText(part);
+        var pattern = isPatternPart(part) ? createPatternEditState(part) : null;
         if (isPlainObject(part.real_size_mm)) {
           Object.keys(part.real_size_mm).forEach(function (key) {
             sizes[key] = {
@@ -1161,8 +1225,28 @@
         return {
           contentOriginal: contentText,
           content: contentText,
+          pattern: pattern,
           sizes: sizes,
           moves: moves
+        };
+      }
+
+      function createPatternEditState(part) {
+        var pattern = part.pattern || {};
+        var density = pattern.density == null ? "" : String(pattern.density);
+        var type = pattern.type_ko == null ? "" : compactText(pattern.type_ko);
+        var style = pattern.style_ko == null ? "" : compactText(pattern.style_ko);
+
+        ensurePatternOption("type", type);
+        ensurePatternOption("style", style);
+
+        return {
+          densityOriginal: density,
+          density: density,
+          typeOriginal: type,
+          type: type,
+          styleOriginal: style,
+          style: style
         };
       }
 
@@ -1320,7 +1404,7 @@
         var idNode = createElement("div", "part-id", getPartId(part, index));
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var parentId = getParentId(part);
-        var content = createElement("textarea", "table-description");
+        var patternPart = isPatternPart(part);
         var tools = createElement("div", "tool-stack");
         var lockState = getPartLockState(index);
         var lockNote = createElement("div", "lock-note");
@@ -1328,18 +1412,6 @@
         row.classList.toggle("is-child", Boolean(parentId));
         row.classList.toggle("is-locked", lockState.locked);
         badge.dataset.role = "badge";
-        content.value = state.edits[index].content;
-        content.placeholder = "예: 유리문, 손잡이는 검정";
-        content.dataset.role = "content";
-        content.dataset.index = String(index);
-        content.spellcheck = false;
-        content.disabled = lockState.locked;
-        autoResizeTextarea(content);
-        content.addEventListener("input", function () {
-          state.edits[index].content = content.value;
-          autoResizeTextarea(content);
-          updateChangeState();
-        });
         lockNote.dataset.role = "lock-note";
         lockNote.textContent = lockState.message;
         lockNote.classList.toggle("is-visible", lockState.locked);
@@ -1350,6 +1422,9 @@
         if (parentId) {
           var childWrap = createElement("div", "part-child-wrap");
           childWrap.appendChild(createElement("span", "child-badge", "하위"));
+          if (patternPart) {
+            childWrap.appendChild(createElement("span", "pattern-badge", "패턴"));
+          }
           childWrap.appendChild(createElement("div", "part-parent", getParentPathLabel(part) + " >"));
           childWrap.appendChild(nameNode);
           childWrap.appendChild(lockNote);
@@ -1358,15 +1433,21 @@
           nameCell.appendChild(nameNode);
           nameCell.appendChild(lockNote);
         }
-        contentCell.appendChild(content);
+        if (patternPart) {
+          contentCell.appendChild(createPatternEditor(index, lockState.locked));
+        } else {
+          contentCell.appendChild(createContentEditor(index, lockState.locked));
+        }
         if (!parentId) {
           var childToggle = createChildToggleRow(index);
           if (childToggle) {
             tools.appendChild(childToggle);
           }
         }
-        tools.appendChild(createToolRow(index, "size"));
-        tools.appendChild(createToolRow(index, "move"));
+        if (!patternPart) {
+          tools.appendChild(createToolRow(index, "size"));
+          tools.appendChild(createToolRow(index, "move"));
+        }
         tools.appendChild(createCancelRow(index));
         toolsCell.appendChild(tools);
 
@@ -1377,6 +1458,137 @@
         row.appendChild(contentCell);
         row.appendChild(toolsCell);
         return row;
+      }
+
+      function createContentEditor(index, locked) {
+        var content = createElement("textarea", "table-description");
+        content.value = state.edits[index].content;
+        content.placeholder = "예: 유리문, 손잡이는 검정";
+        content.dataset.role = "content";
+        content.dataset.index = String(index);
+        content.spellcheck = false;
+        content.disabled = locked;
+        autoResizeTextarea(content);
+        content.addEventListener("input", function () {
+          state.edits[index].content = content.value;
+          autoResizeTextarea(content);
+          updateChangeState();
+        });
+        return content;
+      }
+
+      function createPatternEditor(index, locked) {
+        var editor = createElement("div", "pattern-editor");
+        editor.appendChild(createPatternDensityField(index, locked));
+        editor.appendChild(createPatternSelectField(index, "type", "표현방식"));
+        editor.appendChild(createPatternSelectField(index, "style", "스타일"));
+        setPatternEditorLocked(editor, locked);
+        return editor;
+      }
+
+      function createPatternDensityField(index, locked) {
+        var edit = state.edits[index].pattern;
+        var field = createElement("label", "pattern-field");
+        var label = createElement("span", "pattern-label", "밀도");
+        var input = createElement("input", "field");
+
+        input.type = "number";
+        input.inputMode = "decimal";
+        input.step = "any";
+        input.min = "0";
+        input.value = edit.density;
+        input.dataset.role = "pattern-density";
+        input.disabled = locked;
+        input.addEventListener("input", function () {
+          edit.density = input.value;
+          updateChangeState();
+        });
+
+        field.appendChild(label);
+        field.appendChild(input);
+        return field;
+      }
+
+      function createPatternSelectField(index, kind, labelText) {
+        var edit = state.edits[index].pattern;
+        var field = createElement("div", "pattern-field");
+        var label = createElement("span", "pattern-label", labelText);
+        var select = createElement("select", "pattern-select");
+        var direct = createElement("input", "pattern-direct");
+
+        select.dataset.role = "pattern-" + kind;
+        select.dataset.patternKind = kind;
+        populatePatternSelect(select, kind, edit[kind]);
+        select.addEventListener("change", function () {
+          if (select.value === "__custom__") {
+            direct.value = "";
+            direct.classList.add("is-visible");
+            direct.focus();
+            return;
+          }
+          edit[kind] = select.value;
+          direct.value = "";
+          direct.classList.remove("is-visible");
+          updateChangeState();
+        });
+
+        direct.type = "text";
+        direct.placeholder = labelText + " 직접 입력";
+        direct.dataset.role = "pattern-" + kind + "-custom";
+        direct.addEventListener("change", function () {
+          applyCustomPatternOption(index, kind, select, direct);
+        });
+        direct.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            applyCustomPatternOption(index, kind, select, direct);
+          }
+        });
+
+        field.appendChild(label);
+        field.appendChild(select);
+        field.appendChild(direct);
+        return field;
+      }
+
+      function populatePatternSelect(select, kind, selectedValue) {
+        var value = String(selectedValue || "");
+        select.innerHTML = "";
+        select.appendChild(createOption("", "선택 안 함"));
+        ensurePatternOption(kind, value);
+        patternOptionState[kind].forEach(function (optionValue) {
+          select.appendChild(createOption(optionValue, optionValue));
+        });
+        select.appendChild(createOption("__custom__", "직접 입력"));
+        select.value = value;
+      }
+
+      function createOption(value, label) {
+        var option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        return option;
+      }
+
+      function applyCustomPatternOption(index, kind, select, direct) {
+        var value = compactText(direct.value);
+        if (!value) {
+          populatePatternSelect(select, kind, state.edits[index].pattern[kind]);
+          direct.classList.remove("is-visible");
+          return;
+        }
+        ensurePatternOption(kind, value);
+        state.edits[index].pattern[kind] = value;
+        populatePatternSelect(select, kind, value);
+        direct.value = "";
+        direct.classList.remove("is-visible");
+        updateChangeState();
+      }
+
+      function setPatternEditorLocked(editor, locked) {
+        Array.prototype.forEach.call(editor.querySelectorAll("input, select"), function (control) {
+          control.disabled = locked;
+        });
       }
 
       function createChildToggleRow(index) {
@@ -1847,14 +2059,23 @@
             var lockNote = row.querySelector('[data-role="lock-note"]');
             var sizeButton = row.querySelector('button[data-action="size"]');
             var moveButton = row.querySelector('button[data-action="move"]');
-            content.disabled = lockState.locked;
-            content.classList.toggle("changed-control", isContentChanged(edit));
-            autoResizeTextarea(content);
+            if (content) {
+              content.disabled = lockState.locked;
+              content.classList.toggle("changed-control", isContentChanged(edit));
+              autoResizeTextarea(content);
+            }
+            updatePatternControls(row, edit, lockState.locked);
             badge.classList.toggle("is-on", changed);
             badge.textContent = changed ? "수정됨" : "원본";
-            sizeSummary.textContent = getSizeSummary(index);
-            moveSummary.textContent = getMoveSummary(index);
-            cancelButton.disabled = !changed;
+            if (sizeSummary) {
+              sizeSummary.textContent = getSizeSummary(index);
+            }
+            if (moveSummary) {
+              moveSummary.textContent = getMoveSummary(index);
+            }
+            if (cancelButton) {
+              cancelButton.disabled = !changed;
+            }
             if (sizeButton) {
               sizeButton.disabled = lockState.locked;
             }
@@ -1874,6 +2095,39 @@
         generateBtn.disabled = changedCount === 0;
         floatingGenerateBtn.disabled = changedCount === 0;
         resetBtn.disabled = !state.source;
+      }
+
+      function updatePatternControls(row, edit, locked) {
+        if (!edit.pattern) {
+          return;
+        }
+
+        var density = row.querySelector('[data-role="pattern-density"]');
+        var typeSelect = row.querySelector('[data-role="pattern-type"]');
+        var styleSelect = row.querySelector('[data-role="pattern-style"]');
+        var typeCustom = row.querySelector('[data-role="pattern-type-custom"]');
+        var styleCustom = row.querySelector('[data-role="pattern-style-custom"]');
+
+        if (density) {
+          density.disabled = locked;
+          density.classList.toggle("changed-control", isPatternDensityChanged(edit.pattern));
+        }
+        if (typeSelect) {
+          populatePatternSelect(typeSelect, "type", edit.pattern.type);
+          typeSelect.disabled = locked;
+          typeSelect.classList.toggle("changed-control", isPatternTypeChanged(edit.pattern));
+        }
+        if (styleSelect) {
+          populatePatternSelect(styleSelect, "style", edit.pattern.style);
+          styleSelect.disabled = locked;
+          styleSelect.classList.toggle("changed-control", isPatternStyleChanged(edit.pattern));
+        }
+        if (typeCustom) {
+          typeCustom.disabled = locked;
+        }
+        if (styleCustom) {
+          styleCustom.disabled = locked;
+        }
       }
 
       function updateModalStatus() {
@@ -1993,12 +2247,31 @@
       function isPartChanged(index) {
         var edit = state.edits[index];
         return isContentChanged(edit) ||
+          isPatternChanged(edit.pattern) ||
           Object.keys(edit.sizes).some(function (key) { return isSizeChanged(edit.sizes[key]); }) ||
           Object.keys(edit.moves).some(function (key) { return isMoveValueChanged(edit.moves[key]); });
       }
 
       function isContentChanged(edit) {
         return String(edit.content) !== String(edit.contentOriginal);
+      }
+
+      function isPatternChanged(pattern) {
+        return isPatternDensityChanged(pattern) ||
+          isPatternTypeChanged(pattern) ||
+          isPatternStyleChanged(pattern);
+      }
+
+      function isPatternDensityChanged(pattern) {
+        return Boolean(pattern) && String(pattern.density) !== String(pattern.densityOriginal);
+      }
+
+      function isPatternTypeChanged(pattern) {
+        return Boolean(pattern) && String(pattern.type) !== String(pattern.typeOriginal);
+      }
+
+      function isPatternStyleChanged(pattern) {
+        return Boolean(pattern) && String(pattern.style) !== String(pattern.styleOriginal);
       }
 
       function isSizeChanged(item) {
@@ -2154,6 +2427,12 @@
           summary.push("내용을 \"" + compactText(edit.content) + "\"로 변경");
         }
 
+        var patternChange = buildPatternChange(edit.pattern);
+        if (patternChange) {
+          changes.push(patternChange.change);
+          summary.push("패턴을 " + appendKoreanRo(patternChange.summary) + " 수정");
+        }
+
         Object.keys(edit.sizes).forEach(function (key) {
           var item = edit.sizes[key];
           if (!isSizeChanged(item)) {
@@ -2210,6 +2489,32 @@
         }
 
         return entry;
+      }
+
+      function buildPatternChange(pattern) {
+        if (!pattern || !isPatternChanged(pattern)) {
+          return null;
+        }
+
+        var change = { field: "패턴" };
+        var summary = [];
+        if (isPatternDensityChanged(pattern)) {
+          change["밀도"] = toNumberOrString(pattern.density);
+          summary.push("밀도 " + String(change["밀도"]));
+        }
+        if (isPatternTypeChanged(pattern)) {
+          change["표현방식"] = compactText(pattern.type);
+          summary.push("표현방식 " + change["표현방식"]);
+        }
+        if (isPatternStyleChanged(pattern)) {
+          change["스타일"] = compactText(pattern.style);
+          summary.push("스타일 " + change["스타일"]);
+        }
+
+        return {
+          change: change,
+          summary: summary.join("·")
+        };
       }
 
       function buildEditSummary(modify) {
@@ -2288,6 +2593,19 @@
           return String(part.parent_id);
         }
         return "";
+      }
+
+      function isPatternPart(part) {
+        return isPlainObject(part && part.pattern);
+      }
+
+      function ensurePatternOption(kind, value) {
+        var list = patternOptionState[kind];
+        var text = compactText(value);
+        if (!list || !text || list.indexOf(text) !== -1) {
+          return;
+        }
+        list.push(text);
       }
 
       function getContentText(part) {
@@ -2390,6 +2708,17 @@
 
       function compactText(value) {
         return String(value || "").replace(/\s+/g, " ").trim();
+      }
+
+      function appendKoreanRo(value) {
+        var text = compactText(value);
+        var last = text.charAt(text.length - 1);
+        var code = last.charCodeAt(0);
+        if (code >= 0xAC00 && code <= 0xD7A3) {
+          var finalConsonant = (code - 0xAC00) % 28;
+          return text + (finalConsonant && finalConsonant !== 8 ? "으로" : "로");
+        }
+        return text + "로";
       }
 
       function cloneValue(value) {
