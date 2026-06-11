@@ -304,6 +304,62 @@
       background: var(--surface);
     }
 
+    .part-controls {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .filter-row,
+    .zoom-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+
+    .filter-pill {
+      min-height: 34px;
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: var(--surface);
+      color: var(--button-soft-text);
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .filter-pill.is-active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .zoom-row {
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface-soft);
+    }
+
+    .zoom-title {
+      min-width: 0;
+      color: var(--text-strong);
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
     .summary-table {
       width: 100%;
       min-width: 1120px;
@@ -387,6 +443,14 @@
       overflow-wrap: anywhere;
     }
 
+    .part-parent {
+      margin-top: 4px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
     .changed-badge {
       display: inline-flex;
       align-items: center;
@@ -458,6 +522,16 @@
 
     .cancel-row {
       justify-self: end;
+    }
+
+    .decompose-area {
+      height: auto;
+      min-height: 220px;
+      resize: vertical;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.55;
     }
 
     .empty-state {
@@ -763,8 +837,23 @@
           프롬프트 생성
         </button>
       </div>
-      <div class="panel-body" id="partsContainer">
-        <p class="empty-state">JSON을 붙여넣으면 파트 종합표가 표시됩니다.</p>
+      <div class="panel-body">
+        <div class="part-controls" id="partControls" hidden>
+          <div class="filter-row">
+            <div class="filter-pills" id="locationFilters" aria-label="위치 필터"></div>
+            <div class="status-line" id="visibleCounter">0개 표시</div>
+          </div>
+          <div class="zoom-row" id="zoomRow" hidden>
+            <div class="zoom-title" id="zoomTitle"></div>
+            <button class="btn" id="zoomBackBtn" type="button">
+              <i class="ti ti-chevron-left" aria-hidden="true"></i>
+              상위 파트로
+            </button>
+          </div>
+        </div>
+        <div id="partsContainer">
+          <p class="empty-state">JSON을 붙여넣으면 파트 종합표가 표시됩니다.</p>
+        </div>
       </div>
     </section>
 
@@ -837,6 +926,12 @@
       var floatingGenerateBtn = document.getElementById("floatingGenerateBtn");
       var copyBtn = document.getElementById("copyBtn");
       var errorMessage = document.getElementById("errorMessage");
+      var partControls = document.getElementById("partControls");
+      var locationFilters = document.getElementById("locationFilters");
+      var visibleCounter = document.getElementById("visibleCounter");
+      var zoomRow = document.getElementById("zoomRow");
+      var zoomTitle = document.getElementById("zoomTitle");
+      var zoomBackBtn = document.getElementById("zoomBackBtn");
       var partsContainer = document.getElementById("partsContainer");
       var changeCounter = document.getElementById("changeCounter");
       var floatingChangeCounter = document.getElementById("floatingChangeCounter");
@@ -857,6 +952,8 @@
         parts: [],
         edits: [],
         changedCount: 0,
+        activeLocation: "all",
+        zoomParentId: "",
         autoLoadTimer: null,
         modal: null
       };
@@ -884,6 +981,7 @@
           loadPartsFromInput(true);
         });
         resetBtn.addEventListener("click", resetAllChanges);
+        zoomBackBtn.addEventListener("click", exitZoom);
         generateBtn.addEventListener("click", generatePrompt);
         floatingGenerateBtn.addEventListener("click", generatePrompt);
         copyBtn.addEventListener("click", copyResult);
@@ -961,6 +1059,8 @@
         state.source = parsed;
         state.parts = parsed.parts;
         state.edits = parsed.parts.map(createEditState);
+        state.activeLocation = "all";
+        state.zoomParentId = "";
         localStorage.setItem(STORAGE_KEY, jsonInput.value);
         renderSummaryTable();
         updateChangeState();
@@ -1013,9 +1113,19 @@
 
       function renderSummaryTable() {
         partsContainer.innerHTML = "";
+        renderPartControls();
 
         if (!state.parts.length) {
+          partControls.hidden = true;
           partsContainer.appendChild(createEmptyState("parts 배열이 비어 있습니다."));
+          return;
+        }
+
+        var visibleIndexes = getSortedPartIndexes();
+
+        if (!visibleIndexes.length) {
+          partsContainer.appendChild(createEmptyState("선택한 조건에 맞는 파트가 없습니다."));
+          updateVisibleCounter(0);
           return;
         }
 
@@ -1035,7 +1145,7 @@
           "</tr>"
         ].join("");
 
-        getSortedPartIndexes().forEach(function (index) {
+        visibleIndexes.forEach(function (index) {
           tbody.appendChild(createTableRow(state.parts[index], index));
         });
 
@@ -1043,6 +1153,78 @@
         table.appendChild(tbody);
         wrap.appendChild(table);
         partsContainer.appendChild(wrap);
+        updateVisibleCounter(visibleIndexes.length);
+      }
+
+      function renderPartControls() {
+        partControls.hidden = !state.parts.length;
+        if (!state.parts.length) {
+          return;
+        }
+
+        var baseIndexes = getCurrentScopeIndexes();
+        var locationCounts = baseIndexes.reduce(function (counts, index) {
+          var label = getPartLocation(state.parts[index], index).label;
+          counts[label] = (counts[label] || 0) + 1;
+          return counts;
+        }, {});
+        var currentLabels = getLocationOrderLabels().filter(function (label) {
+          return locationCounts[label];
+        });
+        Object.keys(locationCounts).forEach(function (label) {
+          if (currentLabels.indexOf(label) === -1) {
+            currentLabels.push(label);
+          }
+        });
+
+        if (state.activeLocation !== "all" && !locationCounts[state.activeLocation]) {
+          state.activeLocation = "all";
+        }
+
+        locationFilters.innerHTML = "";
+        locationFilters.appendChild(createFilterButton("all", "전체 " + baseIndexes.length));
+        currentLabels.forEach(function (label) {
+          locationFilters.appendChild(createFilterButton(label, label + " " + locationCounts[label]));
+        });
+
+        var parentIndex = getPartIndexById(state.zoomParentId);
+        zoomRow.hidden = parentIndex < 0;
+        if (parentIndex >= 0) {
+          zoomTitle.textContent = "줌인: " + getPartId(state.parts[parentIndex], parentIndex) + " / " + getPartName(state.parts[parentIndex], parentIndex);
+        }
+      }
+
+      function createFilterButton(value, label) {
+        var button = createElement("button", "filter-pill", label);
+        button.type = "button";
+        button.dataset.location = value;
+        button.classList.toggle("is-active", state.activeLocation === value);
+        button.addEventListener("click", function () {
+          state.activeLocation = value;
+          renderSummaryTable();
+          updateChangeState();
+        });
+        return button;
+      }
+
+      function updateVisibleCounter(count) {
+        visibleCounter.textContent = count + "개 표시";
+      }
+
+      function getCurrentScopeIndexes() {
+        var zoomParentId = state.zoomParentId;
+        var indexes = state.parts
+          .map(function (_part, index) { return index; })
+          .filter(function (index) {
+            var parentId = getParentId(state.parts[index]);
+            return zoomParentId ? parentId === zoomParentId : parentId === "";
+          });
+
+        if (!zoomParentId && !indexes.length && state.parts.length) {
+          return state.parts.map(function (_part, index) { return index; });
+        }
+
+        return indexes;
       }
 
       function createTableRow(part, index) {
@@ -1060,6 +1242,7 @@
         var locationChip = createElement("span", "location-chip", location.label);
         var idNode = createElement("div", "part-id", getPartId(part, index));
         var nameNode = createElement("div", "part-name", getPartName(part, index));
+        var parentId = getParentId(part);
         var description = createElement("textarea", "table-description");
         var tools = createElement("div", "tool-stack");
 
@@ -1077,7 +1260,11 @@
         locationCell.appendChild(locationChip);
         idCell.appendChild(idNode);
         nameCell.appendChild(nameNode);
+        if (parentId) {
+          nameCell.appendChild(createElement("div", "part-parent", "부모: " + parentId));
+        }
         descriptionCell.appendChild(description);
+        tools.appendChild(createZoomRow(index));
         tools.appendChild(createToolRow(index, "size"));
         tools.appendChild(createToolRow(index, "move"));
         tools.appendChild(createCancelRow(index));
@@ -1089,6 +1276,28 @@
         row.appendChild(nameCell);
         row.appendChild(descriptionCell);
         row.appendChild(toolsCell);
+        return row;
+      }
+
+      function createZoomRow(index) {
+        var childCount = getChildIndexes(getPartId(state.parts[index], index)).length;
+        var row = createElement("div", "tool-row");
+        var summary = createElement("div", "summary-text", childCount ? childCount + "개 자식 파트" : "분해 JSON 붙여넣기");
+        var button = createElement("button", "btn", childCount ? "자식 보기" : "세부 분해");
+        button.type = "button";
+        button.dataset.action = "zoom";
+        button.dataset.index = String(index);
+        button.prepend(createIcon(childCount ? "ti-zoom-in" : "ti-code-plus"));
+        button.addEventListener("click", function () {
+          if (childCount) {
+            enterZoom(index);
+          } else {
+            openDecomposeModal(index);
+          }
+        });
+
+        row.appendChild(summary);
+        row.appendChild(button);
         return row;
       }
 
@@ -1135,8 +1344,13 @@
       }
 
       function getSortedPartIndexes() {
-        return state.parts
-          .map(function (_part, index) { return index; })
+        return getCurrentScopeIndexes()
+          .filter(function (index) {
+            if (state.activeLocation === "all") {
+              return true;
+            }
+            return getPartLocation(state.parts[index], index).label === state.activeLocation;
+          })
           .sort(function (a, b) {
             var locationA = getPartLocation(state.parts[a], a);
             var locationB = getPartLocation(state.parts[b], b);
@@ -1145,6 +1359,10 @@
             }
             return getBboxSortValue(state.parts[a]) - getBboxSortValue(state.parts[b]) || a - b;
           });
+      }
+
+      function getLocationOrderLabels() {
+        return ["천장", "우측", "좌측", "전면", "후면", "벽면", "중앙", "바닥", "가구/집기", "기타"];
       }
 
       function getPartLocation(part, index) {
@@ -1247,6 +1465,8 @@
         state.modal = { index: index, type: type };
         modalTitle.textContent = type === "size" ? "수치 상세 입력" : "위치 이동 상세 입력";
         modalSubtitle.textContent = getPartId(part, index) + " / " + getPartName(part, index);
+        modalResetBtn.innerHTML = '<i class="ti ti-rotate" aria-hidden="true"></i>이 항목 초기화';
+        modalDoneBtn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>완료';
         modalBody.innerHTML = "";
 
         if (type === "size") {
@@ -1257,6 +1477,25 @@
 
         updateModalStatus();
         detailModal.classList.add("is-open");
+      }
+
+      function openDecomposeModal(index) {
+        var part = state.parts[index];
+        state.modal = { index: index, type: "decompose" };
+        modalTitle.textContent = "파트 세부 분해";
+        modalSubtitle.textContent = getPartId(part, index) + " / " + getPartName(part, index);
+        modalBody.innerHTML = "";
+        modalStatus.textContent = "외부에서 받은 분해 JSON을 붙여넣으세요.";
+        modalResetBtn.innerHTML = '<i class="ti ti-table-import" aria-hidden="true"></i>분해 적용';
+        modalDoneBtn.innerHTML = '<i class="ti ti-x" aria-hidden="true"></i>닫기';
+
+        var textarea = createElement("textarea", "field decompose-area");
+        textarea.id = "decomposeInput";
+        textarea.spellcheck = false;
+        textarea.placeholder = '{\n  "parts": [\n    {\n      "id": "P08_CASE_GLASS",\n      "parent_id": "' + getPartId(part, index) + '",\n      "name_ko": "전시케이스 유리면",\n      "real_size_mm": { "estimated_width": 1200 },\n      "description": "투명 유리 전면"\n    }\n  ]\n}';
+        modalBody.appendChild(textarea);
+        detailModal.classList.add("is-open");
+        textarea.focus();
       }
 
       function renderSizeModal(index) {
@@ -1343,8 +1582,110 @@
         state.modal = null;
       }
 
+      function enterZoom(index) {
+        state.zoomParentId = getPartId(state.parts[index], index);
+        state.activeLocation = "all";
+        renderSummaryTable();
+        updateChangeState();
+      }
+
+      function exitZoom() {
+        state.zoomParentId = "";
+        state.activeLocation = "all";
+        renderSummaryTable();
+        updateChangeState();
+      }
+
+      function applyDecomposeJson(parentIndex) {
+        var textarea = document.getElementById("decomposeInput");
+        if (!textarea) {
+          return;
+        }
+
+        var parsed;
+        try {
+          parsed = JSON.parse(stripCodeFence(textarea.value));
+        } catch (error) {
+          modalStatus.textContent = "JSON 파싱 실패: " + error.message;
+          return;
+        }
+
+        var childParts = extractDecomposeParts(parsed);
+        if (!childParts.length) {
+          modalStatus.textContent = "분해 JSON에서 parts 배열을 찾을 수 없습니다.";
+          return;
+        }
+
+        var parentId = getPartId(state.parts[parentIndex], parentIndex);
+        var added = 0;
+        var updated = 0;
+
+        childParts.forEach(function (child, childIndex) {
+          if (!isPlainObject(child)) {
+            return;
+          }
+
+          var normalized = cloneValue(child);
+          normalized.parent_id = parentId;
+          if (normalized.id == null || String(normalized.id).trim() === "" || String(normalized.id) === parentId) {
+            normalized.id = parentId + "_DETAIL_" + String(childIndex + 1).padStart(2, "0");
+          }
+
+          var existingIndex = getPartIndexById(String(normalized.id));
+          if (existingIndex >= 0) {
+            state.parts[existingIndex] = normalized;
+            state.edits[existingIndex] = createEditState(normalized);
+            updated += 1;
+          } else {
+            state.parts.push(normalized);
+            state.edits.push(createEditState(normalized));
+            added += 1;
+          }
+        });
+
+        syncSourceParts();
+        state.zoomParentId = parentId;
+        state.activeLocation = "all";
+        modalStatus.textContent = added + "개 추가, " + updated + "개 갱신";
+        renderSummaryTable();
+        updateChangeState();
+        window.setTimeout(closeModal, 450);
+      }
+
+      function extractDecomposeParts(parsed) {
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+        if (isPlainObject(parsed) && Array.isArray(parsed.parts)) {
+          return parsed.parts;
+        }
+        if (isPlainObject(parsed) && Array.isArray(parsed.children)) {
+          return parsed.children;
+        }
+        if (isPlainObject(parsed) && Array.isArray(parsed.sub_parts)) {
+          return parsed.sub_parts;
+        }
+        if (isPlainObject(parsed) && (parsed.id || parsed.name_ko || parsed.description)) {
+          return [parsed];
+        }
+        return [];
+      }
+
+      function syncSourceParts() {
+        if (state.source) {
+          state.source.parts = state.parts;
+          jsonInput.value = JSON.stringify(state.source, null, 2);
+          localStorage.setItem(STORAGE_KEY, jsonInput.value);
+        }
+      }
+
       function resetCurrentModalValues() {
         if (!state.modal) {
+          return;
+        }
+
+        if (state.modal.type === "decompose") {
+          applyDecomposeJson(state.modal.index);
           return;
         }
 
@@ -1588,12 +1929,19 @@
           summary.push(instruction + ".");
         });
 
-        return {
+        var entry = {
           target_id: getPartId(part, index),
           name_ko: getPartName(part, index),
           changes: changes,
           detail: "Modify " + getPartId(part, index) + " " + getPartName(part, index) + ". " + summary.join(" ") + " Keep all other parts unchanged."
         };
+
+        if (getParentId(part)) {
+          entry.parent_id = getParentId(part);
+          entry.detail = "Modify child part " + getPartId(part, index) + " inside parent " + getParentId(part) + ". " + summary.join(" ") + " Keep all other parts unchanged.";
+        }
+
+        return entry;
       }
 
       function buildEditSummary(modify) {
@@ -1665,6 +2013,31 @@
 
       function hasOwn(object, key) {
         return Object.prototype.hasOwnProperty.call(object || {}, key);
+      }
+
+      function getParentId(part) {
+        if (part && part.parent_id != null && String(part.parent_id).trim() !== "") {
+          return String(part.parent_id);
+        }
+        return "";
+      }
+
+      function getChildIndexes(parentId) {
+        return state.parts
+          .map(function (_part, index) { return index; })
+          .filter(function (index) {
+            return getParentId(state.parts[index]) === parentId;
+          });
+      }
+
+      function getPartIndexById(id) {
+        var target = String(id || "");
+        for (var i = 0; i < state.parts.length; i += 1) {
+          if (getPartId(state.parts[i], i) === target) {
+            return i;
+          }
+        }
+        return -1;
       }
 
       function getPartId(part, index) {
