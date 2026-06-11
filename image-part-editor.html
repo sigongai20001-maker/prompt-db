@@ -402,6 +402,10 @@
       background: color-mix(in srgb, var(--surface-soft) 58%, var(--surface));
     }
 
+    .summary-table tr.is-locked td {
+      background: color-mix(in srgb, var(--surface-soft) 82%, var(--surface));
+    }
+
     .col-state {
       width: 86px;
     }
@@ -485,6 +489,19 @@
       overflow-wrap: anywhere;
     }
 
+    .lock-note {
+      display: none;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .lock-note.is-visible {
+      display: block;
+    }
+
     .changed-badge {
       display: inline-flex;
       align-items: center;
@@ -531,6 +548,14 @@
       border-color: var(--accent) !important;
       background: var(--accent-soft) !important;
       color: var(--accent-text) !important;
+    }
+
+    .table-description:disabled,
+    .field:disabled,
+    .move-input:disabled {
+      background: var(--surface-soft);
+      color: var(--muted);
+      cursor: not-allowed;
     }
 
     .tool-stack {
@@ -1301,13 +1326,17 @@
         var description = createElement("textarea", "table-description");
         var shape = createElement("textarea", "table-description");
         var tools = createElement("div", "tool-stack");
+        var lockState = getPartLockState(index);
+        var lockNote = createElement("div", "lock-note");
 
         row.classList.toggle("is-child", Boolean(parentId));
+        row.classList.toggle("is-locked", lockState.locked);
         badge.dataset.role = "badge";
         description.value = state.edits[index].description;
         description.dataset.role = "description";
         description.dataset.index = String(index);
         description.spellcheck = false;
+        description.disabled = lockState.locked;
         description.addEventListener("input", function () {
           state.edits[index].description = description.value;
           updateChangeState();
@@ -1317,10 +1346,14 @@
         shape.dataset.role = "shape";
         shape.dataset.index = String(index);
         shape.spellcheck = false;
+        shape.disabled = lockState.locked;
         shape.addEventListener("input", function () {
           state.edits[index].shape = shape.value;
           updateChangeState();
         });
+        lockNote.dataset.role = "lock-note";
+        lockNote.textContent = lockState.message;
+        lockNote.classList.toggle("is-visible", lockState.locked);
 
         stateCell.appendChild(badge);
         locationCell.appendChild(locationChip);
@@ -1330,9 +1363,11 @@
           childWrap.appendChild(createElement("span", "child-badge", "하위"));
           childWrap.appendChild(createElement("div", "part-parent", getParentPathLabel(part) + " >"));
           childWrap.appendChild(nameNode);
+          childWrap.appendChild(lockNote);
           nameCell.appendChild(childWrap);
         } else {
           nameCell.appendChild(nameNode);
+          nameCell.appendChild(lockNote);
         }
         descriptionCell.appendChild(description);
         shapeCell.appendChild(shape);
@@ -1390,6 +1425,7 @@
         button.type = "button";
         button.dataset.action = type;
         button.dataset.index = String(index);
+        button.disabled = getPartLockState(index).locked;
         button.addEventListener("click", function () {
           openModal(index, type);
         });
@@ -1675,6 +1711,10 @@
       }
 
       function openModal(index, type) {
+        if (getPartLockState(index).locked) {
+          return;
+        }
+
         var part = state.parts[index];
         state.modal = { index: index, type: type };
         modalTitle.textContent = type === "size" ? "수치 상세 입력" : "위치 이동 상세 입력";
@@ -1799,22 +1839,30 @@
 
       function updateChangeState() {
         var changedCount = 0;
+        var groupStates = getGroupStates();
 
         state.edits.forEach(function (edit, index) {
           var row = partsContainer.querySelector('tr[data-index="' + index + '"]');
           var changed = isPartChanged(index);
+          var lockState = getPartLockState(index, groupStates);
           if (changed) {
             changedCount += 1;
           }
 
           if (row) {
             row.classList.toggle("is-changed", changed);
+            row.classList.toggle("is-locked", lockState.locked);
             var description = row.querySelector('[data-role="description"]');
             var shape = row.querySelector('[data-role="shape"]');
             var badge = row.querySelector('[data-role="badge"]');
             var sizeSummary = row.querySelector('[data-role="size-summary"]');
             var moveSummary = row.querySelector('[data-role="move-summary"]');
             var cancelButton = row.querySelector('[data-role="cancel"]');
+            var lockNote = row.querySelector('[data-role="lock-note"]');
+            var sizeButton = row.querySelector('button[data-action="size"]');
+            var moveButton = row.querySelector('button[data-action="move"]');
+            description.disabled = lockState.locked;
+            shape.disabled = lockState.locked;
             description.classList.toggle("changed-control", isDescriptionChanged(edit));
             shape.classList.toggle("changed-control", isShapeChanged(edit));
             badge.classList.toggle("is-on", changed);
@@ -1822,6 +1870,16 @@
             sizeSummary.textContent = getSizeSummary(index);
             moveSummary.textContent = getMoveSummary(index);
             cancelButton.disabled = !changed;
+            if (sizeButton) {
+              sizeButton.disabled = lockState.locked;
+            }
+            if (moveButton) {
+              moveButton.disabled = lockState.locked;
+            }
+            if (lockNote) {
+              lockNote.textContent = lockState.message;
+              lockNote.classList.toggle("is-visible", lockState.locked);
+            }
           }
         });
 
@@ -1869,6 +1927,82 @@
         return changed.length ? changed.map(function (direction) {
           return direction.label + " " + edit.moves[direction.key] + "mm";
         }).join(", ") : "이동 없음";
+      }
+
+      function getGroupStates() {
+        var groups = {};
+
+        state.parts.forEach(function (part, index) {
+          if (getParentId(part)) {
+            return;
+          }
+
+          var partId = getPartId(part, index);
+          groups[partId] = {
+            parentIndex: index,
+            childIndexes: [],
+            parentChanged: false,
+            childChanged: false
+          };
+        });
+
+        state.parts.forEach(function (part, index) {
+          var parentId = getParentId(part);
+          if (!parentId) {
+            return;
+          }
+
+          var parentIndex = getPartIndexById(parentId);
+          if (parentIndex < 0) {
+            return;
+          }
+
+          if (!groups[parentId]) {
+            groups[parentId] = {
+              parentIndex: parentIndex,
+              childIndexes: [],
+              parentChanged: false,
+              childChanged: false
+            };
+          }
+          groups[parentId].childIndexes.push(index);
+        });
+
+        Object.keys(groups).forEach(function (groupId) {
+          var group = groups[groupId];
+          group.parentChanged = group.parentIndex >= 0 && isPartChanged(group.parentIndex);
+          group.childChanged = group.childIndexes.some(isPartChanged);
+        });
+
+        return groups;
+      }
+
+      function getPartLockState(index, groups) {
+        var part = state.parts[index];
+        var parentId = getParentId(part);
+        var groupMap = groups || getGroupStates();
+
+        if (parentId) {
+          var childGroup = groupMap[parentId];
+          if (childGroup && childGroup.parentChanged) {
+            return {
+              locked: true,
+              message: "상위가 수정됨 — 하위는 상위 기준으로 무시됨"
+            };
+          }
+          return { locked: false, message: "" };
+        }
+
+        var partId = getPartId(part, index);
+        var parentGroup = groupMap[partId];
+        if (parentGroup && parentGroup.childChanged) {
+          return {
+            locked: true,
+            message: "하위 요소 수정 중 — 상위는 잠김"
+          };
+        }
+
+        return { locked: false, message: "" };
       }
 
       function isPartChanged(index) {
@@ -1934,23 +2068,12 @@
           return;
         }
 
-        var changedIndexes = state.parts
-          .map(function (_part, index) { return index; })
-          .filter(isPartChanged);
-
-        var modify = changedIndexes.map(buildModifyEntry).filter(Boolean);
-        var changedIndexSet = changedIndexes.reduce(function (set, index) {
-          set[index] = true;
-          return set;
-        }, {});
-
-        var preserveIds = state.parts
-          .map(function (part, index) {
-            return changedIndexSet[index] ? null : getPartId(part, index);
-          })
-          .filter(function (id) {
-            return id !== null && id !== "";
+        var promptPlan = buildPromptPlan();
+        var modify = promptPlan.modifyIndexes.map(function (index) {
+          return buildModifyEntry(index, {
+            regenerateChildren: Boolean(promptPlan.regenerateChildren[index])
           });
+        }).filter(Boolean);
 
         var output = {
           "/imagine": true,
@@ -1959,7 +2082,7 @@
             edit_summary: buildEditSummary(modify),
             base_image: "uploaded original image",
             modify: modify,
-            preserve_ids: preserveIds,
+            preserve_ids: promptPlan.preserveIds,
             preserve_note: "All parts listed in preserve_ids must remain exactly as in the original image.",
             lock_rule: cloneValue(getLockRule())
           },
@@ -1979,7 +2102,65 @@
         copyBtn.disabled = false;
       }
 
+      function buildPromptPlan() {
+        var groupStates = getGroupStates();
+        var modifyIndexes = [];
+        var excludePreserve = {};
+        var handled = {};
+        var regenerateChildren = {};
+
+        Object.keys(groupStates).forEach(function (groupId) {
+          var group = groupStates[groupId];
+          var memberIndexes = [group.parentIndex].concat(group.childIndexes).filter(function (index) {
+            return index >= 0;
+          });
+
+          memberIndexes.forEach(function (index) {
+            handled[index] = true;
+          });
+
+          if (group.parentChanged) {
+            modifyIndexes.push(group.parentIndex);
+            memberIndexes.forEach(function (index) {
+              excludePreserve[index] = true;
+            });
+            if (group.childIndexes.length) {
+              regenerateChildren[group.parentIndex] = true;
+            }
+            return;
+          }
+
+          group.childIndexes.forEach(function (childIndex) {
+            if (isPartChanged(childIndex)) {
+              modifyIndexes.push(childIndex);
+              excludePreserve[childIndex] = true;
+            }
+          });
+        });
+
+        state.parts.forEach(function (_part, index) {
+          if (handled[index] || !isPartChanged(index)) {
+            return;
+          }
+          modifyIndexes.push(index);
+          excludePreserve[index] = true;
+        });
+
+        return {
+          modifyIndexes: modifyIndexes,
+          regenerateChildren: regenerateChildren,
+          preserveIds: state.parts
+            .map(function (part, index) {
+              return excludePreserve[index] ? null : getPartId(part, index);
+            })
+            .filter(function (id) {
+              return id !== null && id !== "";
+            })
+        };
+      }
+
       function buildModifyEntry(index) {
+        var options = arguments.length > 1 && arguments[1] ? arguments[1] : {};
         var part = state.parts[index];
         var edit = state.edits[index];
         var changes = [];
@@ -2044,6 +2225,11 @@
           changes: changes,
           detail: "Modify " + getPartId(part, index) + " " + getPartName(part, index) + ". " + summary.join(" ") + " Keep all other parts unchanged."
         };
+
+        if (options.regenerateChildren) {
+          entry.detail += " regenerate child elements to match the parent change.";
+          entry.child_handling = "regenerate child elements to match the parent change";
+        }
 
         if (getParentId(part)) {
           entry.parent_id = getParentId(part);
@@ -2141,23 +2327,7 @@
           return "";
         }
 
-        var value = part.description_ko;
-        if (value == null) {
-          value = part.desc_ko;
-        }
-        if (value == null) {
-          value = part.description;
-        }
-        if (value == null) {
-          value = part.desc;
-        }
-        if (value == null) {
-          return "";
-        }
-        if (typeof value === "string") {
-          return translateEditableTextToKorean(value);
-        }
-        return translateEditableTextToKorean(JSON.stringify(value));
+        return part.description == null ? "" : String(part.description);
       }
 
       function getShapeText(part) {
@@ -2167,139 +2337,12 @@
 
         var value = part.shape_ko;
         if (value == null) {
-          value = part.shape_description_ko;
-        }
-        if (value == null) {
-          value = part.form_ko;
-        }
-        if (value == null) {
-          value = part.form_description_ko;
-        }
-        if (value == null) {
           value = part.shape;
-        }
-        if (value == null) {
-          value = part.shape_description;
-        }
-        if (value == null) {
-          value = part.form;
-        }
-        if (value == null) {
-          value = part.form_description;
         }
         if (value == null) {
           return "";
         }
-        if (typeof value === "string") {
-          return translateEditableTextToKorean(value);
-        }
-        return translateEditableTextToKorean(JSON.stringify(value));
-      }
-
-      function translateEditableTextToKorean(text) {
-        var value = compactText(text);
-        var replacements = [
-          [/right recessed display compartment/gi, "우측 매립 전시칸"],
-          [/left recessed display compartment/gi, "좌측 매립 전시칸"],
-          [/central recessed display compartment/gi, "중앙 매립 전시칸"],
-          [/center recessed display compartment/gi, "중앙 매립 전시칸"],
-          [/recessed display compartment/gi, "매립 전시칸"],
-          [/right recessed compartment/gi, "우측 매립 수납칸"],
-          [/left recessed compartment/gi, "좌측 매립 수납칸"],
-          [/central recessed compartment/gi, "중앙 매립 수납칸"],
-          [/center recessed compartment/gi, "중앙 매립 수납칸"],
-          [/recessed compartment/gi, "매립 수납칸"],
-          [/display niche/gi, "전시 니치"],
-          [/niche compartment/gi, "니치 수납칸"],
-          [/dark walnut lining/gi, "짙은 월넛 마감"],
-          [/walnut frame/gi, "월넛 프레임"],
-          [/walnut lining/gi, "월넛 내부 마감"],
-          [/brass edge/gi, "황동 테두리"],
-          [/rounded glass/gi, "둥근 유리"],
-          [/round glass/gi, "둥근 유리"],
-          [/warm internal light/gi, "따뜻한 내부 조명"],
-          [/internal light/gi, "내부 조명"],
-          [/pale map/gi, "연한 지도"],
-          [/framed document/gi, "액자형 문서"],
-          [/strolling woman/gi, "지나가는 여성"],
-          [/partially blocked by/gi, "일부 가려짐"],
-          [/visible/gi, "보이는"],
-          [/large rectangular/gi, "큰 직사각형"],
-          [/small rectangular/gi, "작은 직사각형"],
-          [/rectangular/gi, "직사각형"],
-          [/square/gi, "정사각형"],
-          [/circular/gi, "원형"],
-          [/round/gi, "둥근"],
-          [/oval/gi, "타원형"],
-          [/recessed/gi, "매립형"],
-          [/curved/gi, "곡면"],
-          [/arched/gi, "아치형"],
-          [/flat/gi, "평평한"],
-          [/vertical/gi, "수직"],
-          [/horizontal/gi, "수평"],
-          [/linear/gi, "선형"],
-          [/straight/gi, "직선"],
-          [/slanted/gi, "기울어진"],
-          [/stepped/gi, "단차형"],
-          [/layered/gi, "겹층형"],
-          [/compartment/gi, "수납칸"],
-          [/document/gi, "문서"],
-          [/map/gi, "지도"],
-          [/pale/gi, "연한"],
-          [/lining/gi, "내부 마감"],
-          [/warm/gi, "따뜻한"],
-          [/internal/gi, "내부"],
-          [/light/gi, "조명"],
-          [/panel/gi, "패널"],
-          [/field/gi, "면"],
-          [/case/gi, "케이스"],
-          [/display/gi, "전시"],
-          [/glass/gi, "유리"],
-          [/metal/gi, "금속"],
-          [/wood(en)?/gi, "목재"],
-          [/brass/gi, "황동"],
-          [/trim/gi, "테두리"],
-          [/border/gi, "경계"],
-          [/frame/gi, "프레임"],
-          [/opening/gi, "개구부"],
-          [/fixture/gi, "고정물"],
-          [/spot/gi, "스폿"],
-          [/top/gi, "상부"],
-          [/bottom/gi, "하부"],
-          [/left/gi, "좌측"],
-          [/right/gi, "우측"],
-          [/front/gi, "전면"],
-          [/rear|back/gi, "후면"],
-          [/ceiling/gi, "천장"],
-          [/floor/gi, "바닥"],
-          [/wall/gi, "벽면"],
-          [/dense/gi, "촘촘한"],
-          [/geometric/gi, "기하학적"],
-          [/pattern/gi, "패턴"],
-          [/partially/gi, "부분적으로"],
-          [/blocked/gi, "가려진"],
-          [/woman/gi, "여성"],
-          [/cream-white|cream white/gi, "크림 화이트"],
-          [/with/gi, "및"],
-          [/and/gi, "와"],
-          [/[;:,]/g, ", "],
-          [/\s+와\s+/g, "와 "],
-          [/\s+및\s+/g, " 및 "]
-        ];
-
-        replacements.forEach(function (pair) {
-          value = value.replace(pair[0], pair[1]);
-        });
-        return value
-          .replace(/프레임와/g, "프레임과")
-          .replace(/수납칸와/g, "수납칸과")
-          .replace(/전시칸와/g, "전시칸과")
-          .replace(/문서와 연한 지도/g, "문서와 연한 지도")
-          .replace(/보이는/g, "보임")
-          .replace(/\s+,/g, ",")
-          .replace(/,\s*,/g, ",")
-          .replace(/\s+/g, " ")
-          .trim();
+        return typeof value === "string" ? value : JSON.stringify(value);
       }
 
       function getParentPathLabel(part) {
