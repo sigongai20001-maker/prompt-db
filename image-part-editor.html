@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>이미지 부분수정 프롬프트 생성기</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.35.0/tabler-icons.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-soft: #f1f4f7;
+      --surface-raised: #ffffff;
+      --text: #17202a;
+      --text-strong: #0f1720;
+      --muted: #5d6877;
+      --border: #d8dee7;
+      --border-strong: #bdc6d2;
+      --button: #1d2733;
+      --button-hover: #111923;
+      --button-text: #ffffff;
+      --button-soft: #eef2f6;
+      --button-soft-hover: #e4e9ef;
+      --button-soft-text: #18212c;
+      --disabled: #aeb8c4;
+      --danger: #c43636;
+      --danger-soft: #fff0f0;
+      --accent: #1D9E75;
+      --accent-soft: #E1F5EE;
+      --accent-text: #085041;
+      --focus: #2474d7;
+      --code-bg: #101820;
+      --code-text: #e9f0f7;
+      --radius-sm: 8px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --overlay: rgba(8, 13, 18, 0.5);
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #101418;
+      --surface: #171d23;
+      --surface-soft: #1f2730;
+      --surface-raised: #1a2128;
+      --text: #dce3ea;
+      --text-strong: #f5f7fa;
+      --muted: #a7b2bf;
+      --border: #303a45;
+      --border-strong: #43505d;
+      --button: #e8eef4;
+      --button-hover: #ffffff;
+      --button-text: #101418;
+      --button-soft: #232c35;
+      --button-soft-hover: #2d3742;
+      --button-soft-text: #eef3f8;
+      --disabled: #687482;
+      --danger: #ff8a8a;
+      --danger-soft: #3a1e22;
+      --accent: #28bd8e;
+      --accent-soft: #123b31;
+      --accent-text: #b9f2de;
+      --focus: #74a9ff;
+      --code-bg: #070a0d;
+      --code-text: #eef6ff;
+      --overlay: rgba(0, 0, 0, 0.68);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+    }
+
+    .app {
+      width: min(1380px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 104px;
+    }
+
+    .topbar,
+    .panel-header,
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .topbar {
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 28px;
+      font-weight: 760;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .theme-toggle {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface-soft);
+      border-color: var(--border-strong);
+    }
+
+    .panel {
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-raised);
+    }
+
+    .panel-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 16px;
+      font-weight: 720;
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .input-area {
+      width: 100%;
+      min-height: 132px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .input-area:focus,
+    .field:focus,
+    .table-description:focus,
+    .move-input:focus {
+      border-color: var(--focus);
+      outline: 2px solid color-mix(in srgb, var(--focus) 24%, transparent);
+      outline-offset: 1px;
+    }
+
+    .error-message {
+      display: none;
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-sm);
+      background: var(--danger-soft);
+      color: var(--danger);
+      font-weight: 650;
+    }
+
+    .error-message.is-visible {
+      display: block;
+    }
+
+    .hint {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .actions {
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      background: var(--button-soft);
+      color: var(--button-soft-text);
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .btn.icon-only {
+      width: 40px;
+      padding: 0;
+    }
+
+    .btn:hover:not(:disabled) {
+      background: var(--button-soft-hover);
+    }
+
+    .btn.primary {
+      background: var(--button);
+      color: var(--button-text);
+    }
+
+    .btn.primary:hover:not(:disabled) {
+      background: var(--button-hover);
+    }
+
+    .btn:disabled {
+      background: var(--button-soft);
+      color: var(--disabled);
+      cursor: not-allowed;
+    }
+
+    .status-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+    }
+
+    .summary-table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .summary-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--surface-soft);
+      color: var(--text-strong);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .summary-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .summary-table tr.is-changed td {
+      background: var(--accent-soft);
+    }
+
+    .col-state {
+      width: 86px;
+    }
+
+    .col-id {
+      width: 210px;
+    }
+
+    .col-name {
+      width: 170px;
+    }
+
+    .col-description {
+      min-width: 330px;
+    }
+
+    .col-tools {
+      width: 260px;
+    }
+
+    .part-id {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .part-name {
+      color: var(--text-strong);
+      font-weight: 760;
+      overflow-wrap: anywhere;
+    }
+
+    .changed-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .changed-badge.is-on {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .table-description,
+    .field,
+    .move-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+    }
+
+    .table-description {
+      min-height: 74px;
+      resize: vertical;
+      padding: 9px 10px;
+      line-height: 1.45;
+    }
+
+    .field,
+    .move-input {
+      height: 40px;
+      padding: 0 10px;
+    }
+
+    .changed-control {
+      border-color: var(--accent) !important;
+      background: var(--accent-soft) !important;
+      color: var(--accent-text) !important;
+    }
+
+    .tool-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tool-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-text {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .empty-state {
+      margin: 0;
+      padding: 28px 18px;
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      color: var(--muted);
+      text-align: center;
+      background: var(--surface);
+    }
+
+    .result-shell {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--code-bg);
+    }
+
+    pre {
+      margin: 0;
+      min-height: 180px;
+      max-height: 560px;
+      padding: 14px;
+      overflow: auto;
+      color: var(--code-text);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre;
+    }
+
+    .copy-feedback {
+      min-width: 64px;
+      color: var(--accent-text);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .copy-feedback:empty {
+      display: none;
+    }
+
+    .floating-actionbar {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      z-index: 15;
+      width: min(720px, calc(100% - 32px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      transform: translateX(-50%);
+    }
+
+    .floating-actionbar .btn {
+      min-width: 250px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: var(--overlay);
+    }
+
+    .modal-backdrop.is-open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: min(760px, calc(100vh - 36px));
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .modal-header,
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface-raised);
+    }
+
+    .modal-header {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-footer {
+      border-top: 1px solid var(--border);
+    }
+
+    .modal-title {
+      margin: 0;
+      color: var(--text-strong);
+      font-size: 17px;
+      font-weight: 800;
+      overflow-wrap: anywhere;
+    }
+
+    .modal-subtitle {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .modal-body {
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .label-key {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    .unit {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .move-field {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface-raised);
+    }
+
+    .move-icon {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-sm);
+      background: var(--surface-soft);
+      color: var(--text-strong);
+      flex: 0 0 auto;
+    }
+
+    .move-name {
+      color: var(--text-strong);
+      font-size: 13px;
+      font-weight: 760;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .move-input {
+      text-align: right;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 780px) {
+      .app {
+        width: min(100% - 20px, 1380px);
+        padding-top: 16px;
+      }
+
+      .topbar,
+      .panel-header,
+      .actions,
+      .modal-header,
+      .modal-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .theme-toggle {
+        align-self: flex-end;
+      }
+
+      .button-row,
+      .btn {
+        width: 100%;
+      }
+
+      .floating-actionbar {
+        width: calc(100% - 20px);
+        bottom: 10px;
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .floating-actionbar .btn {
+        min-width: 0;
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>이미지 부분수정 프롬프트 생성기</h1>
+        <p class="subtitle">붙여넣으면 자동으로 표를 불러오고, 변경된 파트만 나노 바나나용 JSON으로 정리합니다.</p>
+      </div>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="다크 모드 전환" title="다크 모드 전환">
+        <i class="ti ti-moon" aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <section class="panel" aria-labelledby="inputTitle">
+      <div class="panel-header">
+        <h2 class="panel-title" id="inputTitle"><i class="ti ti-code" aria-hidden="true"></i> JSON 입력</h2>
+      </div>
+      <div class="panel-body">
+        <label class="sr-only" for="jsonInput">분석 JSON</label>
+        <textarea id="jsonInput" class="input-area" spellcheck="false" placeholder="{&#10;  &quot;parts&quot;: []&#10;}"></textarea>
+        <p class="hint">JSON을 붙여넣으면 자동으로 종합표를 불러옵니다. 코드펜스(```json)도 자동으로 제거합니다.</p>
+        <div class="error-message" id="errorMessage" role="alert"></div>
+        <div class="actions">
+          <div class="button-row">
+            <button class="btn primary" id="loadBtn" type="button">
+              <i class="ti ti-table-import" aria-hidden="true"></i>
+              표 불러오기
+            </button>
+            <button class="btn" id="resetBtn" type="button" disabled>
+              <i class="ti ti-rotate" aria-hidden="true"></i>
+              변경 초기화
+            </button>
+          </div>
+          <div class="status-line" id="changeCounter">0개 파트 수정됨</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="partsTitle">
+      <div class="panel-header">
+        <h2 class="panel-title" id="partsTitle"><i class="ti ti-table" aria-hidden="true"></i> 파트 종합표</h2>
+        <button class="btn primary" id="generateBtn" type="button" disabled>
+          <i class="ti ti-arrows-move" aria-hidden="true"></i>
+          변경된 파트만 프롬프트 생성
+        </button>
+      </div>
+      <div class="panel-body" id="partsContainer">
+        <p class="empty-state">JSON을 붙여넣으면 파트 종합표가 표시됩니다.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="resultTitle">
+      <div class="panel-header">
+        <h2 class="panel-title" id="resultTitle"><i class="ti ti-code" aria-hidden="true"></i> 생성 결과</h2>
+        <div class="button-row">
+          <span class="copy-feedback" id="copyFeedback" aria-live="polite"></span>
+          <button class="btn" id="copyBtn" type="button" disabled>
+            <i class="ti ti-copy" aria-hidden="true"></i>
+            복사
+          </button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="result-shell">
+          <pre><code id="resultCode"></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <div class="floating-actionbar" aria-label="프롬프트 생성 고정 버튼">
+      <div class="status-line" id="floatingChangeCounter">0개 파트 수정됨</div>
+      <button class="btn primary" id="floatingGenerateBtn" type="button" disabled>
+        <i class="ti ti-arrows-move" aria-hidden="true"></i>
+        변경된 파트만 프롬프트 생성
+      </button>
+    </div>
+  </main>
+
+  <div class="modal-backdrop" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="modalTitle">상세 수정</h2>
+          <p class="modal-subtitle" id="modalSubtitle"></p>
+        </div>
+        <button class="btn icon-only" id="modalCloseBtn" type="button" aria-label="팝업 닫기" title="닫기">
+          <i class="ti ti-x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <div class="status-line" id="modalStatus"></div>
+        <div class="button-row">
+          <button class="btn" id="modalResetBtn" type="button">
+            <i class="ti ti-rotate" aria-hidden="true"></i>
+            이 항목 초기화
+          </button>
+          <button class="btn primary" id="modalDoneBtn" type="button">
+            <i class="ti ti-check" aria-hidden="true"></i>
+            완료
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var STORAGE_KEY = "image-part-editor:last-json";
+      var THEME_KEY = "image-part-editor:theme";
+
+      var jsonInput = document.getElementById("jsonInput");
+      var loadBtn = document.getElementById("loadBtn");
+      var resetBtn = document.getElementById("resetBtn");
+      var generateBtn = document.getElementById("generateBtn");
+      var floatingGenerateBtn = document.getElementById("floatingGenerateBtn");
+      var copyBtn = document.getElementById("copyBtn");
+      var errorMessage = document.getElementById("errorMessage");
+      var partsContainer = document.getElementById("partsContainer");
+      var changeCounter = document.getElementById("changeCounter");
+      var floatingChangeCounter = document.getElementById("floatingChangeCounter");
+      var resultCode = document.getElementById("resultCode");
+      var copyFeedback = document.getElementById("copyFeedback");
+      var themeToggle = document.getElementById("themeToggle");
+      var detailModal = document.getElementById("detailModal");
+      var modalTitle = document.getElementById("modalTitle");
+      var modalSubtitle = document.getElementById("modalSubtitle");
+      var modalBody = document.getElementById("modalBody");
+      var modalStatus = document.getElementById("modalStatus");
+      var modalCloseBtn = document.getElementById("modalCloseBtn");
+      var modalDoneBtn = document.getElementById("modalDoneBtn");
+      var modalResetBtn = document.getElementById("modalResetBtn");
+
+      var state = {
+        source: null,
+        parts: [],
+        edits: [],
+        changedCount: 0,
+        autoLoadTimer: null,
+        modal: null
+      };
+
+      var directionMeta = [
+        { key: "right", label: "오른쪽", icon: "ti-arrow-right", instruction: function (value) { return "move " + value + "mm to the right"; } },
+        { key: "left", label: "왼쪽", icon: "ti-arrow-left", instruction: function (value) { return "move " + value + "mm to the left"; } },
+        { key: "up", label: "위로", icon: "ti-arrow-up", instruction: function (value) { return "move " + value + "mm upward"; } },
+        { key: "down", label: "아래로", icon: "ti-arrow-down", instruction: function (value) { return "move " + value + "mm downward"; } },
+        { key: "forward", label: "앞으로", icon: "ti-zoom-in", instruction: function (value) { return "move " + value + "mm forward toward the camera"; } },
+        { key: "backward", label: "뒤로", icon: "ti-zoom-out", instruction: function (value) { return "move " + value + "mm backward away from the camera"; } }
+      ];
+
+      initialize();
+
+      function initialize() {
+        applyTheme(localStorage.getItem(THEME_KEY) || "light");
+
+        var savedJson = localStorage.getItem(STORAGE_KEY);
+        if (savedJson) {
+          jsonInput.value = savedJson;
+        }
+
+        loadBtn.addEventListener("click", function () {
+          loadPartsFromInput(true);
+        });
+        resetBtn.addEventListener("click", resetAllChanges);
+        generateBtn.addEventListener("click", generatePrompt);
+        floatingGenerateBtn.addEventListener("click", generatePrompt);
+        copyBtn.addEventListener("click", copyResult);
+        themeToggle.addEventListener("click", toggleTheme);
+        jsonInput.addEventListener("paste", function () {
+          window.setTimeout(function () {
+            autoLoadFromInput();
+          }, 0);
+        });
+        jsonInput.addEventListener("input", function () {
+          localStorage.setItem(STORAGE_KEY, jsonInput.value);
+          scheduleAutoLoad();
+        });
+        modalCloseBtn.addEventListener("click", closeModal);
+        modalDoneBtn.addEventListener("click", closeModal);
+        modalResetBtn.addEventListener("click", resetCurrentModalValues);
+        detailModal.addEventListener("click", function (event) {
+          if (event.target === detailModal) {
+            closeModal();
+          }
+        });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && detailModal.classList.contains("is-open")) {
+            closeModal();
+          }
+        });
+      }
+
+      function scheduleAutoLoad() {
+        window.clearTimeout(state.autoLoadTimer);
+        state.autoLoadTimer = window.setTimeout(autoLoadFromInput, 450);
+      }
+
+      function autoLoadFromInput() {
+        if (!jsonInput.value.trim()) {
+          return;
+        }
+        loadPartsFromInput(false);
+      }
+
+      function applyTheme(theme) {
+        var nextTheme = theme === "dark" ? "dark" : "light";
+        document.documentElement.dataset.theme = nextTheme;
+        localStorage.setItem(THEME_KEY, nextTheme);
+        themeToggle.innerHTML = nextTheme === "dark"
+          ? '<i class="ti ti-sun" aria-hidden="true"></i>'
+          : '<i class="ti ti-moon" aria-hidden="true"></i>';
+      }
+
+      function toggleTheme() {
+        applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+      }
+
+      function loadPartsFromInput(showParseError) {
+        clearError();
+        resultCode.textContent = "";
+        copyFeedback.textContent = "";
+        copyBtn.disabled = true;
+
+        var parsed;
+        try {
+          parsed = JSON.parse(stripCodeFence(jsonInput.value));
+        } catch (error) {
+          if (showParseError) {
+            showError("JSON 파싱 실패: " + error.message);
+          }
+          return;
+        }
+
+        if (!Array.isArray(parsed.parts)) {
+          showError("parts 배열을 찾을 수 없습니다");
+          return;
+        }
+
+        state.source = parsed;
+        state.parts = parsed.parts;
+        state.edits = parsed.parts.map(createEditState);
+        localStorage.setItem(STORAGE_KEY, jsonInput.value);
+        renderSummaryTable();
+        updateChangeState();
+      }
+
+      function stripCodeFence(text) {
+        var value = String(text || "").trim();
+        if (value.indexOf("```") !== 0) {
+          return value;
+        }
+        value = value.replace(/^```[a-zA-Z0-9_-]*\s*/, "");
+        value = value.replace(/\s*```$/, "");
+        return value.trim();
+      }
+
+      function createEditState(part) {
+        var sizes = {};
+        if (isPlainObject(part.real_size_mm)) {
+          Object.keys(part.real_size_mm).forEach(function (key) {
+            sizes[key] = {
+              original: part.real_size_mm[key] == null ? "" : String(part.real_size_mm[key]),
+              value: part.real_size_mm[key] == null ? "" : String(part.real_size_mm[key]),
+              numeric: isNumericLike(part.real_size_mm[key])
+            };
+          });
+        }
+
+        var moves = {};
+        directionMeta.forEach(function (direction) {
+          moves[direction.key] = "";
+        });
+
+        return {
+          descriptionOriginal: part.description == null ? "" : String(part.description),
+          description: part.description == null ? "" : String(part.description),
+          sizes: sizes,
+          moves: moves
+        };
+      }
+
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.classList.add("is-visible");
+      }
+
+      function clearError() {
+        errorMessage.textContent = "";
+        errorMessage.classList.remove("is-visible");
+      }
+
+      function renderSummaryTable() {
+        partsContainer.innerHTML = "";
+
+        if (!state.parts.length) {
+          partsContainer.appendChild(createEmptyState("parts 배열이 비어 있습니다."));
+          return;
+        }
+
+        var wrap = createElement("div", "table-wrap");
+        var table = createElement("table", "summary-table");
+        var thead = document.createElement("thead");
+        var tbody = document.createElement("tbody");
+
+        thead.innerHTML = [
+          "<tr>",
+          '<th class="col-state">상태</th>',
+          '<th class="col-id">id</th>',
+          '<th class="col-name">파트명</th>',
+          '<th class="col-description">설명 수정</th>',
+          '<th class="col-tools">수치/위치 상세</th>',
+          "</tr>"
+        ].join("");
+
+        state.parts.forEach(function (part, index) {
+          tbody.appendChild(createTableRow(part, index));
+        });
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        wrap.appendChild(table);
+        partsContainer.appendChild(wrap);
+      }
+
+      function createTableRow(part, index) {
+        var row = document.createElement("tr");
+        row.dataset.index = String(index);
+
+        var stateCell = document.createElement("td");
+        var idCell = document.createElement("td");
+        var nameCell = document.createElement("td");
+        var descriptionCell = document.createElement("td");
+        var toolsCell = document.createElement("td");
+        var badge = createElement("span", "changed-badge", "원본");
+        var idNode = createElement("div", "part-id", getPartId(part, index));
+        var nameNode = createElement("div", "part-name", getPartName(part, index));
+        var description = createElement("textarea", "table-description");
+        var tools = createElement("div", "tool-stack");
+
+        badge.dataset.role = "badge";
+        description.value = state.edits[index].description;
+        description.dataset.role = "description";
+        description.dataset.index = String(index);
+        description.spellcheck = false;
+        description.addEventListener("input", function () {
+          state.edits[index].description = description.value;
+          updateChangeState();
+        });
+
+        stateCell.appendChild(badge);
+        idCell.appendChild(idNode);
+        nameCell.appendChild(nameNode);
+        descriptionCell.appendChild(description);
+        tools.appendChild(createToolRow(index, "size"));
+        tools.appendChild(createToolRow(index, "move"));
+        toolsCell.appendChild(tools);
+
+        row.appendChild(stateCell);
+        row.appendChild(idCell);
+        row.appendChild(nameCell);
+        row.appendChild(descriptionCell);
+        row.appendChild(toolsCell);
+        return row;
+      }
+
+      function createToolRow(index, type) {
+        var row = createElement("div", "tool-row");
+        var summary = createElement("div", "summary-text");
+        var button = createElement("button", "btn", type === "size" ? "수치 입력" : "위치 이동");
+        button.type = "button";
+        button.dataset.action = type;
+        button.dataset.index = String(index);
+        button.addEventListener("click", function () {
+          openModal(index, type);
+        });
+
+        if (type === "size") {
+          button.prepend(createIcon("ti-ruler-measure"));
+          summary.dataset.role = "size-summary";
+        } else {
+          button.prepend(createIcon("ti-arrows-move"));
+          summary.dataset.role = "move-summary";
+        }
+
+        row.appendChild(summary);
+        row.appendChild(button);
+        return row;
+      }
+
+      function openModal(index, type) {
+        var part = state.parts[index];
+        state.modal = { index: index, type: type };
+        modalTitle.textContent = type === "size" ? "수치 상세 입력" : "위치 이동 상세 입력";
+        modalSubtitle.textContent = getPartId(part, index) + " / " + getPartName(part, index);
+        modalBody.innerHTML = "";
+
+        if (type === "size") {
+          renderSizeModal(index);
+        } else {
+          renderMoveModal(index);
+        }
+
+        updateModalStatus();
+        detailModal.classList.add("is-open");
+      }
+
+      function renderSizeModal(index) {
+        var edit = state.edits[index];
+        var keys = Object.keys(edit.sizes);
+        if (!keys.length) {
+          modalBody.appendChild(createEmptyState("이 파트에는 real_size_mm 값이 없습니다."));
+          return;
+        }
+
+        var grid = createElement("div", "detail-grid");
+        keys.forEach(function (key) {
+          var item = edit.sizes[key];
+          var wrap = createElement("label", "detail-field");
+          var label = createElement("span", "field-label");
+          var keyNode = createElement("span", "label-key", key);
+          var unitNode = createElement("span", "unit", "mm");
+          var input = createElement("input", "field");
+
+          input.type = item.numeric ? "number" : "text";
+          input.inputMode = item.numeric ? "decimal" : "text";
+          input.step = "any";
+          input.value = item.value;
+          input.dataset.key = key;
+          input.addEventListener("input", function () {
+            edit.sizes[key].value = input.value;
+            updateChangeState();
+            updateModalStatus();
+            input.classList.toggle("changed-control", isSizeChanged(edit.sizes[key]));
+          });
+
+          label.appendChild(keyNode);
+          label.appendChild(unitNode);
+          wrap.appendChild(label);
+          wrap.appendChild(input);
+          grid.appendChild(wrap);
+          input.classList.toggle("changed-control", isSizeChanged(item));
+        });
+        modalBody.appendChild(grid);
+      }
+
+      function renderMoveModal(index) {
+        var edit = state.edits[index];
+        if (!hasPositionInfo(state.parts[index])) {
+          modalBody.appendChild(createEmptyState("이 파트에는 위치 이동 기준 정보가 없습니다."));
+          return;
+        }
+
+        var grid = createElement("div", "detail-grid");
+        directionMeta.forEach(function (direction) {
+          var label = createElement("label", "move-field");
+          var iconBox = createElement("span", "move-icon");
+          var name = createElement("span", "move-name", direction.label);
+          var input = createElement("input", "move-input");
+          var unit = createElement("span", "unit", "mm");
+
+          input.type = "number";
+          input.inputMode = "decimal";
+          input.step = "any";
+          input.min = "0";
+          input.placeholder = "0";
+          input.value = edit.moves[direction.key] || "";
+          input.dataset.direction = direction.key;
+          input.addEventListener("input", function () {
+            edit.moves[direction.key] = input.value;
+            updateChangeState();
+            updateModalStatus();
+            input.classList.toggle("changed-control", isMoveValueChanged(input.value));
+          });
+
+          iconBox.appendChild(createIcon(direction.icon));
+          label.appendChild(iconBox);
+          label.appendChild(name);
+          label.appendChild(input);
+          label.appendChild(unit);
+          grid.appendChild(label);
+          input.classList.toggle("changed-control", isMoveValueChanged(input.value));
+        });
+        modalBody.appendChild(grid);
+      }
+
+      function closeModal() {
+        detailModal.classList.remove("is-open");
+        state.modal = null;
+      }
+
+      function resetCurrentModalValues() {
+        if (!state.modal) {
+          return;
+        }
+
+        var edit = state.edits[state.modal.index];
+        if (state.modal.type === "size") {
+          Object.keys(edit.sizes).forEach(function (key) {
+            edit.sizes[key].value = edit.sizes[key].original;
+          });
+        } else {
+          Object.keys(edit.moves).forEach(function (key) {
+            edit.moves[key] = "";
+          });
+        }
+
+        openModal(state.modal.index, state.modal.type);
+        updateChangeState();
+      }
+
+      function updateChangeState() {
+        var changedCount = 0;
+
+        state.edits.forEach(function (edit, index) {
+          var row = partsContainer.querySelector('tr[data-index="' + index + '"]');
+          var changed = isPartChanged(index);
+          if (changed) {
+            changedCount += 1;
+          }
+
+          if (row) {
+            row.classList.toggle("is-changed", changed);
+            var description = row.querySelector('[data-role="description"]');
+            var badge = row.querySelector('[data-role="badge"]');
+            var sizeSummary = row.querySelector('[data-role="size-summary"]');
+            var moveSummary = row.querySelector('[data-role="move-summary"]');
+            description.classList.toggle("changed-control", isDescriptionChanged(edit));
+            badge.classList.toggle("is-on", changed);
+            badge.textContent = changed ? "수정됨" : "원본";
+            sizeSummary.textContent = getSizeSummary(index);
+            moveSummary.textContent = getMoveSummary(index);
+          }
+        });
+
+        state.changedCount = changedCount;
+        changeCounter.textContent = changedCount + "개 파트 수정됨";
+        floatingChangeCounter.textContent = changedCount + "개 파트 수정됨";
+        generateBtn.disabled = changedCount === 0;
+        floatingGenerateBtn.disabled = changedCount === 0;
+        resetBtn.disabled = !state.source;
+      }
+
+      function updateModalStatus() {
+        if (!state.modal) {
+          return;
+        }
+
+        var index = state.modal.index;
+        modalStatus.textContent = state.modal.type === "size" ? getSizeSummary(index) : getMoveSummary(index);
+      }
+
+      function getSizeSummary(index) {
+        var edit = state.edits[index];
+        var keys = Object.keys(edit.sizes);
+        if (!keys.length) {
+          return "수치 없음";
+        }
+
+        var changed = keys.filter(function (key) {
+          return isSizeChanged(edit.sizes[key]);
+        });
+
+        return changed.length ? changed.length + "개 수치 변경" : keys.length + "개 수치";
+      }
+
+      function getMoveSummary(index) {
+        if (!hasPositionInfo(state.parts[index])) {
+          return "위치 정보 없음";
+        }
+
+        var edit = state.edits[index];
+        var changed = directionMeta.filter(function (direction) {
+          return isMoveValueChanged(edit.moves[direction.key]);
+        });
+
+        return changed.length ? changed.map(function (direction) {
+          return direction.label + " " + edit.moves[direction.key] + "mm";
+        }).join(", ") : "이동 없음";
+      }
+
+      function isPartChanged(index) {
+        var edit = state.edits[index];
+        return isDescriptionChanged(edit) ||
+          Object.keys(edit.sizes).some(function (key) { return isSizeChanged(edit.sizes[key]); }) ||
+          Object.keys(edit.moves).some(function (key) { return isMoveValueChanged(edit.moves[key]); });
+      }
+
+      function isDescriptionChanged(edit) {
+        return String(edit.description) !== String(edit.descriptionOriginal);
+      }
+
+      function isSizeChanged(item) {
+        return String(item.value) !== String(item.original);
+      }
+
+      function isMoveValueChanged(value) {
+        var trimmed = String(value || "").trim();
+        if (trimmed === "") {
+          return false;
+        }
+
+        var number = Number(trimmed);
+        if (!Number.isFinite(number)) {
+          return true;
+        }
+
+        return number !== 0;
+      }
+
+      function resetAllChanges() {
+        state.edits = state.parts.map(createEditState);
+        renderSummaryTable();
+        resultCode.textContent = "";
+        copyFeedback.textContent = "";
+        copyBtn.disabled = true;
+        updateChangeState();
+      }
+
+      function generatePrompt() {
+        if (!state.source) {
+          return;
+        }
+
+        var changedIndexes = state.parts
+          .map(function (_part, index) { return index; })
+          .filter(isPartChanged);
+
+        var modify = changedIndexes.map(buildModifyEntry).filter(Boolean);
+        var changedIndexSet = changedIndexes.reduce(function (set, index) {
+          set[index] = true;
+          return set;
+        }, {});
+
+        var preserveIds = state.parts
+          .map(function (part, index) {
+            return changedIndexSet[index] ? null : getPartId(part, index);
+          })
+          .filter(function (id) {
+            return id !== null && id !== "";
+          });
+
+        var output = {
+          "/imagine": true,
+          image_edit_instruction: {
+            version: "2.0",
+            edit_summary: buildEditSummary(modify),
+            base_image: "uploaded original image",
+            modify: modify,
+            preserve_ids: preserveIds,
+            preserve_note: "All parts listed in preserve_ids must remain exactly as in the original image.",
+            lock_rule: cloneValue(getLockRule())
+          },
+          quality_checks: [
+            "Only apply changes listed in modify[]",
+            "Every part in preserve_ids must match the original exactly",
+            "Position moves are relative instructions in mm; do not move any part not listed",
+            "Maintain original camera angle, composition, and lighting direction"
+          ],
+          global_style_lock: cloneValue(state.source.global_style_lock),
+          generation_instruction: "반드시 나노 바나나로 생성. Generate 1 image now based on the JSON above. Apply only modify[] changes to the uploaded image. Preserve everything in preserve_ids and respect global_style_lock. Output a single full-resolution image only. No grid, no collage, no multiple images, no text."
+        };
+
+        removeUndefined(output);
+        resultCode.textContent = JSON.stringify(output, null, 2);
+        copyFeedback.textContent = "";
+        copyBtn.disabled = false;
+      }
+
+      function buildModifyEntry(index) {
+        var part = state.parts[index];
+        var edit = state.edits[index];
+        var changes = [];
+        var summary = [];
+
+        if (isDescriptionChanged(edit)) {
+          changes.push({
+            type: "description",
+            before: edit.descriptionOriginal,
+            after: edit.description
+          });
+          summary.push("Change description to \"" + compactText(edit.description) + "\".");
+        }
+
+        Object.keys(edit.sizes).forEach(function (key) {
+          var item = edit.sizes[key];
+          if (!isSizeChanged(item)) {
+            return;
+          }
+
+          var before = item.numeric ? toNumberOrString(item.original) : item.original;
+          var after = item.numeric ? toNumberOrString(item.value) : item.value.trim();
+          changes.push({
+            type: "size",
+            key: key,
+            before: before,
+            after: after,
+            unit: "mm"
+          });
+          summary.push("Change " + key + " from " + String(before) + "mm to " + String(after) + "mm.");
+        });
+
+        directionMeta.forEach(function (direction) {
+          var value = edit.moves[direction.key];
+          if (!isMoveValueChanged(value)) {
+            return;
+          }
+
+          var distance = toNumberOrString(value);
+          var instruction = direction.instruction(distance);
+          changes.push({
+            type: "position_move",
+            direction: direction.key,
+            distance_mm: distance,
+            instruction: instruction
+          });
+          summary.push(instruction + ".");
+        });
+
+        return {
+          target_id: getPartId(part, index),
+          name_ko: getPartName(part, index),
+          changes: changes,
+          detail: "Modify " + getPartId(part, index) + " " + getPartName(part, index) + ". " + summary.join(" ") + " Keep all other parts unchanged."
+        };
+      }
+
+      function buildEditSummary(modify) {
+        var names = modify.map(function (item) {
+          return item.name_ko || item.target_id;
+        });
+        return modify.length + "개 파트 부분수정: " + names.join(", ");
+      }
+
+      function getLockRule() {
+        if (state.source && Object.prototype.hasOwnProperty.call(state.source, "lock_rule")) {
+          return state.source.lock_rule;
+        }
+        if (state.source && state.source.image_reference && Object.prototype.hasOwnProperty.call(state.source.image_reference, "lock_rule")) {
+          return state.source.image_reference.lock_rule;
+        }
+        return undefined;
+      }
+
+      function copyResult() {
+        var text = resultCode.textContent;
+        if (!text) {
+          return;
+        }
+
+        copyFeedback.textContent = "";
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(showCopied, fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+      }
+
+      function fallbackCopy() {
+        var helper = document.createElement("textarea");
+        helper.value = resultCode.textContent;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.left = "-9999px";
+        document.body.appendChild(helper);
+        helper.select();
+        try {
+          document.execCommand("copy");
+          showCopied();
+        } catch (error) {
+          copyFeedback.textContent = "실패";
+        }
+        document.body.removeChild(helper);
+      }
+
+      function showCopied() {
+        copyFeedback.textContent = "복사됨";
+        copyBtn.innerHTML = '<i class="ti ti-check" aria-hidden="true"></i>복사됨';
+        window.setTimeout(function () {
+          copyBtn.innerHTML = '<i class="ti ti-copy" aria-hidden="true"></i>복사';
+          copyFeedback.textContent = "";
+        }, 1400);
+      }
+
+      function hasPositionInfo(part) {
+        return hasOwn(part, "bbox_px") ||
+          hasOwn(part, "position") ||
+          hasOwn(part, "position_px") ||
+          hasOwn(part, "position_mm") ||
+          hasOwn(part, "location") ||
+          hasOwn(part, "center_px") ||
+          hasOwn(part, "anchor_px");
+      }
+
+      function hasOwn(object, key) {
+        return Object.prototype.hasOwnProperty.call(object || {}, key);
+      }
+
+      function getPartId(part, index) {
+        if (part && part.id != null && String(part.id).trim() !== "") {
+          return String(part.id);
+        }
+        return "part_" + (index + 1);
+      }
+
+      function getPartName(part, index) {
+        if (part && part.name_ko != null && String(part.name_ko).trim() !== "") {
+          return String(part.name_ko);
+        }
+        if (part && part.name != null && String(part.name).trim() !== "") {
+          return String(part.name);
+        }
+        return getPartId(part, index);
+      }
+
+      function isPlainObject(value) {
+        return value !== null && typeof value === "object" && !Array.isArray(value);
+      }
+
+      function isNumericLike(value) {
+        if (typeof value === "number") {
+          return Number.isFinite(value);
+        }
+        if (typeof value !== "string") {
+          return false;
+        }
+        return /^-?\d+(\.\d+)?$/.test(value.trim());
+      }
+
+      function toNumberOrString(value) {
+        var text = String(value == null ? "" : value).trim();
+        var number = Number(text);
+        return text !== "" && Number.isFinite(number) ? number : text;
+      }
+
+      function compactText(value) {
+        return String(value || "").replace(/\s+/g, " ").trim();
+      }
+
+      function cloneValue(value) {
+        if (value === undefined) {
+          return undefined;
+        }
+        return JSON.parse(JSON.stringify(value));
+      }
+
+      function removeUndefined(value) {
+        if (!value || typeof value !== "object") {
+          return value;
+        }
+        Object.keys(value).forEach(function (key) {
+          if (value[key] === undefined) {
+            delete value[key];
+            return;
+          }
+          removeUndefined(value[key]);
+        });
+        return value;
+      }
+
+      function createElement(tagName, className, text) {
+        var element = document.createElement(tagName);
+        if (className) {
+          element.className = className;
+        }
+        if (text !== undefined) {
+          element.textContent = text;
+        }
+        return element;
+      }
+
+      function createIcon(iconName) {
+        var icon = createElement("i", "ti " + iconName);
+        icon.setAttribute("aria-hidden", "true");
+        return icon;
+      }
+
+      function createEmptyState(text) {
+        return createElement("p", "empty-state", text);
+      }
+    }());
+  </script>
+</body>
+</html>
