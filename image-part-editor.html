@@ -1241,12 +1241,25 @@
         ensurePatternOption("style", style);
 
         return {
+          isNew: false,
           densityOriginal: density,
           density: density,
           typeOriginal: type,
           type: type,
           styleOriginal: style,
           style: style
+        };
+      }
+
+      function createNewPatternEditState() {
+        return {
+          isNew: true,
+          densityOriginal: "",
+          density: "",
+          typeOriginal: "",
+          type: "",
+          styleOriginal: "",
+          style: ""
         };
       }
 
@@ -1404,7 +1417,9 @@
         var idNode = createElement("div", "part-id", getPartId(part, index));
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var parentId = getParentId(part);
-        var patternPart = isPatternPart(part);
+        var edit = state.edits[index];
+        var originalPatternPart = isPatternPart(part);
+        var patternPart = originalPatternPart || Boolean(edit.pattern && edit.pattern.isNew);
         var tools = createElement("div", "tool-stack");
         var lockState = getPartLockState(index);
         var lockNote = createElement("div", "lock-note");
@@ -1444,6 +1459,9 @@
             tools.appendChild(childToggle);
           }
         }
+        if (shouldShowPatternAddButton(part, edit)) {
+          tools.appendChild(createPatternAddRow(index));
+        }
         if (!patternPart) {
           tools.appendChild(createToolRow(index, "size"));
           tools.appendChild(createToolRow(index, "move"));
@@ -1458,6 +1476,10 @@
         row.appendChild(contentCell);
         row.appendChild(toolsCell);
         return row;
+      }
+
+      function shouldShowPatternAddButton(part, edit) {
+        return Boolean(getParentId(part)) && !isPatternPart(part) && !edit.pattern;
       }
 
       function createContentEditor(index, locked) {
@@ -1497,6 +1519,7 @@
         input.step = "any";
         input.min = "0";
         input.value = edit.density;
+        input.placeholder = edit.isNew ? "예: 20" : "";
         input.dataset.role = "pattern-density";
         input.disabled = locked;
         input.addEventListener("input", function () {
@@ -1608,6 +1631,29 @@
         button.prepend(createIcon(expanded ? "ti-chevron-up" : "ti-chevron-down"));
         button.addEventListener("click", function () {
           state.expandedParents[parentId] = !state.expandedParents[parentId];
+          renderSummaryTable();
+          updateChangeState();
+        });
+
+        row.appendChild(summary);
+        row.appendChild(button);
+        return row;
+      }
+
+      function createPatternAddRow(index) {
+        var row = createElement("div", "tool-row");
+        var summary = createElement("div", "summary-text", "패턴 없음");
+        var button = createElement("button", "btn", "패턴 추가");
+        button.type = "button";
+        button.dataset.action = "pattern-add";
+        button.dataset.index = String(index);
+        button.disabled = getPartLockState(index).locked;
+        button.prepend(createIcon("ti-plus"));
+        button.addEventListener("click", function () {
+          if (getPartLockState(index).locked) {
+            return;
+          }
+          state.edits[index].pattern = createNewPatternEditState();
           renderSummaryTable();
           updateChangeState();
         });
@@ -2059,6 +2105,7 @@
             var lockNote = row.querySelector('[data-role="lock-note"]');
             var sizeButton = row.querySelector('button[data-action="size"]');
             var moveButton = row.querySelector('button[data-action="move"]');
+            var patternAddButton = row.querySelector('button[data-action="pattern-add"]');
             if (content) {
               content.disabled = lockState.locked;
               content.classList.toggle("changed-control", isContentChanged(edit));
@@ -2074,13 +2121,16 @@
               moveSummary.textContent = getMoveSummary(index);
             }
             if (cancelButton) {
-              cancelButton.disabled = !changed;
+              cancelButton.disabled = !changed && !isNewPatternActive(edit);
             }
             if (sizeButton) {
               sizeButton.disabled = lockState.locked;
             }
             if (moveButton) {
               moveButton.disabled = lockState.locked;
+            }
+            if (patternAddButton) {
+              patternAddButton.disabled = lockState.locked;
             }
             if (lockNote) {
               lockNote.textContent = lockState.message;
@@ -2257,21 +2307,45 @@
       }
 
       function isPatternChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return hasNewPatternValues(pattern);
+        }
         return isPatternDensityChanged(pattern) ||
           isPatternTypeChanged(pattern) ||
           isPatternStyleChanged(pattern);
       }
 
       function isPatternDensityChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.density) !== "";
+        }
         return Boolean(pattern) && String(pattern.density) !== String(pattern.densityOriginal);
       }
 
       function isPatternTypeChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.type) !== "";
+        }
         return Boolean(pattern) && String(pattern.type) !== String(pattern.typeOriginal);
       }
 
       function isPatternStyleChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.style) !== "";
+        }
         return Boolean(pattern) && String(pattern.style) !== String(pattern.styleOriginal);
+      }
+
+      function isNewPatternActive(edit) {
+        return Boolean(edit && edit.pattern && edit.pattern.isNew);
+      }
+
+      function hasNewPatternValues(pattern) {
+        return Boolean(pattern) && (
+          compactText(pattern.density) !== "" ||
+          compactText(pattern.type) !== "" ||
+          compactText(pattern.style) !== ""
+        );
       }
 
       function isSizeChanged(item) {
@@ -2430,7 +2504,7 @@
         var patternChange = buildPatternChange(edit.pattern);
         if (patternChange) {
           changes.push(patternChange.change);
-          summary.push("패턴을 " + appendKoreanRo(patternChange.summary) + " 수정");
+          summary.push(patternChange.summary);
         }
 
         Object.keys(edit.sizes).forEach(function (key) {
@@ -2470,7 +2544,7 @@
           target_id: getPartId(part, index),
           name_ko: getPartName(part, index),
           changes: changes,
-          detail: getPartId(part, index) + " " + getPartName(part, index) + " 항목을 다음과 같이 수정: " + summary.join(", ") + ". 나머지 파트는 원본 이미지와 동일하게 유지."
+          detail: buildModifyDetail(getPartId(part, index) + " " + getPartName(part, index), summary)
         };
 
         if (options.regenerateChildren) {
@@ -2485,10 +2559,16 @@
             getParentId(part),
             getPartId(part, index)
           ];
-          entry.detail = entry.target_path + " 항목을 다음과 같이 수정: " + summary.join(", ") + ". 나머지 파트는 원본 이미지와 동일하게 유지.";
+          entry.detail = buildModifyDetail(entry.target_path, summary);
         }
 
         return entry;
+      }
+
+      function buildModifyDetail(targetLabel, summary) {
+        var summaryText = summary.join(", ");
+        var spacer = /[.!?]$/.test(summaryText) ? " " : ". ";
+        return targetLabel + " 항목을 다음과 같이 수정: " + summaryText + spacer + "나머지 파트는 원본 이미지와 동일하게 유지.";
       }
 
       function buildPatternChange(pattern) {
@@ -2496,25 +2576,114 @@
           return null;
         }
 
+        if (pattern.isNew) {
+          return buildNewPatternChange(pattern);
+        }
+
+        return buildExistingPatternChange(pattern);
+      }
+
+      function buildExistingPatternChange(pattern) {
         var change = { field: "패턴" };
-        var summary = [];
+        var instructions = [];
         if (isPatternDensityChanged(pattern)) {
-          change["밀도"] = toNumberOrString(pattern.density);
-          summary.push("밀도 " + String(change["밀도"]));
+          var densityBefore = toNumberOrString(pattern.densityOriginal);
+          var densityAfter = toNumberOrString(pattern.density);
+          change["밀도_기준"] = densityBefore;
+          change["밀도_목표"] = densityAfter;
+          instructions.push(buildDensityChangeInstruction(densityBefore, densityAfter));
         }
         if (isPatternTypeChanged(pattern)) {
-          change["표현방식"] = compactText(pattern.type);
-          summary.push("표현방식 " + change["표현방식"]);
+          var typeBefore = getPatternValueText(pattern.typeOriginal);
+          var typeAfter = getPatternValueText(pattern.type);
+          change["표현방식_기준"] = typeBefore;
+          change["표현방식_목표"] = typeAfter;
+          instructions.push("표현방식은 " + typeBefore + "에서 " + appendKoreanRo(typeAfter) + " 변경.");
         }
         if (isPatternStyleChanged(pattern)) {
-          change["스타일"] = compactText(pattern.style);
-          summary.push("스타일 " + change["스타일"]);
+          var styleBefore = getPatternValueText(pattern.styleOriginal);
+          var styleAfter = getPatternValueText(pattern.style);
+          change["스타일_기준"] = styleBefore;
+          change["스타일_목표"] = styleAfter;
+          instructions.push("스타일은 " + styleBefore + "에서 " + appendKoreanRo(styleAfter) + " 변경.");
         }
+        change["지시"] = instructions.join(" ");
 
         return {
           change: change,
-          summary: summary.join("·")
+          summary: change["지시"]
         };
+      }
+
+      function buildNewPatternChange(pattern) {
+        var change = { field: "패턴추가" };
+        var density = compactText(pattern.density);
+        var type = compactText(pattern.type);
+        var style = compactText(pattern.style);
+
+        if (density) {
+          change["밀도_목표"] = toNumberOrString(density);
+        }
+        if (type) {
+          change["표현방식"] = type;
+        }
+        if (style) {
+          change["스타일"] = style;
+        }
+
+        change["지시"] = buildNewPatternInstruction(change["밀도_목표"], type, style);
+
+        return {
+          change: change,
+          summary: change["지시"]
+        };
+      }
+
+      function buildDensityChangeInstruction(before, after) {
+        var beforeNumber = Number(before);
+        var afterNumber = Number(after);
+        if (Number.isFinite(beforeNumber) && Number.isFinite(afterNumber) && beforeNumber !== 0) {
+          var percent = Math.round(Math.abs(afterNumber - beforeNumber) / Math.abs(beforeNumber) * 100);
+          if (afterNumber > beforeNumber) {
+            return "기준 밀도 " + String(before) + " → 목표 " + String(after) + ", 약 " + percent + "% 증가 수준으로 무늬 개수를 늘리고 간격을 촘촘하게 한다.";
+          }
+          if (afterNumber < beforeNumber) {
+            return "기준 밀도 " + String(before) + " → 목표 " + String(after) + ", 약 " + percent + "% 감소 수준으로 무늬 개수를 줄이고 간격을 넓힌다.";
+          }
+          return "기준 밀도 " + String(before) + " → 목표 " + String(after) + " 수준으로 무늬 밀도를 유지한다.";
+        }
+
+        if (Number.isFinite(beforeNumber) && Number.isFinite(afterNumber)) {
+          return "기준 밀도 " + String(before) + " → 목표 " + String(after) + " 수준으로 무늬 밀도를 설정한다.";
+        }
+
+        return "밀도는 기준 " + getPatternValueText(before) + "에서 목표 " + getPatternValueText(after) + "로 변경.";
+      }
+
+      function buildNewPatternInstruction(density, type, style) {
+        var objectPhrase = style || type
+          ? compactText((style ? style + " 스타일의 " : "") + (type ? type + " " : "") + "무늬")
+          : "새 패턴";
+        var densityPhrase = density !== undefined && density !== ""
+          ? "밀도 " + String(density) + " 수준으로 "
+          : "";
+
+        return compactText("이 파트 표면에 " + appendKoreanEul(objectPhrase) + " " + densityPhrase + "새로 추가한다.") + " 기존에 없던 패턴을 신규로 부여.";
+      }
+
+      function getPatternValueText(value) {
+        var text = compactText(value);
+        return text || "없음";
+      }
+
+      function appendKoreanEul(value) {
+        var text = compactText(value);
+        var last = text.charAt(text.length - 1);
+        var code = last.charCodeAt(0);
+        if (code >= 0xAC00 && code <= 0xD7A3) {
+          return text + ((code - 0xAC00) % 28 ? "을" : "를");
+        }
+        return text + "을";
       }
 
       function buildEditSummary(modify) {
