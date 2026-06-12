@@ -2408,9 +2408,10 @@
         var part = state.parts[index];
         var parentId = getParentId(part);
         var groupMap = groups || getGroupStates();
+        var generatedPattern = isGeneratedPatternPart(part);
 
         if (parentId) {
-          if (hasChangedAncestor(index, groupMap)) {
+          if (!generatedPattern && hasChangedAncestor(index, groupMap)) {
             return {
               locked: true,
               message: "상위가 수정됨 — 하위는 상위 기준으로 무시됨"
@@ -2652,8 +2653,17 @@
         var groupStates = getGroupStates();
         var modifyIndexes = [];
         var excludePreserve = {};
+        var includedModify = {};
         var handled = {};
         var regenerateChildren = {};
+
+        function pushModifyIndex(index) {
+          if (index < 0 || includedModify[index]) {
+            return;
+          }
+          modifyIndexes.push(index);
+          includedModify[index] = true;
+        }
 
         Object.keys(groupStates).forEach(function (groupId) {
           var group = groupStates[groupId];
@@ -2666,11 +2676,21 @@
           });
 
           if (group.parentChanged) {
-            modifyIndexes.push(group.parentIndex);
+            pushModifyIndex(group.parentIndex);
             memberIndexes.forEach(function (index) {
               excludePreserve[index] = true;
             });
-            if (group.childIndexes.length) {
+
+            group.childIndexes.forEach(function (childIndex) {
+              if (isGeneratedPatternPart(state.parts[childIndex]) && isPartChanged(childIndex)) {
+                pushModifyIndex(childIndex);
+                excludePreserve[childIndex] = true;
+              }
+            });
+
+            if (group.childIndexes.some(function (childIndex) {
+              return !isGeneratedPatternPart(state.parts[childIndex]);
+            })) {
               regenerateChildren[group.parentIndex] = true;
             }
             return;
@@ -2678,7 +2698,7 @@
 
           group.childIndexes.forEach(function (childIndex) {
             if (isPartChanged(childIndex)) {
-              modifyIndexes.push(childIndex);
+              pushModifyIndex(childIndex);
               excludePreserve[childIndex] = true;
             }
           });
@@ -2688,7 +2708,7 @@
           if (handled[index] || !isPartChanged(index)) {
             return;
           }
-          modifyIndexes.push(index);
+          pushModifyIndex(index);
           excludePreserve[index] = true;
         });
 
