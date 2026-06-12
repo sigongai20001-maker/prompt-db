@@ -2091,7 +2091,10 @@
         return;
       }
 
-      const saved = await persistOwner(owner);
+      const saved = await persistChange(() => {
+        state.owners = mergeOwners(state.owners, [owner]);
+        state.activeOwner = owner;
+      }, "사용자 추가됨", { background: true });
       if (saved) closeOwnerModal();
     }
 
@@ -2160,7 +2163,12 @@
         return;
       }
 
-      const saved = await persistCategory(category);
+      const saved = await persistChange(() => {
+        reviveDeletedCategoryName(category);
+        state.categories = mergeCategories(state.categories, [category]);
+        state.tagGroups = { ...state.tagGroups, [category]: state.tagGroups[category] || [] };
+        state.activeCategory = category === "디버깅" ? "CODEX" : category;
+      }, "영역태그 추가됨", { background: true });
       if (saved) closeCategoryModal();
     }
 
@@ -2242,7 +2250,13 @@
         return;
       }
 
-      const saved = await persistSubTag(category, tag);
+      const saved = await persistChange(() => {
+        reviveDeletedCategoryName(category);
+        state.categories = mergeCategories(state.categories, [category]);
+        state.tagGroups = mergeTagGroups(state.tagGroups, category, [tag]);
+        state.activeCategory = category;
+        state.activeSubTag = tag;
+      }, "구분태그 추가됨", { background: true });
       if (saved) closeSubTagModal();
     }
 
@@ -2789,6 +2803,12 @@
       try {
         if (!saveInBackground) setBusy(true);
         mutator();
+        renderOwnerTabs();
+        renderOwnerOptions();
+        renderTabs();
+        renderCategoryOptions();
+        renderSubTagCategoryOptions();
+        renderCodexFilters();
         renderPrompts();
 
         const syncContext = {
@@ -2802,7 +2822,6 @@
         };
 
         if (saveInBackground) {
-          setModalProgress("화면에 등록됨. Drive 저장 중");
           queueBackgroundSave(syncContext);
           return true;
         }
