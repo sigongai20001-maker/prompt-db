@@ -2743,7 +2743,6 @@
         return;
       }
 
-      const isNewPrompt = !state.editingId;
       const saved = await persistChange(() => {
         if (state.editingId) {
           state.prompts = state.prompts.map((prompt) => {
@@ -2773,7 +2772,7 @@
         state.owners = mergeOwners(state.owners, [owner]);
         state.categories = mergeCategories(state.categories, [category]);
         state.tagGroups = mergeTagGroups(state.tagGroups, category, tags);
-      }, "저장됨", { background: isNewPrompt });
+      }, "저장됨", { background: true });
 
       if (saved) closePromptModal();
     }
