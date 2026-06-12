@@ -2509,6 +2509,15 @@
       return [];
     }
 
+    function getForcedNewPromptContext() {
+      const category = getDefaultNewCategory();
+      return {
+        owner: getDefaultNewOwner(),
+        category,
+        tags: getDefaultNewPromptTags(category)
+      };
+    }
+
     function getDefaultNewOwner() {
       return state.activeOwner === "전체" ? DEFAULT_OWNER : state.activeOwner;
     }
@@ -2842,11 +2851,12 @@
       event.preventDefault();
       setModalProgress("입력 확인 중");
 
-      const owner = els.ownerInput.value.trim();
+      const forcedContext = state.editingId ? null : getForcedNewPromptContext();
+      const owner = forcedContext?.owner || els.ownerInput.value.trim();
       const title = els.titleInput.value.trim();
       const content = els.contentInput.value;
-      const category = els.categoryInput.value;
-      const tags = getSelectedPromptTags();
+      const category = forcedContext?.category || els.categoryInput.value;
+      const tags = forcedContext?.tags || getSelectedPromptTags();
 
       if (!owner || !title || !content.trim()) {
         setModalProgress("필수 항목을 확인해 주세요.", "error");
