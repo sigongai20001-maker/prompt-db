@@ -466,6 +466,16 @@
       border-left: 2px solid var(--accent);
     }
 
+    .part-child-wrap.depth-2 {
+      padding-left: 28px;
+      border-left-color: #7c3aed;
+    }
+
+    .part-child-wrap.depth-3 {
+      padding-left: 38px;
+      border-left-color: #7c3aed;
+    }
+
     .child-badge {
       display: inline-flex;
       width: fit-content;
@@ -570,6 +580,10 @@
       grid-template-columns: minmax(92px, 0.7fr) minmax(130px, 1fr) minmax(130px, 1fr);
       gap: 10px;
       align-items: start;
+    }
+
+    .pattern-editor.extended {
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
     }
 
     .pattern-field {
@@ -1233,35 +1247,51 @@
 
       function createPatternEditState(part) {
         var pattern = part.pattern || {};
+        var isNew = isGeneratedPatternPart(part);
+        var name = isNew ? "" : compactText(part.name_ko || part.name || "");
         var motifSize = pattern.motif_size_mm == null
           ? (pattern.density == null ? "" : String(pattern.density))
           : String(pattern.motif_size_mm);
         var type = pattern.type_ko == null ? "" : compactText(pattern.type_ko);
         var style = pattern.style_ko == null ? "" : compactText(pattern.style_ko);
+        var shape = pattern.shape_ko == null ? compactText(part.shape_ko || "") : compactText(pattern.shape_ko);
+        var material = pattern.material_ko == null ? compactText(part.material_ko || "") : compactText(pattern.material_ko);
 
         ensurePatternOption("type", type);
         ensurePatternOption("style", style);
 
         return {
-          isNew: false,
+          isNew: isNew,
+          nameOriginal: name,
+          name: name,
           motifSizeOriginal: motifSize,
           motifSize: motifSize,
           typeOriginal: type,
           type: type,
           styleOriginal: style,
-          style: style
+          style: style,
+          shapeOriginal: shape,
+          shape: shape,
+          materialOriginal: material,
+          material: material
         };
       }
 
       function createNewPatternEditState() {
         return {
           isNew: true,
+          nameOriginal: "",
+          name: "",
           motifSizeOriginal: "",
           motifSize: "",
           typeOriginal: "",
           type: "",
           styleOriginal: "",
-          style: ""
+          style: "",
+          shapeOriginal: "",
+          shape: "",
+          materialOriginal: "",
+          material: ""
         };
       }
 
@@ -1420,13 +1450,14 @@
         var nameNode = createElement("div", "part-name", getPartName(part, index));
         var parentId = getParentId(part);
         var edit = state.edits[index];
-        var originalPatternPart = isPatternPart(part);
-        var patternPart = originalPatternPart || Boolean(edit.pattern && edit.pattern.isNew);
+        var patternPart = isPatternPart(part);
+        var depth = getPartDepth(index);
         var tools = createElement("div", "tool-stack");
         var lockState = getPartLockState(index);
         var lockNote = createElement("div", "lock-note");
 
         row.classList.toggle("is-child", Boolean(parentId));
+        row.classList.toggle("is-depth-2", depth >= 2);
         row.classList.toggle("is-locked", lockState.locked);
         badge.dataset.role = "badge";
         lockNote.dataset.role = "lock-note";
@@ -1437,7 +1468,7 @@
         locationCell.appendChild(locationChip);
         idCell.appendChild(idNode);
         if (parentId) {
-          var childWrap = createElement("div", "part-child-wrap");
+          var childWrap = createElement("div", "part-child-wrap depth-" + Math.min(depth, 3));
           childWrap.appendChild(createElement("span", "child-badge", "하위"));
           if (patternPart) {
             childWrap.appendChild(createElement("span", "pattern-badge", "패턴"));
@@ -1461,7 +1492,7 @@
             tools.appendChild(childToggle);
           }
         }
-        if (shouldShowPatternAddButton(part, edit)) {
+        if (shouldShowPatternAddButton(part, edit, index)) {
           tools.appendChild(createPatternAddRow(index));
         }
         if (!patternPart) {
@@ -1480,8 +1511,11 @@
         return row;
       }
 
-      function shouldShowPatternAddButton(part, edit) {
-        return Boolean(getParentId(part)) && !isPatternPart(part) && !edit.pattern;
+      function shouldShowPatternAddButton(part, edit, index) {
+        return Boolean(getParentId(part)) &&
+          !isPatternPart(part) &&
+          !isGeneratedPatternPart(part) &&
+          !hasPatternChild(getPartId(part, index));
       }
 
       function createContentEditor(index, locked) {
@@ -1502,12 +1536,36 @@
       }
 
       function createPatternEditor(index, locked) {
-        var editor = createElement("div", "pattern-editor");
+        var editor = createElement("div", "pattern-editor extended");
+        editor.appendChild(createPatternTextField(index, "name", "패턴 이름", "예: 금속 패턴장식판재"));
         editor.appendChild(createPatternMotifSizeField(index, locked));
         editor.appendChild(createPatternSelectField(index, "type", "표현방식"));
         editor.appendChild(createPatternSelectField(index, "style", "스타일"));
+        editor.appendChild(createPatternTextField(index, "shape", "형태", "예: 별 모양이 맞물린 기하학 격자"));
+        editor.appendChild(createPatternTextField(index, "material", "소재/마감", "예: 황동 도금 금속"));
         setPatternEditorLocked(editor, locked);
         return editor;
+      }
+
+      function createPatternTextField(index, key, labelText, placeholder) {
+        var edit = state.edits[index].pattern;
+        var field = createElement("label", "pattern-field");
+        var label = createElement("span", "pattern-label", labelText);
+        var input = createElement("input", "field");
+
+        input.type = "text";
+        input.value = edit[key];
+        input.placeholder = placeholder;
+        input.dataset.role = "pattern-" + key;
+        input.disabled = getPartLockState(index).locked;
+        input.addEventListener("input", function () {
+          edit[key] = input.value;
+          updateChangeState();
+        });
+
+        field.appendChild(label);
+        field.appendChild(input);
+        return field;
       }
 
       function createPatternMotifSizeField(index, locked) {
@@ -1655,7 +1713,7 @@
           if (getPartLockState(index).locked) {
             return;
           }
-          state.edits[index].pattern = createNewPatternEditState();
+          addGeneratedPatternChild(index);
           renderSummaryTable();
           updateChangeState();
         });
@@ -1663,6 +1721,50 @@
         row.appendChild(summary);
         row.appendChild(button);
         return row;
+      }
+
+      function addGeneratedPatternChild(parentIndex) {
+        var parentPart = state.parts[parentIndex];
+        var parentId = getPartId(parentPart, parentIndex);
+        if (!parentId || hasPatternChild(parentId)) {
+          return;
+        }
+
+        var newPart = {
+          id: createPatternChildId(parentId),
+          parent_id: parentId,
+          category: getPartCategory(parentPart, parentIndex),
+          name_ko: "패턴 추가",
+          pattern: {
+            motif_size_mm: "",
+            type_ko: "",
+            style_ko: "",
+            shape_ko: "",
+            material_ko: ""
+          },
+          _generated_pattern_part: true
+        };
+
+        state.parts.push(newPart);
+        state.edits.push(createEditState(newPart));
+        state.expandedParents[parentId] = true;
+      }
+
+      function createPatternChildId(parentId) {
+        var base = String(parentId) + "-PAT";
+        var candidate = base;
+        var suffix = 2;
+        while (getPartIndexById(candidate) >= 0) {
+          candidate = base + suffix;
+          suffix += 1;
+        }
+        return candidate;
+      }
+
+      function hasPatternChild(parentId) {
+        return getChildIndexes(parentId).some(function (childIndex) {
+          return isPatternPart(state.parts[childIndex]);
+        });
       }
 
       function createToolRow(index, type) {
@@ -1719,7 +1821,7 @@
 
         sortedRoots.forEach(function (rootIndex) {
           var rootId = getPartId(state.parts[rootIndex], rootIndex);
-          var childIndexes = getVisibleChildIndexes(rootId);
+          var childIndexes = getVisibleDescendantIndexes(rootId);
           var rootMatches = matchesFilters(rootIndex);
           var shouldShowChildren = Boolean(state.expandedParents[rootId]);
 
@@ -1737,7 +1839,7 @@
           .map(function (_part, index) { return index; })
           .filter(function (index) {
             var parentId = getParentId(state.parts[index]);
-            return parentId && knownRootIds.indexOf(parentId) === -1 && matchesFilters(index);
+            return parentId && getPartIndexById(parentId) < 0 && knownRootIds.indexOf(parentId) === -1 && matchesFilters(index);
           }))
           .forEach(function (index) {
             result.push(index);
@@ -1747,11 +1849,30 @@
       }
 
       function getVisibleChildIndexes(parentId) {
+        var depth = arguments.length > 1 ? arguments[1] : 0;
         var childIndexes = getChildIndexes(parentId);
         if (hasActiveFilters()) {
-          childIndexes = childIndexes.filter(matchesFilters);
+          childIndexes = childIndexes.filter(function (index) {
+            return matchesFilters(index) || getVisibleDescendantIndexes(getPartId(state.parts[index], index), depth + 1).length > 0;
+          });
         }
         return sortPartIndexes(childIndexes);
+      }
+
+      function getVisibleDescendantIndexes(parentId) {
+        var depth = arguments.length > 1 ? arguments[1] : 0;
+        if (depth > state.parts.length) {
+          return [];
+        }
+
+        var result = [];
+        getVisibleChildIndexes(parentId, depth).forEach(function (childIndex) {
+          result.push(childIndex);
+          getVisibleDescendantIndexes(getPartId(state.parts[childIndex], childIndex), depth + 1).forEach(function (descendantIndex) {
+            result.push(descendantIndex);
+          });
+        });
+        return result;
       }
 
       function sortPartIndexes(indexes) {
@@ -2155,11 +2276,18 @@
         }
 
         var motifSize = row.querySelector('[data-role="pattern-motif-size"]');
+        var nameInput = row.querySelector('[data-role="pattern-name"]');
         var typeSelect = row.querySelector('[data-role="pattern-type"]');
         var styleSelect = row.querySelector('[data-role="pattern-style"]');
+        var shapeInput = row.querySelector('[data-role="pattern-shape"]');
+        var materialInput = row.querySelector('[data-role="pattern-material"]');
         var typeCustom = row.querySelector('[data-role="pattern-type-custom"]');
         var styleCustom = row.querySelector('[data-role="pattern-style-custom"]');
 
+        if (nameInput) {
+          nameInput.disabled = locked;
+          nameInput.classList.toggle("changed-control", isPatternNameChanged(edit.pattern));
+        }
         if (motifSize) {
           motifSize.disabled = locked;
           motifSize.classList.toggle("changed-control", isPatternMotifSizeChanged(edit.pattern));
@@ -2173,6 +2301,14 @@
           populatePatternSelect(styleSelect, "style", edit.pattern.style);
           styleSelect.disabled = locked;
           styleSelect.classList.toggle("changed-control", isPatternStyleChanged(edit.pattern));
+        }
+        if (shapeInput) {
+          shapeInput.disabled = locked;
+          shapeInput.classList.toggle("changed-control", isPatternShapeChanged(edit.pattern));
+        }
+        if (materialInput) {
+          materialInput.disabled = locked;
+          materialInput.classList.toggle("changed-control", isPatternMaterialChanged(edit.pattern));
         }
         if (typeCustom) {
           typeCustom.disabled = locked;
@@ -2274,11 +2410,16 @@
         var groupMap = groups || getGroupStates();
 
         if (parentId) {
-          var childGroup = groupMap[parentId];
-          if (childGroup && childGroup.parentChanged) {
+          if (hasChangedAncestor(index, groupMap)) {
             return {
               locked: true,
               message: "상위가 수정됨 — 하위는 상위 기준으로 무시됨"
+            };
+          }
+          if (hasChangedDescendant(getPartId(part, index))) {
+            return {
+              locked: true,
+              message: "하위 요소 수정 중 — 상위는 잠김"
             };
           }
           return { locked: false, message: "" };
@@ -2286,7 +2427,7 @@
 
         var partId = getPartId(part, index);
         var parentGroup = groupMap[partId];
-        if (parentGroup && parentGroup.childChanged) {
+        if ((parentGroup && parentGroup.childChanged) || hasChangedDescendant(partId)) {
           return {
             locked: true,
             message: "하위 요소 수정 중 — 상위는 잠김"
@@ -2294,6 +2435,28 @@
         }
 
         return { locked: false, message: "" };
+      }
+
+      function hasChangedAncestor(index, groups) {
+        var parentId = getParentId(state.parts[index]);
+        var guard = 0;
+        while (parentId && guard < state.parts.length) {
+          var group = groups[parentId];
+          if (group && group.parentChanged) {
+            return true;
+          }
+          var parentIndex = getPartIndexById(parentId);
+          if (parentIndex < 0 || parentIndex === index) {
+            break;
+          }
+          parentId = getParentId(state.parts[parentIndex]);
+          guard += 1;
+        }
+        return false;
+      }
+
+      function hasChangedDescendant(parentId) {
+        return getDescendantIndexes(parentId).some(isPartChanged);
       }
 
       function isPartChanged(index) {
@@ -2312,9 +2475,19 @@
         if (pattern && pattern.isNew) {
           return hasNewPatternValues(pattern);
         }
-        return isPatternMotifSizeChanged(pattern) ||
+        return isPatternNameChanged(pattern) ||
+          isPatternMotifSizeChanged(pattern) ||
           isPatternTypeChanged(pattern) ||
-          isPatternStyleChanged(pattern);
+          isPatternStyleChanged(pattern) ||
+          isPatternShapeChanged(pattern) ||
+          isPatternMaterialChanged(pattern);
+      }
+
+      function isPatternNameChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.name) !== "";
+        }
+        return Boolean(pattern) && String(pattern.name) !== String(pattern.nameOriginal);
       }
 
       function isPatternMotifSizeChanged(pattern) {
@@ -2338,15 +2511,32 @@
         return Boolean(pattern) && String(pattern.style) !== String(pattern.styleOriginal);
       }
 
+      function isPatternShapeChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.shape) !== "";
+        }
+        return Boolean(pattern) && String(pattern.shape) !== String(pattern.shapeOriginal);
+      }
+
+      function isPatternMaterialChanged(pattern) {
+        if (pattern && pattern.isNew) {
+          return compactText(pattern.material) !== "";
+        }
+        return Boolean(pattern) && String(pattern.material) !== String(pattern.materialOriginal);
+      }
+
       function isNewPatternActive(edit) {
         return Boolean(edit && edit.pattern && edit.pattern.isNew);
       }
 
       function hasNewPatternValues(pattern) {
         return Boolean(pattern) && (
+          compactText(pattern.name) !== "" ||
           compactText(pattern.motifSize) !== "" ||
           compactText(pattern.type) !== "" ||
-          compactText(pattern.style) !== ""
+          compactText(pattern.style) !== "" ||
+          compactText(pattern.shape) !== "" ||
+          compactText(pattern.material) !== ""
         );
       }
 
@@ -2369,6 +2559,7 @@
       }
 
       function resetAllChanges() {
+        removeGeneratedPatternParts();
         state.edits = state.parts.map(createEditState);
         renderSummaryTable();
         resultCode.textContent = "";
@@ -2378,6 +2569,16 @@
       }
 
       function resetPartChanges(index) {
+        if (isGeneratedPatternPart(state.parts[index])) {
+          removeGeneratedPatternPart(index);
+          resultCode.textContent = "";
+          copyFeedback.textContent = "";
+          copyBtn.disabled = true;
+          renderSummaryTable();
+          updateChangeState();
+          return;
+        }
+
         state.edits[index] = createEditState(state.parts[index]);
         resultCode.textContent = "";
         copyFeedback.textContent = "";
@@ -2390,6 +2591,23 @@
         }
 
         updateChangeState();
+      }
+
+      function removeGeneratedPatternParts() {
+        for (var index = state.parts.length - 1; index >= 0; index -= 1) {
+          if (isGeneratedPatternPart(state.parts[index])) {
+            state.parts.splice(index, 1);
+            state.edits.splice(index, 1);
+          }
+        }
+      }
+
+      function removeGeneratedPatternPart(index) {
+        state.parts.splice(index, 1);
+        state.edits.splice(index, 1);
+        if (state.modal && state.modal.index === index) {
+          closeModal();
+        }
       }
 
       function generatePrompt() {
@@ -2479,6 +2697,9 @@
           regenerateChildren: regenerateChildren,
           preserveIds: state.parts
             .map(function (part, index) {
+              if (isGeneratedPatternPart(part)) {
+                return null;
+              }
               return excludePreserve[index] ? null : getPartId(part, index);
             })
             .filter(function (id) {
@@ -2503,7 +2724,7 @@
           summary.push("내용을 \"" + compactText(edit.content) + "\"로 변경");
         }
 
-        var patternChange = buildPatternChange(edit.pattern);
+        var patternChange = buildPatternChange(edit.pattern, part, index);
         if (patternChange) {
           changes.push(patternChange.change);
           summary.push(patternChange.summary);
@@ -2544,9 +2765,9 @@
 
         var entry = {
           target_id: getPartId(part, index),
-          name_ko: getPartName(part, index),
+          name_ko: getModifyPartName(index),
           changes: changes,
-          detail: buildModifyDetail(getPartId(part, index) + " " + getPartName(part, index), summary)
+          detail: buildModifyDetail(getPartId(part, index) + " " + getModifyPartName(index), summary)
         };
 
         if (options.regenerateChildren) {
@@ -2556,7 +2777,7 @@
 
         if (getParentId(part)) {
           entry.parent_id = getParentId(part);
-          entry.target_path = getParentPathLabel(part) + " > " + getPartName(part, index);
+          entry.target_path = getParentPathLabel(part) + " > " + getModifyPartName(index);
           entry.target_path_ids = [
             getParentId(part),
             getPartId(part, index)
@@ -2573,13 +2794,13 @@
         return targetLabel + " 항목을 다음과 같이 수정: " + summaryText + spacer + "나머지 파트는 원본 이미지와 동일하게 유지.";
       }
 
-      function buildPatternChange(pattern) {
+      function buildPatternChange(pattern, part, index) {
         if (!pattern || !isPatternChanged(pattern)) {
           return null;
         }
 
         if (pattern.isNew) {
-          return buildNewPatternChange(pattern);
+          return buildNewPatternChange(pattern, part, index);
         }
 
         return buildExistingPatternChange(pattern);
@@ -2588,6 +2809,14 @@
       function buildExistingPatternChange(pattern) {
         var change = { field: "패턴" };
         var instructions = [];
+        addPatternTextChange(change, instructions, pattern, {
+          changed: isPatternNameChanged,
+          key: "name",
+          originalKey: "nameOriginal",
+          beforeField: "패턴이름_기준",
+          afterField: "패턴이름_목표",
+          label: "패턴 이름"
+        });
         if (isPatternMotifSizeChanged(pattern)) {
           var motifSizeBefore = toNumberOrString(pattern.motifSizeOriginal);
           var motifSizeAfter = toNumberOrString(pattern.motifSize);
@@ -2596,6 +2825,23 @@
           instructions.push(buildMotifSizeChangeInstruction(motifSizeBefore, motifSizeAfter));
         }
         addPatternTypeStyleChanges(change, instructions, pattern);
+        addPatternTextChange(change, instructions, pattern, {
+          changed: isPatternShapeChanged,
+          key: "shape",
+          originalKey: "shapeOriginal",
+          beforeField: "형태_기준",
+          afterField: "형태_목표",
+          label: "형태",
+          topic: "형태는"
+        });
+        addPatternTextChange(change, instructions, pattern, {
+          changed: isPatternMaterialChanged,
+          key: "material",
+          originalKey: "materialOriginal",
+          beforeField: "소재마감_기준",
+          afterField: "소재마감_목표",
+          label: "소재/마감"
+        });
         change["지시"] = instructions.join(" ");
 
         return {
@@ -2604,12 +2850,18 @@
         };
       }
 
-      function buildNewPatternChange(pattern) {
+      function buildNewPatternChange(pattern, part, index) {
         var change = { field: "패턴추가" };
+        var name = compactText(pattern.name);
         var motifSize = compactText(pattern.motifSize);
         var type = compactText(pattern.type);
         var style = compactText(pattern.style);
+        var shape = compactText(pattern.shape);
+        var material = compactText(pattern.material);
 
+        if (name) {
+          change["패턴이름"] = name;
+        }
         if (motifSize) {
           change["무늬크기_목표_mm"] = toNumberOrString(motifSize);
         }
@@ -2619,8 +2871,14 @@
         if (style) {
           change["스타일"] = style;
         }
+        if (shape) {
+          change["형태"] = shape;
+        }
+        if (material) {
+          change["소재마감"] = material;
+        }
 
-        change["지시"] = buildNewPatternInstruction(change["무늬크기_목표_mm"], type, style);
+        change["지시"] = buildNewPatternInstruction(pattern, part, index);
 
         return {
           change: change,
@@ -2642,6 +2900,19 @@
         }
 
         return "무늬 단위 크기를 기준 " + getPatternValueText(before) + "에서 목표 " + getPatternValueText(after) + "로 변경하고, 규칙적으로 반복되는 또렷한 장식 무늬로 표현한다.";
+      }
+
+      function addPatternTextChange(change, instructions, pattern, meta) {
+        if (!meta.changed(pattern)) {
+          return;
+        }
+
+        var before = getPatternValueText(pattern[meta.originalKey]);
+        var after = getPatternValueText(pattern[meta.key]);
+        var topic = meta.topic || (meta.label + "은");
+        change[meta.beforeField] = before;
+        change[meta.afterField] = after;
+        instructions.push(topic + " " + before + "에서 " + appendKoreanRo(after) + " 변경.");
       }
 
       function addPatternTypeStyleChanges(change, instructions, pattern) {
@@ -2677,15 +2948,40 @@
         }
       }
 
-      function buildNewPatternInstruction(motifSize, type, style) {
+      function buildNewPatternInstruction(pattern, part, index) {
+        var name = compactText(pattern.name);
+        var motifSize = compactText(pattern.motifSize);
+        var type = compactText(pattern.type);
+        var style = compactText(pattern.style);
+        var shape = compactText(pattern.shape);
+        var material = compactText(pattern.material);
+        var parentLabel = getParentPathLabel(part) || "이 파트";
         var objectPhrase = style || type
           ? compactText((style ? style + " 스타일의 " : "") + (type ? type + " " : "") + "무늬")
           : "새 패턴";
         var motifSizePhrase = motifSize !== undefined && motifSize !== ""
           ? ", 무늬 단위 크기 약 " + String(motifSize) + "mm로 "
           : "";
+        var sentences = [];
 
-        return compactText("이 파트 표면에 " + appendKoreanEul(objectPhrase) + motifSizePhrase + "규칙적으로 반복되게 새로 추가한다.") + " 또렷이 읽히는 장식 무늬로 표현하고 텍스처처럼 잘게 뭉개지지 않게 한다.";
+        if (name) {
+          sentences.push(parentLabel + "의 표면에 '" + name + "'를 새로 추가한다.");
+        } else {
+          sentences.push(parentLabel + "의 표면에 새 패턴을 새로 추가한다.");
+        }
+
+        if (style || type || motifSize) {
+          sentences.push(compactText(appendKoreanEul(objectPhrase) + motifSizePhrase + "규칙적으로 반복되게 적용한다."));
+        }
+        if (shape) {
+          sentences.push(shape + " 형태로 또렷이 읽히게 한다.");
+        }
+        if (material) {
+          sentences.push("소재는 " + material + ".");
+        }
+        sentences.push("텍스처처럼 잘게 뭉개지지 않게 한다.");
+
+        return sentences.join(" ");
       }
 
       function getPatternValueText(value) {
@@ -2785,6 +3081,10 @@
         return isPlainObject(part && part.pattern);
       }
 
+      function isGeneratedPatternPart(part) {
+        return Boolean(part && part._generated_pattern_part);
+      }
+
       function ensurePatternOption(kind, value) {
         var list = patternOptionState[kind];
         var text = compactText(value);
@@ -2834,7 +3134,46 @@
         if (parentIndex < 0) {
           return getParentId(part);
         }
-        return getPartName(state.parts[parentIndex], parentIndex);
+        return getPartPathLabel(parentIndex);
+      }
+
+      function getPartPathLabel(index) {
+        var part = state.parts[index];
+        var parentId = getParentId(part);
+        if (!parentId) {
+          return getModifyPartName(index);
+        }
+
+        var parentIndex = getPartIndexById(parentId);
+        if (parentIndex < 0 || parentIndex === index) {
+          return getModifyPartName(index);
+        }
+        return getPartPathLabel(parentIndex) + " > " + getModifyPartName(index);
+      }
+
+      function getPartDepth(index) {
+        var depth = 0;
+        var part = state.parts[index];
+        var parentId = getParentId(part);
+        var guard = 0;
+        while (parentId && guard < state.parts.length) {
+          var parentIndex = getPartIndexById(parentId);
+          if (parentIndex < 0 || parentIndex === index) {
+            break;
+          }
+          depth += 1;
+          parentId = getParentId(state.parts[parentIndex]);
+          guard += 1;
+        }
+        return depth;
+      }
+
+      function getModifyPartName(index) {
+        var edit = state.edits[index];
+        if (edit && edit.pattern && compactText(edit.pattern.name)) {
+          return compactText(edit.pattern.name);
+        }
+        return getPartName(state.parts[index], index);
       }
 
       function getChildIndexes(parentId) {
@@ -2843,6 +3182,22 @@
           .filter(function (index) {
             return getParentId(state.parts[index]) === parentId;
           });
+      }
+
+      function getDescendantIndexes(parentId) {
+        var depth = arguments.length > 1 ? arguments[1] : 0;
+        if (depth > state.parts.length) {
+          return [];
+        }
+
+        var result = [];
+        getChildIndexes(parentId).forEach(function (childIndex) {
+          result.push(childIndex);
+          getDescendantIndexes(getPartId(state.parts[childIndex], childIndex), depth + 1).forEach(function (descendantIndex) {
+            result.push(descendantIndex);
+          });
+        });
+        return result;
       }
 
       function getPartIndexById(id) {
