@@ -309,13 +309,13 @@
     .tabs,
     .owner-tabs {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
+      min-width: 0;
       padding: 8px;
-      overflow-x: auto;
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: rgba(23, 25, 21, 0.72);
-      scrollbar-width: thin;
     }
 
     .owner-tabs {
@@ -340,9 +340,9 @@
 
     .sub-filter-list {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
-      overflow-x: auto;
-      scrollbar-width: thin;
+      min-width: 0;
     }
 
     .tag-actions {
@@ -822,20 +822,14 @@
 
       .owner-row,
       .category-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) auto;
       }
 
       .sub-filters {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) auto;
       }
 
       .controls .primary-button {
-        width: 100%;
-      }
-
-      .owner-row .ghost-button,
-      .category-row .ghost-button,
-      .sub-filters .ghost-button {
         width: 100%;
       }
 
