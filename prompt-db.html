@@ -72,9 +72,11 @@
     }
 
     .auth-warning-bar {
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 40;
+      left: 0;
+      right: 0;
+      z-index: 9000;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -109,7 +111,7 @@
     .auth-warning-glow {
       position: fixed;
       inset: 0;
-      z-index: 30;
+      z-index: 8999;
       pointer-events: none;
       box-shadow:
         inset 0 0 0 3px rgba(220, 40, 40, 0.9),
@@ -3312,6 +3314,7 @@
     function updateAuthWarning(loggedOut = isLoggedOutForStatus()) {
       els.authWarningBar.hidden = !loggedOut;
       els.authWarningGlow.hidden = !loggedOut;
+      document.querySelector(".shell").style.paddingTop = loggedOut ? "46px" : "";
     }
 
     function showToast(message, type = "success") {
