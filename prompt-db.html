@@ -1202,6 +1202,7 @@
       tokenClient: null,
       tokenRefreshTimer: 0,
       tokenRefreshInFlight: false,
+      autoRetryCount: 0,
       authRequestReason: "",
       dbFileId: "",
       owners: [DEFAULT_OWNER],
@@ -1443,6 +1444,7 @@
       const expiresAt = Date.now() + expiresInMs;
 
       state.accessToken = response.access_token;
+      state.autoRetryCount = 0;
       localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
         access_token: response.access_token,
         issued_at: Date.now(),
@@ -1545,6 +1547,21 @@
       state.authRequestReason = "";
       state.accessToken = "";
       state.tokenRefreshInFlight = false;
+
+      // 자동 재시도: refresh 실패 시 1회에 한해 로그인 팝업 자동 시도
+      if (state.autoRetryCount < 1 && state.tokenClient) {
+        state.autoRetryCount += 1;
+        setStatus("세션 갱신 중...", "loading");
+        try {
+          state.authRequestReason = "login";
+          state.tokenClient.requestAccessToken({ prompt: "" });
+          return;
+        } catch (e) {
+          // 팝업 실패 시 아래 로그아웃 처리로 낙하
+        }
+      }
+
+      state.autoRetryCount = 0;
       showLoginRequired("로그인 필요", "error");
       showToast(response.error_description || response.error || "로그인이 만료되었습니다.", "error");
     }
