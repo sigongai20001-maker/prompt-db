@@ -130,6 +130,12 @@
       background: rgba(255,255,255,0.06);
     }
 
+    .toolbar-button.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
     .toolbar-button:active {
       transform: translateY(1px);
     }
@@ -1056,6 +1062,20 @@
           <rect x="9" y="16" width="6" height="3" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
         </svg>
       </button>
+      <button class="toolbar-button icon-button" id="connectionStraightButton" type="button" title="연결선 직선" aria-label="연결선 직선">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 7h8v10h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          <circle cx="5" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+          <circle cx="19" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="connectionCurveButton" type="button" title="연결선 곡선" aria-label="연결선 곡선">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 17c5-12 9 12 14 0" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          <circle cx="5" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+          <circle cx="19" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+        </svg>
+      </button>
       <button class="toolbar-button" id="saveButton" type="button">저장</button>
       <button class="toolbar-button danger" id="clearButton" type="button">전체 삭제</button>
     </header>
@@ -1180,6 +1200,7 @@
       var JSON_DIRECTORY_HANDLE_KEY = "json-directory:thinking-canvas";
       var AUTO_SAVE_DELAY = 250;
       var UNDO_LIMIT = 80;
+      var CONNECTION_STYLE_DEFAULT = "curve";
       var FALLBACK_COLOR = "#888780";
       var WORLD_WIDTH = 6000;
       var WORLD_HEIGHT = 4000;
@@ -1252,6 +1273,8 @@
         els.alignBottomButton = document.getElementById("alignBottomButton");
         els.distributeHorizontalButton = document.getElementById("distributeHorizontalButton");
         els.distributeVerticalButton = document.getElementById("distributeVerticalButton");
+        els.connectionStraightButton = document.getElementById("connectionStraightButton");
+        els.connectionCurveButton = document.getElementById("connectionCurveButton");
         els.saveButton = document.getElementById("saveButton");
         els.clearButton = document.getElementById("clearButton");
         els.jsonModal = document.getElementById("jsonModal");
@@ -1304,6 +1327,12 @@
         els.alignBottomButton.addEventListener("click", alignSelectedBlocksBottom);
         els.distributeHorizontalButton.addEventListener("click", distributeSelectedBlocksHorizontally);
         els.distributeVerticalButton.addEventListener("click", distributeSelectedBlocksVertically);
+        els.connectionStraightButton.addEventListener("click", function () {
+          setConnectionStyle("straight");
+        });
+        els.connectionCurveButton.addEventListener("click", function () {
+          setConnectionStyle("curve");
+        });
         els.saveButton.addEventListener("click", saveDiagram);
         els.clearButton.addEventListener("click", clearCanvas);
         els.closeJsonButton.addEventListener("click", closeJsonModal);
@@ -1343,6 +1372,7 @@
         return {
           title: "생각블록 캔버스",
           categories: {},
+          connectionStyle: CONNECTION_STYLE_DEFAULT,
           blocks: [],
           connections: []
         };
@@ -2006,7 +2036,7 @@
           if (!from || !to) {
             return "";
           }
-          return '<path d="' + escapeHtml(getConnectionPath(from, to)) + '"></path>';
+          return '<path d="' + escapeHtml(getConnectionPath(from, to, data.connectionStyle)) + '"></path>';
         }).join("\n        ");
 
         var cards = Array.from(projected.values()).map(function (block) {
@@ -2404,6 +2434,7 @@
 
       function renderAll() {
         renderHeader();
+        updateConnectionStyleControls();
         renderBlocks();
         renderConnections();
       }
@@ -2995,6 +3026,30 @@
         renderAll();
         saveLocalState();
         showToast("블록을 자동정렬했습니다.");
+      }
+
+      function setConnectionStyle(style) {
+        var nextStyle = normalizeConnectionStyle(style);
+        if (normalizeConnectionStyle(store.data.connectionStyle) === nextStyle) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data.connectionStyle = nextStyle;
+        updateConnectionStyleControls();
+        renderConnections();
+        saveLocalState();
+        showToast(nextStyle === "straight" ? "연결선을 직선으로 표시합니다." : "연결선을 곡선으로 표시합니다.");
+      }
+
+      function updateConnectionStyleControls() {
+        if (!els.connectionStraightButton || !els.connectionCurveButton) {
+          return;
+        }
+        var style = normalizeConnectionStyle(store.data.connectionStyle);
+        els.connectionStraightButton.classList.toggle("is-active", style === "straight");
+        els.connectionStraightButton.setAttribute("aria-pressed", style === "straight" ? "true" : "false");
+        els.connectionCurveButton.classList.toggle("is-active", style === "curve");
+        els.connectionCurveButton.setAttribute("aria-pressed", style === "curve" ? "true" : "false");
       }
 
       function alignSelectedBlocksLeft() {
@@ -4123,8 +4178,13 @@
         if (!store.connect) {
           return;
         }
-        var path = "M " + store.connect.startX + " " + store.connect.startY +
-          " L " + store.connect.endX + " " + store.connect.endY;
+        var path = getConnectionPathFromPoints({
+          x: store.connect.startX,
+          y: store.connect.startY
+        }, {
+          x: store.connect.endX,
+          y: store.connect.endY
+        }, store.data.connectionStyle);
         els.draftConnection.setAttribute("d", path);
         els.draftConnection.classList.add("is-active");
       }
@@ -4183,10 +4243,45 @@
         card.style.transform = "translate(" + block.x + "px, " + block.y + "px)";
       }
 
-      function getConnectionPath(fromBlock, toBlock) {
+      function getConnectionPath(fromBlock, toBlock, style) {
         var start = edgePoint(fromBlock, toBlock);
         var end = edgePoint(toBlock, fromBlock);
-        return "M " + start.x + " " + start.y + " L " + end.x + " " + end.y;
+        return getConnectionPathFromPoints(start, end, style || store.data.connectionStyle);
+      }
+
+      function getConnectionPathFromPoints(start, end, style) {
+        return normalizeConnectionStyle(style) === "straight" ?
+          getStraightConnectionPath(start, end) :
+          getCurveConnectionPath(start, end);
+      }
+
+      function getCurveConnectionPath(start, end) {
+        var dx = end.x - start.x;
+        var dy = end.y - start.y;
+        var horizontal = Math.abs(dx) >= Math.abs(dy);
+        var offset = clamp((horizontal ? Math.abs(dx) : Math.abs(dy)) * 0.5, 72, 260);
+        var c1x = horizontal ? start.x + offset * (dx >= 0 ? 1 : -1) : start.x;
+        var c1y = horizontal ? start.y : start.y + offset * (dy >= 0 ? 1 : -1);
+        var c2x = horizontal ? end.x - offset * (dx >= 0 ? 1 : -1) : end.x;
+        var c2y = horizontal ? end.y : end.y - offset * (dy >= 0 ? 1 : -1);
+        return "M " + start.x + " " + start.y +
+          " C " + c1x + " " + c1y + " " + c2x + " " + c2y + " " + end.x + " " + end.y;
+      }
+
+      function getStraightConnectionPath(start, end) {
+        var horizontal = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
+        if (horizontal) {
+          var midX = Math.round((start.x + end.x) / 2);
+          return "M " + start.x + " " + start.y +
+            " H " + midX + " V " + end.y + " H " + end.x;
+        }
+        var midY = Math.round((start.y + end.y) / 2);
+        return "M " + start.x + " " + start.y +
+          " V " + midY + " H " + end.x + " V " + end.y;
+      }
+
+      function normalizeConnectionStyle(style) {
+        return style === "straight" ? "straight" : CONNECTION_STYLE_DEFAULT;
       }
 
       function edgePoint(block, targetBlock) {
@@ -4290,7 +4385,52 @@
         if (!fromBlock || !toBlock) {
           return false;
         }
-        return segmentIntersectsRect(edgePoint(fromBlock, toBlock), edgePoint(toBlock, fromBlock), rect);
+        var points = getConnectionSamplePoints(edgePoint(fromBlock, toBlock), edgePoint(toBlock, fromBlock), store.data.connectionStyle);
+        return points.some(function (point, index) {
+          return index > 0 && segmentIntersectsRect(points[index - 1], point, rect);
+        });
+      }
+
+      function getConnectionSamplePoints(start, end, style) {
+        if (normalizeConnectionStyle(style) === "straight") {
+          var horizontal = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y);
+          if (horizontal) {
+            var midX = Math.round((start.x + end.x) / 2);
+            return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+          }
+          var midY = Math.round((start.y + end.y) / 2);
+          return [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
+        }
+        return getCurveSamplePoints(start, end, 24);
+      }
+
+      function getCurveSamplePoints(start, end, steps) {
+        var dx = end.x - start.x;
+        var dy = end.y - start.y;
+        var horizontal = Math.abs(dx) >= Math.abs(dy);
+        var offset = clamp((horizontal ? Math.abs(dx) : Math.abs(dy)) * 0.5, 72, 260);
+        var c1 = {
+          x: horizontal ? start.x + offset * (dx >= 0 ? 1 : -1) : start.x,
+          y: horizontal ? start.y : start.y + offset * (dy >= 0 ? 1 : -1)
+        };
+        var c2 = {
+          x: horizontal ? end.x - offset * (dx >= 0 ? 1 : -1) : end.x,
+          y: horizontal ? end.y : end.y - offset * (dy >= 0 ? 1 : -1)
+        };
+        var points = [];
+        for (var index = 0; index <= steps; index += 1) {
+          var t = index / steps;
+          points.push(cubicBezierPoint(start, c1, c2, end, t));
+        }
+        return points;
+      }
+
+      function cubicBezierPoint(start, c1, c2, end, t) {
+        var mt = 1 - t;
+        return {
+          x: mt * mt * mt * start.x + 3 * mt * mt * t * c1.x + 3 * mt * t * t * c2.x + t * t * t * end.x,
+          y: mt * mt * mt * start.y + 3 * mt * mt * t * c1.y + 3 * mt * t * t * c2.y + t * t * t * end.y
+        };
       }
 
       function segmentIntersectsRect(start, end, rect) {
@@ -4594,6 +4734,7 @@
         return {
           title: String(store.data.title || ""),
           categories: cloneCategories(store.data.categories),
+          connectionStyle: normalizeConnectionStyle(store.data.connectionStyle),
           blocks: store.data.blocks.map(function (block) {
             return {
               id: String(block.id),
@@ -4634,6 +4775,7 @@
         var result = {
           title: typeof source.title === "string" ? source.title : String(source.title || ""),
           categories: {},
+          connectionStyle: normalizeConnectionStyle(source.connectionStyle),
           blocks: [],
           connections: []
         };
