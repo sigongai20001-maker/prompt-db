@@ -1,0 +1,4526 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>생각블록 캔버스</title>
+  <style>
+:root {
+      --bg: #0f1115;
+      --panel: #1c2129;
+      --ink: #e8ebf0;
+      --muted: rgba(255,255,255,0.5);
+      --line: rgba(255,255,255,0.10);
+      --accent: #3DDC97;
+      --accent-ink: #0f1115;
+      --danger: #ef5350;
+      --fallback: #6b7280;
+      --shadow: 0 8px 24px rgba(0,0,0,0.45);
+      --grid-size: 48px;
+      --grid-x: 0px;
+      --grid-y: 0px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Pretendard", "Pretendard Variable", "Segoe UI", "Malgun Gothic", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    select,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+    }
+
+    .toolbar {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 64px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(22, 25, 31, 0.92);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .brand {
+      min-width: 210px;
+      margin-right: auto;
+      overflow: hidden;
+    }
+
+    .brand strong,
+    .brand span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .brand strong {
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .brand span {
+      max-width: 42vw;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .toolbar-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      color: var(--ink);
+      background: transparent;
+      white-space: nowrap;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    .toolbar-button.icon-button {
+      width: 40px;
+      min-width: 40px;
+      padding: 0;
+    }
+
+    .toolbar-button .align-icon {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+
+    .toolbar-button:hover {
+      border-color: rgba(255,255,255,0.24);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .toolbar-button:active {
+      transform: translateY(1px);
+    }
+
+    .toolbar-button.primary {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .toolbar-button.primary:hover {
+      background: #34c489;
+    }
+
+    .toolbar-button.danger {
+      border-color: rgba(239,83,80,0.5);
+      color: #ef5350;
+      background: transparent;
+    }
+
+    .toolbar-button.danger:hover {
+      color: #fff;
+      background: var(--danger);
+    }
+
+    .canvas-viewport {
+      position: relative;
+      overflow: hidden;
+      cursor: crosshair;
+      background-color: #13161c;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-position: var(--grid-x) var(--grid-y);
+      background-size: var(--grid-size) var(--grid-size);
+    }
+
+    .canvas-viewport.is-panning {
+      cursor: grabbing;
+    }
+
+    .canvas-viewport.is-selecting {
+      cursor: crosshair;
+    }
+
+    .world {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 6000px;
+      height: 4000px;
+      transform-origin: 0 0;
+    }
+
+    .connections-layer,
+    .blocks-layer {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 6000px;
+      height: 4000px;
+    }
+
+    .blocks-layer {
+      pointer-events: none;
+    }
+
+    .connections-layer {
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .connection-visible {
+      fill: none;
+      stroke: #5b6472;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      opacity: 0.85;
+      pointer-events: none;
+    }
+
+    .connection-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 18;
+      stroke-linecap: round;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+
+    .connection-hit:hover + .connection-visible,
+    .connection-hit:focus + .connection-visible {
+      stroke: var(--accent);
+      opacity: 1;
+    }
+
+    .connection-visible.is-selected {
+      stroke: var(--accent);
+      stroke-width: 4;
+      opacity: 1;
+    }
+
+    .draft-connection {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2.8;
+      stroke-dasharray: 8 7;
+      stroke-linecap: round;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .draft-connection.is-active {
+      opacity: 0.9;
+    }
+
+    .block-card {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: flex;
+      align-items: center;
+      min-width: 160px;
+      width: var(--card-width, 200px);
+      max-width: none;
+      height: 62px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-left: 8px solid var(--block-color, var(--fallback));
+      border-radius: 8px;
+      background: #252b35;
+      color: var(--block-ink, var(--ink));
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
+      overflow: visible;
+      pointer-events: auto;
+      cursor: move;
+      user-select: none;
+      transition: box-shadow 120ms ease, transform 20ms linear;
+    }
+
+    .block-card.is-main {
+      height: 86px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-left-width: 1px;
+      background: var(--block-color, var(--fallback));
+    }
+
+    .block-card.is-middle {
+      height: 74px;
+      border: 3px solid var(--block-color, var(--fallback));
+      border-left-width: 9px;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+        #252b35;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .block-card.is-dragging {
+      box-shadow: 0 16px 36px rgba(0,0,0,0.55);
+      z-index: 4;
+    }
+
+    .block-card.is-selected {
+      outline: 3px solid rgba(61,220,151,0.6);
+      outline-offset: 4px;
+      z-index: 3;
+    }
+
+    .block-card.is-drop-target {
+      outline: 3px solid rgba(61,220,151,0.6);
+      outline-offset: 4px;
+    }
+
+    .selection-box {
+      position: absolute;
+      z-index: 4;
+      display: none;
+      border: 1px solid rgba(61,220,151,0.95);
+      border-radius: 4px;
+      background: rgba(61,220,151,0.12);
+      pointer-events: none;
+    }
+
+    .selection-box.is-visible {
+      display: block;
+    }
+
+    .block-top {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+      width: 100%;
+      min-width: 0;
+      height: 100%;
+      padding: 7px 18px 7px 10px;
+      cursor: move;
+    }
+
+    .block-card.is-main .block-top {
+      align-items: center;
+      gap: 4px;
+      padding: 10px 16px;
+      text-align: center;
+    }
+
+    .block-title {
+      min-width: 0;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
+      font-weight: 700;
+      color: var(--block-ink, var(--ink));
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .block-card.is-main .block-title {
+      width: 100%;
+      font-size: 26px;
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    .block-card.is-middle .block-title {
+      font-size: 18px;
+      line-height: 1.14;
+    }
+
+    .block-title[contenteditable] {
+      min-width: 44px;
+      padding: 2px 4px;
+      border-radius: 5px;
+      cursor: text;
+      outline: 2px solid transparent;
+    }
+
+    .block-title[contenteditable]:focus {
+      background: rgba(255,255,255,0.08);
+      outline-color: rgba(61,220,151,0.6);
+    }
+
+    .block-summary {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--block-muted, rgba(255,255,255,0.58));
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .block-card:not(.is-main) .block-summary {
+      color: rgba(255,255,255,0.58);
+    }
+
+    .block-card.is-main .block-summary {
+      width: 100%;
+      text-align: center;
+    }
+
+    .block-card.is-middle .block-summary {
+      color: rgba(255,255,255,0.68);
+    }
+
+    .block-link-button {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 7px;
+      background: rgba(15,17,21,0.72);
+      font-size: 13px;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
+    .block-link-button:hover {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.16);
+    }
+
+    .block-card.has-link .block-top {
+      padding-right: 44px;
+    }
+
+    .block-quick-actions {
+      position: absolute;
+      right: 8px;
+      top: -44px;
+      display: inline-flex;
+      gap: 7px;
+      padding: 5px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(28,33,41,0.96);
+      box-shadow: var(--shadow);
+      pointer-events: auto;
+    }
+
+    .block-action-button {
+      min-width: 56px;
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .block-action-button:hover {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .block-action-button.primary {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .block-action-button.primary:hover {
+      background: #34c489;
+    }
+
+    .block-action-button.danger {
+      border-color: rgba(239,83,80,0.5);
+      color: #ef5350;
+      background: transparent;
+    }
+
+    .block-action-button.danger:hover {
+      color: #fff;
+      background: var(--danger);
+    }
+
+    .block-create-menu {
+      position: absolute;
+      right: -188px;
+      top: 50%;
+      z-index: 5;
+      display: inline-flex;
+      gap: 7px;
+      padding: 5px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(28,33,41,0.96);
+      box-shadow: var(--shadow);
+      pointer-events: auto;
+      transform: translateY(-50%);
+    }
+
+    .block-type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      padding: 5px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 9px;
+      background: transparent;
+    }
+
+    .block-type-button {
+      min-height: 42px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .block-type-button:hover {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .block-type-button.is-selected {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61,220,151,0.18);
+    }
+
+    .color-field {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .color-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 40px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .color-chip {
+      width: 34px;
+      height: 34px;
+      border: 2px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      background: var(--chip-color, var(--fallback));
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.42);
+      cursor: pointer;
+    }
+
+    .color-chip:hover {
+      transform: translateY(-1px);
+    }
+
+    .color-chip.is-selected {
+      border-color: #fff;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.72), 0 0 0 3px rgba(61,220,151,0.35);
+    }
+
+    .color-value {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .connect-handle {
+      position: absolute;
+      right: -9px;
+      top: 50%;
+      width: 16px;
+      height: 16px;
+      border: 3px solid var(--panel);
+      border-radius: 50%;
+      background: var(--category-color, var(--fallback));
+      box-shadow: 0 2px 7px rgba(0,0,0,0.42);
+      cursor: crosshair;
+      transform: translateY(-50%);
+    }
+
+    .connect-handle:hover {
+      transform: translateY(-50%) scale(1.12);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.6);
+    }
+
+    .modal-backdrop.is-open {
+      display: flex;
+    }
+
+    .modal-panel {
+      width: min(760px, 100%);
+      max-height: min(82vh, 760px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .link-modal-panel {
+      width: min(1120px, 100%);
+      max-height: min(88vh, 860px);
+    }
+
+    .modal-header,
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 15px;
+    }
+
+    .modal-header {
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 10px;
+      min-height: 0;
+      padding: 15px;
+    }
+
+    .modal-footer {
+      justify-content: flex-end;
+      border-top: 1px solid var(--line);
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-height: 0;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .json-file-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .json-file-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .json-file-input {
+      min-width: 0;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .text-input,
+    .text-area {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: #13161c;
+      outline: none;
+    }
+
+    .text-input:focus,
+    .text-area:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61,220,151,0.18);
+    }
+
+    .text-input {
+      min-height: 38px;
+      padding: 8px 10px;
+    }
+
+    .text-area {
+      min-height: 280px;
+      resize: vertical;
+      padding: 10px;
+      line-height: 1.5;
+      white-space: pre;
+    }
+
+    .text-area.is-drop-target {
+      border-color: var(--accent);
+      background: #13161c;
+      box-shadow: inset 0 0 0 3px rgba(61,220,151,0.18);
+    }
+
+    #jsonText {
+      min-height: min(56vh, 520px);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    .link-modal-body {
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: min(64vh, 620px);
+    }
+
+    .link-preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .link-preview-type {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .link-preview-shell {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f1115;
+    }
+
+    .link-preview-shell iframe,
+    .link-preview-shell img,
+    .link-preview-shell video {
+      width: 100%;
+      height: 100%;
+      min-height: min(58vh, 560px);
+      display: block;
+      border: 0;
+      background: #0f1115;
+    }
+
+    .link-preview-shell img {
+      object-fit: contain;
+      padding: 14px;
+    }
+
+    .link-preview-shell video {
+      object-fit: contain;
+    }
+
+    .link-preview-note {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px;
+      color: var(--muted);
+      background: rgba(15,17,21,0.82);
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+
+    .modal-message {
+      min-height: 18px;
+      color: #ef9a9a;
+      font-size: 13px;
+    }
+
+    .modal-message.is-success {
+      color: var(--accent);
+    }
+
+    .modal-button {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .modal-button:hover {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .modal-button.primary {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .modal-button.primary:hover {
+      background: #34c489;
+    }
+
+    .modal-button.danger {
+      margin-right: auto;
+      border-color: rgba(239,83,80,0.5);
+      color: #ef5350;
+      background: transparent;
+    }
+
+    .modal-button.danger:hover {
+      color: #fff;
+      background: var(--danger);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      z-index: 20;
+      min-width: 180px;
+      max-width: min(460px, calc(100vw - 36px));
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(28,33,41,0.96);
+      box-shadow: var(--shadow);
+      text-align: center;
+      transform: translate(-50%, 18px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .toast.is-visible {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+
+    @media (max-width: 760px) {
+      .toolbar {
+        flex-wrap: wrap;
+        align-content: center;
+        min-height: 106px;
+      }
+
+      .brand {
+        flex-basis: 100%;
+        min-width: 0;
+      }
+
+      .brand span {
+        max-width: 100%;
+      }
+
+      .toolbar-button {
+        flex: 1 1 auto;
+        min-width: 104px;
+        padding: 0 9px;
+      }
+
+      .toolbar-button.icon-button {
+        flex: 0 0 40px;
+        min-width: 40px;
+        padding: 0;
+      }
+
+      .modal-backdrop {
+        padding: 12px;
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="toolbar">
+      <div class="brand">
+        <strong>생각블록 캔버스</strong>
+        <span id="documentTitle">새 문서</span>
+      </div>
+      <button class="toolbar-button" id="importButton" type="button">JSON 불러오기</button>
+      <button class="toolbar-button" id="exportButton" type="button">JSON 내보내기</button>
+      <button class="toolbar-button primary" id="addBlockButton" type="button">+ 새 블록</button>
+      <button class="toolbar-button icon-button" id="arrangeButton" type="button" title="자동정렬" aria-label="자동정렬">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="4" y="4" width="6" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+          <rect x="14" y="5" width="6" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+          <rect x="5" y="15" width="6" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+          <rect x="15" y="14" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+          <path d="M10 7h4M17 10v4M11 17h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="alignLeftButton" type="button" title="선택 블록 왼쪽 맞춤" aria-label="선택 블록 왼쪽 맞춤">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 4v16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          <rect x="9" y="5" width="9" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="9" y="11" width="12" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="9" y="17" width="7" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="alignCenterButton" type="button" title="선택 블록 중심선 정렬" aria-label="선택 블록 중심선 정렬">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          <rect x="5" y="5" width="14" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="7" y="14" width="10" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="alignMiddleButton" type="button" title="선택 블록 중간정렬" aria-label="선택 블록 중간정렬">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          <rect x="6" y="5" width="12" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="8" y="14" width="8" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="alignBottomButton" type="button" title="선택 블록 아래쪽 맞춤" aria-label="선택 블록 아래쪽 맞춤">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 19h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          <rect x="5" y="7" width="4" height="9" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="11" y="10" width="4" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="17" y="5" width="4" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="distributeHorizontalButton" type="button" title="선택 블록 가로 간격 균등" aria-label="선택 블록 가로 간격 균등">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5v14M20 5v14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+          <rect x="6" y="9" width="3" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+          <rect x="11" y="9" width="3" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+          <rect x="16" y="9" width="3" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button icon-button" id="distributeVerticalButton" type="button" title="선택 블록 세로 간격 균등" aria-label="선택 블록 세로 간격 균등">
+        <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 4h14M5 20h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+          <rect x="9" y="6" width="6" height="3" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+          <rect x="9" y="11" width="6" height="3" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+          <rect x="9" y="16" width="6" height="3" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+        </svg>
+      </button>
+      <button class="toolbar-button" id="saveButton" type="button">저장</button>
+      <button class="toolbar-button danger" id="clearButton" type="button">전체 삭제</button>
+    </header>
+
+    <main class="canvas-viewport" id="canvasViewport" aria-label="생각블록 작업 캔버스">
+      <div class="world" id="world">
+        <svg class="connections-layer" id="connectionsLayer" viewBox="0 0 6000 4000" aria-hidden="true">
+          <g id="connectionGroup"></g>
+          <path class="draft-connection" id="draftConnection"></path>
+        </svg>
+        <div class="blocks-layer" id="blocksLayer"></div>
+      </div>
+      <div class="selection-box" id="selectionBox" aria-hidden="true"></div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="jsonModal" role="dialog" aria-modal="true" aria-labelledby="jsonModalTitle">
+    <section class="modal-panel">
+      <header class="modal-header">
+        <h2 id="jsonModalTitle">JSON</h2>
+        <button class="modal-button" id="closeJsonButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body">
+        <div class="json-file-row" id="jsonFileRow">
+          <label class="json-file-label" for="jsonFile">JSON 파일 선택</label>
+          <input class="json-file-input" id="jsonFile" type="file" accept=".json,.txt,application/json,text/plain">
+        </div>
+        <textarea class="text-area" id="jsonText" spellcheck="false"></textarea>
+        <div class="modal-message" id="jsonMessage" aria-live="polite"></div>
+      </div>
+      <footer class="modal-footer">
+        <button class="modal-button" id="copyJsonButton" type="button">복사</button>
+        <button class="modal-button primary" id="applyJsonButton" type="button">적용</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <section class="modal-panel">
+      <header class="modal-header">
+        <h2 id="editModalTitle">블록 편집</h2>
+        <button class="modal-button" id="cancelEditTopButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body">
+        <div class="field">
+          <label for="editTitle">제목</label>
+          <input class="text-input" id="editTitle" type="text">
+        </div>
+        <div class="field">
+          <label for="editSubtitle">서브타이틀</label>
+          <input class="text-input" id="editSubtitle" type="text">
+        </div>
+        <div class="field">
+          <label for="editBlockType">블록 종류</label>
+          <input id="editBlockType" type="hidden" value="sub">
+          <div class="block-type-toggle" id="editBlockTypeToggle" role="group" aria-label="블록 종류 선택">
+            <button class="block-type-button" type="button" data-type="sub" aria-pressed="true">서브</button>
+            <button class="block-type-button" type="button" data-type="middle" aria-pressed="false">중간</button>
+            <button class="block-type-button" type="button" data-type="main" aria-pressed="false">메인</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="editBlockColor">블록 컬러</label>
+          <div class="color-field">
+            <input id="editBlockColor" type="hidden" value="#888780">
+            <div class="color-chips" id="editColorChips" role="listbox" aria-label="블록 컬러 선택"></div>
+            <span class="color-value" id="editBlockColorValue">#888780</span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="editDetail">세부내용</label>
+          <textarea class="text-area" id="editDetail"></textarea>
+        </div>
+        <div class="field">
+          <label for="editLink">링크 (Google Drive URL)</label>
+          <input class="text-input" id="editLink" type="url" placeholder="https://drive.google.com/...">
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <button class="modal-button danger" id="deleteEditButton" type="button">삭제</button>
+        <button class="modal-button" id="cancelEditButton" type="button">취소</button>
+        <button class="modal-button primary" id="saveEditButton" type="button">저장</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="linkModal" role="dialog" aria-modal="true" aria-labelledby="linkModalTitle">
+    <section class="modal-panel link-modal-panel">
+      <header class="modal-header">
+        <h2 id="linkModalTitle">자료 보기</h2>
+        <button class="modal-button" id="closeLinkButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body link-modal-body">
+        <div class="link-preview-toolbar">
+          <span class="link-preview-type" id="linkPreviewType">링크</span>
+          <a class="modal-button primary" id="openLinkNewTabButton" href="#" target="_blank" rel="noopener">새 탭 열기</a>
+        </div>
+        <div class="link-preview-shell" id="linkPreviewShell"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+  <script>
+(function () {
+      "use strict";
+
+      var STORAGE_KEY = "thinkingCanvasState.v1";
+      var FILE_HANDLE_DB_NAME = "thinkingCanvasFiles.v1";
+      var FILE_HANDLE_STORE = "handles";
+      var JSON_PICKER_ID = "thinking-canvas-json";
+      var JSON_DIRECTORY_PICKER_ID = "thinking-canvas-json-folder";
+      var JSON_DIRECTORY_HANDLE_KEY = "json-directory:thinking-canvas";
+      var AUTO_SAVE_DELAY = 250;
+      var UNDO_LIMIT = 80;
+      var FALLBACK_COLOR = "#888780";
+      var WORLD_WIDTH = 6000;
+      var WORLD_HEIGHT = 4000;
+      var CARD_WIDTH = 200;
+      var CARD_MIN_WIDTH = 160;
+      var CARD_HEIGHT = 62;
+      var MIDDLE_CARD_HEIGHT = 74;
+      var MAIN_CARD_HEIGHT = 86;
+      var COLOR_CHIP_PRESETS = [
+        "#7F77DD", "#1D9E75", "#E24B4A", "#F4A11A",
+        "#2F8EDC", "#2AA36B", "#E0B93C", "#B85AD8",
+        "#888780", "#31343A", "#F7F1E8", "#FFFFFF"
+      ];
+      var uidCounter = 1;
+
+      var store = {
+        data: createEmptyDiagram(),
+        view: {
+          panX: 72,
+          panY: 64,
+          scale: 1
+        },
+        drag: null,
+        pan: null,
+        connect: null,
+        marquee: null,
+        handlePress: null,
+        editBlockId: null,
+        selectedBlockId: null,
+        selectedBlockIds: [],
+        selectedConnectionKeys: [],
+        clipboard: null,
+        focusTitleBlockId: null,
+        createMenuBlockId: null,
+        isSpaceDown: false,
+        jsonMode: "import",
+        undoStack: [],
+        toastTimer: 0,
+        autoSaveTimer: 0
+      };
+
+      var els = {};
+
+      document.addEventListener("DOMContentLoaded", init);
+
+      function init() {
+        cacheElements();
+        loadSavedDiagram();
+        bindEvents();
+        renderAll();
+        updateTransform();
+      }
+
+      function cacheElements() {
+        els.documentTitle = document.getElementById("documentTitle");
+        els.viewport = document.getElementById("canvasViewport");
+        els.world = document.getElementById("world");
+        els.selectionBox = document.getElementById("selectionBox");
+        els.blocksLayer = document.getElementById("blocksLayer");
+        els.connectionGroup = document.getElementById("connectionGroup");
+        els.draftConnection = document.getElementById("draftConnection");
+        els.importButton = document.getElementById("importButton");
+        els.exportButton = document.getElementById("exportButton");
+        els.addBlockButton = document.getElementById("addBlockButton");
+        els.arrangeButton = document.getElementById("arrangeButton");
+        els.alignLeftButton = document.getElementById("alignLeftButton");
+        els.alignCenterButton = document.getElementById("alignCenterButton");
+        els.alignMiddleButton = document.getElementById("alignMiddleButton");
+        els.alignBottomButton = document.getElementById("alignBottomButton");
+        els.distributeHorizontalButton = document.getElementById("distributeHorizontalButton");
+        els.distributeVerticalButton = document.getElementById("distributeVerticalButton");
+        els.saveButton = document.getElementById("saveButton");
+        els.clearButton = document.getElementById("clearButton");
+        els.jsonModal = document.getElementById("jsonModal");
+        els.jsonModalTitle = document.getElementById("jsonModalTitle");
+        els.jsonFileRow = document.getElementById("jsonFileRow");
+        els.jsonFile = document.getElementById("jsonFile");
+        els.jsonText = document.getElementById("jsonText");
+        els.jsonMessage = document.getElementById("jsonMessage");
+        els.closeJsonButton = document.getElementById("closeJsonButton");
+        els.copyJsonButton = document.getElementById("copyJsonButton");
+        els.applyJsonButton = document.getElementById("applyJsonButton");
+        els.editModal = document.getElementById("editModal");
+        els.editTitle = document.getElementById("editTitle");
+        els.editSubtitle = document.getElementById("editSubtitle");
+        els.editBlockType = document.getElementById("editBlockType");
+        els.editBlockTypeToggle = document.getElementById("editBlockTypeToggle");
+        els.editBlockColor = document.getElementById("editBlockColor");
+        els.editColorChips = document.getElementById("editColorChips");
+        els.editBlockColorValue = document.getElementById("editBlockColorValue");
+        els.editDetail = document.getElementById("editDetail");
+        els.editLink = document.getElementById("editLink");
+        els.deleteEditButton = document.getElementById("deleteEditButton");
+        els.saveEditButton = document.getElementById("saveEditButton");
+        els.cancelEditButton = document.getElementById("cancelEditButton");
+        els.cancelEditTopButton = document.getElementById("cancelEditTopButton");
+        els.linkModal = document.getElementById("linkModal");
+        els.linkModalTitle = document.getElementById("linkModalTitle");
+        els.linkPreviewType = document.getElementById("linkPreviewType");
+        els.linkPreviewShell = document.getElementById("linkPreviewShell");
+        els.closeLinkButton = document.getElementById("closeLinkButton");
+        els.openLinkNewTabButton = document.getElementById("openLinkNewTabButton");
+        els.toast = document.getElementById("toast");
+      }
+
+      function bindEvents() {
+        els.importButton.addEventListener("click", function () {
+          openJsonModal("import");
+        });
+        els.exportButton.addEventListener("click", function () {
+          exportJsonFile();
+        });
+        els.addBlockButton.addEventListener("click", addBlockAtViewportCenter);
+        els.arrangeButton.addEventListener("click", autoArrangeBlocks);
+        els.alignLeftButton.addEventListener("click", alignSelectedBlocksLeft);
+        els.alignCenterButton.addEventListener("click", alignSelectedBlocksCenter);
+        els.alignMiddleButton.addEventListener("click", alignSelectedBlocksMiddle);
+        els.alignBottomButton.addEventListener("click", alignSelectedBlocksBottom);
+        els.distributeHorizontalButton.addEventListener("click", distributeSelectedBlocksHorizontally);
+        els.distributeVerticalButton.addEventListener("click", distributeSelectedBlocksVertically);
+        els.saveButton.addEventListener("click", saveDiagram);
+        els.clearButton.addEventListener("click", clearCanvas);
+        els.closeJsonButton.addEventListener("click", closeJsonModal);
+        els.applyJsonButton.addEventListener("click", applyJsonFromModal);
+        els.jsonFile.addEventListener("change", handleJsonFileSelect);
+        els.jsonText.addEventListener("dragenter", handleJsonDragEnter);
+        els.jsonText.addEventListener("dragover", handleJsonDragOver);
+        els.jsonText.addEventListener("dragleave", handleJsonDragLeave);
+        els.jsonText.addEventListener("drop", handleJsonDrop);
+        els.copyJsonButton.addEventListener("click", copyJsonText);
+        els.editBlockTypeToggle.addEventListener("click", handleBlockTypeButtonClick);
+        els.editColorChips.addEventListener("click", handleColorChipClick);
+        els.deleteEditButton.addEventListener("click", deleteEditedBlock);
+        els.saveEditButton.addEventListener("click", saveEditedBlock);
+        els.cancelEditButton.addEventListener("click", closeEditModal);
+        els.cancelEditTopButton.addEventListener("click", closeEditModal);
+        els.closeLinkButton.addEventListener("click", closeLinkModal);
+        els.jsonModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.editModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.linkModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.viewport.addEventListener("pointerdown", startCanvasInteraction);
+        els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
+        document.addEventListener("pointermove", handlePointerMove);
+        document.addEventListener("pointerup", handlePointerUp);
+        document.addEventListener("pointercancel", handlePointerUp);
+        document.addEventListener("keydown", handleKeyDown);
+        document.addEventListener("keyup", handleKeyUp);
+      }
+
+      function createEmptyDiagram() {
+        return {
+          title: "생각블록 캔버스",
+          categories: {},
+          blocks: [],
+          connections: []
+        };
+      }
+
+      function loadSavedDiagram() {
+        var scopedSaved = readLocalDiagramRecord(getScopedStorageKey());
+        var embedded = readEmbeddedDiagramRecord();
+        if (embedded && (!scopedSaved || embedded.savedAt >= scopedSaved.savedAt)) {
+          store.data = embedded.data;
+          saveLocalState(embedded.data, embedded.savedAt);
+          showToast("저장된 상태를 복원했습니다.");
+          return;
+        }
+
+        if (scopedSaved) {
+          store.data = scopedSaved.data;
+          showToast("저장된 상태를 복원했습니다.");
+          return;
+        }
+
+        var legacySaved = readLocalDiagramRecord(STORAGE_KEY);
+        if (legacySaved) {
+          store.data = legacySaved.data;
+          saveLocalState(legacySaved.data, legacySaved.savedAt);
+          showToast("저장된 상태를 복원했습니다.");
+        }
+      }
+
+      function readLocalDiagramRecord(key) {
+        var saved = localStorage.getItem(key);
+        if (!saved) {
+          return null;
+        }
+        try {
+          return createDiagramRecord(JSON.parse(saved), 0);
+        } catch (error) {
+          console.warn("Saved diagram could not be restored.", error);
+          return null;
+        }
+      }
+
+      function readEmbeddedDiagramRecord() {
+        var node = document.getElementById("thinking-canvas-saved-state");
+        if (!node) {
+          return null;
+        }
+        try {
+          return createDiagramRecord(JSON.parse(node.textContent || ""), 0);
+        } catch (error) {
+          console.warn("Embedded diagram could not be restored.", error);
+          return null;
+        }
+      }
+
+      function createDiagramRecord(raw, fallbackSavedAt) {
+        var source = raw && raw.data ? raw.data : raw;
+        var savedAt = raw && Number.isFinite(raw.savedAt) ? raw.savedAt : fallbackSavedAt;
+        return {
+          data: normalizeDiagram(source),
+          savedAt: savedAt
+        };
+      }
+
+      async function saveDiagram() {
+        var data = getExportData();
+        saveLocalState(data);
+        var saved = await saveTextFile(createFileName(data.title, "html"), createStandaloneHtml(data), "text/html;charset=utf-8", "HTML 문서", "html");
+        if (saved) {
+          showToast("HTML 파일로 저장했습니다.");
+        }
+      }
+
+      function saveLocalState(data, savedAt) {
+        try {
+          localStorage.setItem(getScopedStorageKey(), JSON.stringify({
+            savedAt: Number.isFinite(savedAt) ? savedAt : Date.now(),
+            data: data || getExportData()
+          }));
+        } catch (error) {
+          console.warn("Diagram could not be saved locally.", error);
+        }
+      }
+
+      function createUndoSnapshot() {
+        return {
+          data: getExportData(),
+          view: {
+            panX: store.view.panX,
+            panY: store.view.panY,
+            scale: store.view.scale
+          },
+          selectedBlockId: store.selectedBlockId,
+          selectedBlockIds: store.selectedBlockIds.slice(),
+          selectedConnectionKeys: store.selectedConnectionKeys.slice()
+        };
+      }
+
+      function pushUndoSnapshot(snapshot) {
+        if (!snapshot) {
+          return;
+        }
+        var latest = store.undoStack[store.undoStack.length - 1];
+        if (latest && diagramDataEquals(latest.data, snapshot.data)) {
+          return;
+        }
+        store.undoStack.push(snapshot);
+        if (store.undoStack.length > UNDO_LIMIT) {
+          store.undoStack.shift();
+        }
+      }
+
+      function undoLastAction() {
+        var snapshot = store.undoStack.pop();
+        if (!snapshot) {
+          showToast("되돌릴 작업이 없습니다.");
+          return;
+        }
+        store.data = normalizeDiagram(snapshot.data);
+        store.view.panX = finiteNumber(snapshot.view && snapshot.view.panX) ? snapshot.view.panX : 72;
+        store.view.panY = finiteNumber(snapshot.view && snapshot.view.panY) ? snapshot.view.panY : 64;
+        store.view.scale = finiteNumber(snapshot.view && snapshot.view.scale) ? snapshot.view.scale : 1;
+        store.drag = null;
+        store.connect = null;
+        store.marquee = null;
+        store.handlePress = null;
+        store.editBlockId = null;
+        store.focusTitleBlockId = null;
+        store.createMenuBlockId = null;
+        setSelection(snapshot.selectedBlockIds || []);
+        if (snapshot.selectedBlockId && isBlockSelected(snapshot.selectedBlockId)) {
+          store.selectedBlockId = snapshot.selectedBlockId;
+        }
+        setConnectionSelection(snapshot.selectedConnectionKeys || []);
+        closeTransientUi();
+        updateTransform();
+        renderAll();
+        saveLocalState();
+        showToast("이전 작업으로 되돌렸습니다.");
+      }
+
+      function closeTransientUi() {
+        if (els.jsonModal) {
+          els.jsonModal.classList.remove("is-open");
+        }
+        if (els.editModal) {
+          els.editModal.classList.remove("is-open");
+        }
+        if (els.linkModal) {
+          closeLinkModal();
+        }
+        if (els.draftConnection) {
+          els.draftConnection.classList.remove("is-active");
+          els.draftConnection.setAttribute("d", "");
+        }
+        if (els.viewport) {
+          els.viewport.classList.remove("is-panning", "is-selecting");
+        }
+        hideSelectionBox();
+        clearDropTargets();
+      }
+
+      function diagramDataEquals(a, b) {
+        return JSON.stringify(a) === JSON.stringify(b);
+      }
+
+      function scheduleLocalSave() {
+        if (store.autoSaveTimer) {
+          window.clearTimeout(store.autoSaveTimer);
+        }
+        store.autoSaveTimer = window.setTimeout(function () {
+          store.autoSaveTimer = 0;
+          saveLocalState();
+        }, AUTO_SAVE_DELAY);
+      }
+
+      function clearLocalState() {
+        if (store.autoSaveTimer) {
+          window.clearTimeout(store.autoSaveTimer);
+          store.autoSaveTimer = 0;
+        }
+        localStorage.removeItem(getScopedStorageKey());
+        localStorage.removeItem(STORAGE_KEY);
+      }
+
+      function getScopedStorageKey() {
+        var path = window.location && window.location.pathname ? window.location.pathname : "default";
+        return STORAGE_KEY + ":" + path;
+      }
+
+      function clearCanvas() {
+        if (!confirm("현재 캔버스의 모든 블록과 연결선을 삭제할까요?")) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data.blocks = [];
+        store.data.connections = [];
+        clearSelectionState();
+        clearLocalState();
+        renderAll();
+        showToast("캔버스를 비웠습니다.");
+      }
+
+      function openJsonModal(mode) {
+        store.jsonMode = mode;
+        els.jsonModalTitle.textContent = mode === "import" ? "JSON 불러오기" : "JSON 내보내기";
+        els.jsonMessage.textContent = "";
+        els.jsonMessage.classList.remove("is-success");
+        els.jsonText.classList.remove("is-drop-target");
+        els.jsonFile.value = "";
+        els.jsonText.value = mode === "import" ? "" : JSON.stringify(getExportData(), null, 2);
+        els.jsonText.readOnly = mode === "export";
+        els.jsonFileRow.style.display = mode === "import" ? "" : "none";
+        els.applyJsonButton.style.display = mode === "import" ? "" : "none";
+        els.copyJsonButton.style.display = mode === "export" ? "" : "none";
+        els.jsonModal.classList.add("is-open");
+        setTimeout(function () {
+          els.jsonText.focus();
+          els.jsonText.select();
+        }, 0);
+      }
+
+      function closeJsonModal() {
+        els.jsonText.classList.remove("is-drop-target");
+        els.jsonModal.classList.remove("is-open");
+      }
+
+      function applyJsonFromModal() {
+        var parsed;
+        try {
+          parsed = JSON.parse(els.jsonText.value);
+        } catch (error) {
+          els.jsonMessage.classList.remove("is-success");
+          els.jsonMessage.textContent = "JSON 형식을 확인해주세요.";
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data = normalizeDiagram(parsed);
+        clearSelectionState();
+        resetView();
+        renderAll();
+        saveLocalState();
+        closeJsonModal();
+        showToast("JSON을 캔버스에 적용했습니다.");
+      }
+
+      function handleJsonFileSelect(event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) {
+          return;
+        }
+        loadJsonFileToTextArea(file);
+      }
+
+      function handleJsonDragEnter(event) {
+        if (!isImportMode() || !hasDroppedFiles(event)) {
+          return;
+        }
+        event.preventDefault();
+        els.jsonText.classList.add("is-drop-target");
+      }
+
+      function handleJsonDragOver(event) {
+        if (!isImportMode() || !hasDroppedFiles(event)) {
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        els.jsonText.classList.add("is-drop-target");
+      }
+
+      function handleJsonDragLeave(event) {
+        if (!els.jsonText.contains(event.relatedTarget)) {
+          els.jsonText.classList.remove("is-drop-target");
+        }
+      }
+
+      function handleJsonDrop(event) {
+        if (!isImportMode()) {
+          return;
+        }
+        event.preventDefault();
+        els.jsonText.classList.remove("is-drop-target");
+        var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+        if (!file) {
+          return;
+        }
+        loadJsonFileToTextArea(file);
+      }
+
+      function loadJsonFileToTextArea(file) {
+        readTextFile(file).then(function (text) {
+          els.jsonText.value = text;
+          els.jsonMessage.classList.add("is-success");
+          els.jsonMessage.textContent = file.name + " 파일을 불러왔습니다.";
+          els.jsonText.focus();
+        }).catch(function () {
+          els.jsonMessage.classList.remove("is-success");
+          els.jsonMessage.textContent = "파일을 읽지 못했습니다.";
+        });
+      }
+
+      function hasDroppedFiles(event) {
+        var types = event.dataTransfer && event.dataTransfer.types;
+        return Boolean(types && Array.prototype.indexOf.call(types, "Files") !== -1);
+      }
+
+      function isImportMode() {
+        return store.jsonMode === "import" && els.jsonModal.classList.contains("is-open");
+      }
+
+      function readTextFile(file) {
+        if (file.text) {
+          return file.text();
+        }
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve(String(reader.result || ""));
+          };
+          reader.onerror = reject;
+          reader.readAsText(file, "utf-8");
+        });
+      }
+
+      function copyJsonText() {
+        var text = els.jsonText.value;
+        function fallbackCopy() {
+          els.jsonText.focus();
+          els.jsonText.select();
+          document.execCommand("copy");
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () {
+            showToast("복사했습니다.");
+          }).catch(function () {
+            fallbackCopy();
+            showToast("복사했습니다.");
+          });
+          return;
+        }
+        fallbackCopy();
+        showToast("복사했습니다.");
+      }
+
+      async function exportJsonFile() {
+        var data = getExportData();
+        var saved = await saveJsonDocumentFile(data);
+        if (saved) {
+          showToast("JSON 문서 파일로 저장했습니다.");
+        }
+      }
+
+      async function saveJsonDocumentFile(data) {
+        var fileName = createStableFileName(data.title, "txt");
+        var content = JSON.stringify(data, null, 2) + "\n";
+        if (window.showDirectoryPicker) {
+          return await saveRememberedDirectoryTextFile(JSON_DIRECTORY_HANDLE_KEY, createFileHandleKey("json", data), fileName, content, "text/plain;charset=utf-8", JSON_DIRECTORY_PICKER_ID);
+        }
+        return await saveRememberedTextFile(createFileHandleKey("json", data), fileName, content, "text/plain;charset=utf-8", "텍스트 문서", "txt", JSON_PICKER_ID);
+      }
+
+      async function saveRememberedDirectoryTextFile(handleKey, fallbackHandleKey, fileName, content, mimeType, pickerId) {
+        var storedDirectory = await getStoredFileHandle(handleKey);
+        if (storedDirectory && await verifyWritePermission(storedDirectory)) {
+          try {
+            await writeDirectoryTextFile(storedDirectory, fileName, content);
+            return true;
+          } catch (error) {
+            console.warn("Remembered directory could not be written.", error);
+            await deleteStoredFileHandle(handleKey);
+          }
+        }
+
+        try {
+          showToast("저장할 thinking-canvas 폴더를 선택해주세요.");
+          var directory = await pickSaveDirectory(pickerId);
+          if (!await verifyWritePermission(directory)) {
+            showToast("폴더 저장 권한이 필요합니다.");
+            return false;
+          }
+          await writeDirectoryTextFile(directory, fileName, content);
+          await storeFileHandle(handleKey, directory);
+          return true;
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            showToast("폴더 선택을 취소했습니다.");
+            return false;
+          }
+          console.warn("Directory picker failed.", error);
+        }
+
+        return await saveRememberedTextFile(fallbackHandleKey, fileName, content, mimeType, "텍스트 문서", "txt", JSON_PICKER_ID);
+      }
+
+      async function saveRememberedTextFile(handleKey, fileName, content, mimeType, description, extension, pickerId) {
+        if (window.showSaveFilePicker) {
+          var storedHandle = await getStoredFileHandle(handleKey);
+          if (storedHandle && await verifyWritePermission(storedHandle)) {
+            try {
+              await writeFileHandle(storedHandle, content);
+              return true;
+            } catch (error) {
+              console.warn("Remembered file handle could not be written.", error);
+              await deleteStoredFileHandle(handleKey);
+            }
+          }
+
+          try {
+            var handle = await pickSaveFile(fileName, mimeType, description, extension, pickerId);
+            await writeFileHandle(handle, content);
+            await storeFileHandle(handleKey, handle);
+            return true;
+          } catch (error) {
+            if (error && error.name === "AbortError") {
+              showToast("파일 저장을 취소했습니다.");
+              return false;
+            }
+            console.warn("Save picker failed.", error);
+          }
+        }
+        downloadTextFile(fileName, content, mimeType);
+        return true;
+      }
+
+      async function saveTextFile(fileName, content, mimeType, description, extension) {
+        if (window.showSaveFilePicker) {
+          try {
+            var handle = await pickSaveFile(fileName, mimeType, description, extension);
+            await writeFileHandle(handle, content);
+            return true;
+          } catch (error) {
+            if (error && error.name === "AbortError") {
+              showToast("파일 저장을 취소했습니다.");
+              return false;
+            }
+          }
+        }
+        downloadTextFile(fileName, content, mimeType);
+        return true;
+      }
+
+      function pickSaveFile(fileName, mimeType, description, extension, pickerId) {
+        var cleanMimeType = mimeType.split(";")[0];
+        var accept = {};
+        var options = {
+          suggestedName: fileName,
+          types: [{ description: description, accept: accept }]
+        };
+        accept[cleanMimeType] = ["." + extension];
+        if (pickerId) {
+          options.id = pickerId;
+        }
+        return window.showSaveFilePicker(options);
+      }
+
+      function pickSaveDirectory(pickerId) {
+        var options = {
+          mode: "readwrite"
+        };
+        if (pickerId) {
+          options.id = pickerId;
+        }
+        return window.showDirectoryPicker(options);
+      }
+
+      async function writeDirectoryTextFile(directoryHandle, fileName, content) {
+        var fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+        await writeFileHandle(fileHandle, content);
+      }
+
+      async function writeFileHandle(handle, content) {
+        var writable = await handle.createWritable();
+        await writable.write(content);
+        await writable.close();
+      }
+
+      async function verifyWritePermission(handle) {
+        if (!handle || !handle.queryPermission) {
+          return true;
+        }
+        var options = { mode: "readwrite" };
+        if (await handle.queryPermission(options) === "granted") {
+          return true;
+        }
+        if (!handle.requestPermission) {
+          return false;
+        }
+        return await handle.requestPermission(options) === "granted";
+      }
+
+      async function getStoredFileHandle(key) {
+        try {
+          return await withFileHandleStore("readonly", function (store) {
+            return store.get(key);
+          });
+        } catch (error) {
+          console.warn("Stored file handle could not be read.", error);
+          return null;
+        }
+      }
+
+      async function storeFileHandle(key, handle) {
+        try {
+          await withFileHandleStore("readwrite", function (store) {
+            return store.put(handle, key);
+          });
+        } catch (error) {
+          console.warn("File handle could not be remembered.", error);
+        }
+      }
+
+      async function deleteStoredFileHandle(key) {
+        try {
+          await withFileHandleStore("readwrite", function (store) {
+            return store.delete(key);
+          });
+        } catch (error) {
+          console.warn("Stored file handle could not be deleted.", error);
+        }
+      }
+
+      async function withFileHandleStore(mode, callback) {
+        var db = await openFileHandleDb();
+        if (!db) {
+          return null;
+        }
+        return new Promise(function (resolve, reject) {
+          var transaction = db.transaction(FILE_HANDLE_STORE, mode);
+          var request;
+          try {
+            request = callback(transaction.objectStore(FILE_HANDLE_STORE));
+          } catch (error) {
+            db.close();
+            reject(error);
+            return;
+          }
+          request.onsuccess = function () {
+            resolve(request.result);
+          };
+          request.onerror = function () {
+            reject(request.error);
+          };
+          transaction.oncomplete = function () {
+            db.close();
+          };
+          transaction.onerror = function () {
+            reject(transaction.error);
+            db.close();
+          };
+        });
+      }
+
+      function openFileHandleDb() {
+        if (!window.indexedDB) {
+          return Promise.resolve(null);
+        }
+        return new Promise(function (resolve, reject) {
+          var request = window.indexedDB.open(FILE_HANDLE_DB_NAME, 1);
+          request.onupgradeneeded = function () {
+            var db = request.result;
+            if (!db.objectStoreNames.contains(FILE_HANDLE_STORE)) {
+              db.createObjectStore(FILE_HANDLE_STORE);
+            }
+          };
+          request.onsuccess = function () {
+            resolve(request.result);
+          };
+          request.onerror = function () {
+            reject(request.error);
+          };
+        });
+      }
+
+      function downloadTextFile(fileName, content, mimeType) {
+        var blob = new Blob([content], { type: mimeType });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        window.setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+
+      function createFileName(title, extension) {
+        var base = createFileBaseName(title);
+        var stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        return base + "-" + stamp + "." + extension;
+      }
+
+      function createStableFileName(title, extension) {
+        return createFileBaseName(title) + "." + extension;
+      }
+
+      function createFileBaseName(title) {
+        return String(title || "thinking-canvas")
+          .trim()
+          .replace(/[\\/:*?"<>|]+/g, "-")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 60) || "thinking-canvas";
+      }
+
+      function createFileHandleKey(kind, data) {
+        return kind + ":" + createFileBaseName(data && data.title);
+      }
+
+      function createStandaloneHtml(data) {
+        var html = "<!doctype html>\n" + document.documentElement.outerHTML;
+        var embeddedState = {
+          savedAt: Date.now(),
+          data: data
+        };
+        var savedStateScript = '<script type="application/json" id="thinking-canvas-saved-state">\n' +
+          escapeJsonForHtml(JSON.stringify(embeddedState, null, 2)) +
+          '\n</scr' + 'ipt>\n';
+        html = html.replace(/\s*<script[^>]+id=["']thinking-canvas-saved-state["'][\s\S]*?<\/script>\s*/i, "\n");
+        if (/<\/body>/i.test(html)) {
+          return html.replace(/<\/body>/i, savedStateScript + "</body>");
+        }
+        return html + savedStateScript;
+      }
+
+      function createStaticSnapshotHtml(data) {
+        var padding = 56;
+        var blocks = data.blocks || [];
+        var minX = blocks.length ? Math.min.apply(null, blocks.map(function (block) { return Number(block.x) || 0; })) : 0;
+        var minY = blocks.length ? Math.min.apply(null, blocks.map(function (block) { return Number(block.y) || 0; })) : 0;
+        var maxX = blocks.length ? Math.max.apply(null, blocks.map(function (block) { return (Number(block.x) || 0) + getBlockWidth(block); })) : CARD_WIDTH;
+        var maxY = blocks.length ? Math.max.apply(null, blocks.map(function (block) { return (Number(block.y) || 0) + getBlockHeight(block); })) : CARD_HEIGHT;
+        var width = Math.max(720, Math.round(maxX - minX + padding * 2));
+        var height = Math.max(460, Math.round(maxY - minY + padding * 2));
+        var projected = new Map();
+        var categories = data.categories || {};
+
+        blocks.forEach(function (block) {
+          projected.set(block.id, {
+            id: block.id,
+            title: block.title,
+            subtitle: block.subtitle,
+            detail: block.detail,
+            link: block.link,
+            category: block.category,
+            type: block.type,
+            color: getDiagramBlockColor(data, block),
+            x: Math.round((Number(block.x) || 0) - minX + padding),
+            y: Math.round((Number(block.y) || 0) - minY + padding)
+          });
+        });
+
+        var paths = (data.connections || []).map(function (connection) {
+          var from = projected.get(connection.from);
+          var to = projected.get(connection.to);
+          if (!from || !to) {
+            return "";
+          }
+          return '<path d="' + escapeHtml(getConnectionPath(from, to)) + '"></path>';
+        }).join("\n        ");
+
+        var cards = Array.from(projected.values()).map(function (block) {
+          var category = categories[block.category] || {};
+          var color = validColor(block.color) ? block.color : (category && validColor(category.color) ? category.color : FALLBACK_COLOR);
+          var summary = getBlockSubtitle(block);
+          var link = isValidLink(block.link) ? String(block.link).trim() : "";
+          return '<article class="card" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+            '          <strong>' + escapeHtml(block.title || "제목 없음") + '</strong>\n' +
+            (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
+            (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
+            '        </article>';
+        }).join("\n        ");
+
+        var memoItems = blocks.map(function (block) {
+          var link = isValidLink(block.link) ? String(block.link).trim() : "";
+          return '<section class="memo-item">\n' +
+            '          <h2>' + escapeHtml(block.title || "제목 없음") + '</h2>\n' +
+            (block.subtitle ? '          <p>' + escapeHtml(block.subtitle) + '</p>\n' : "") +
+            (link ? '          <p><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">자료 링크</a></p>\n' : "") +
+            '          <pre>' + escapeHtml(block.detail || "") + '</pre>\n' +
+            '        </section>';
+        }).join("\n        ");
+
+        var json = JSON.stringify(data, null, 2);
+
+        return '<!doctype html>\n' +
+          '<html lang="ko">\n' +
+          '<head>\n' +
+          '  <meta charset="utf-8">\n' +
+          '  <meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+          '  <title>' + escapeHtml(data.title || "생각블록 캔버스") + '</title>\n' +
+          '  <style>\n' +
+          '    body{margin:0;background:#0f1115;color:#e8ebf0;font-family:"Pretendard","Pretendard Variable","Segoe UI","Malgun Gothic",Arial,sans-serif;}\n' +
+          '    header{padding:22px 26px 12px;background:#16191f;border-bottom:1px solid rgba(255,255,255,0.10);}\n' +
+          '    h1{margin:0;font-size:22px;} .saved-at{margin:6px 0 0;color:rgba(255,255,255,0.5);font-size:13px;}\n' +
+          '    .wrap{padding:22px 26px 34px;}\n' +
+          '    .diagram{position:relative;width:' + width + 'px;height:' + height + 'px;max-width:100%;overflow:auto;border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#13161c;background-image:radial-gradient(rgba(255,255,255,0.05) 1px,transparent 1px);background-size:48px 48px;}\n' +
+          '    svg{position:absolute;left:0;top:0;width:' + width + 'px;height:' + height + 'px;overflow:visible;}\n' +
+          '    path{fill:none;stroke:#5b6472;stroke-width:2.2;stroke-linecap:round;opacity:.85;}\n' +
+          '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
+          '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
+          '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
+          '    .card strong{font-size:13px;line-height:1.3;} .card span{margin-top:4px;color:rgba(255,255,255,0.58);font-size:12px;line-height:1.25;}\n' +
+          '    .card a{position:absolute;right:8px;top:8px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.16);border-radius:7px;background:rgba(15,17,21,0.72);text-decoration:none;font-size:13px;line-height:1;}\n' +
+          '    .memos{margin-top:22px;display:grid;gap:10px;max-width:900px;} .memo-item{border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#1c2129;padding:12px 14px;}\n' +
+          '    .memo-item h2{margin:0 0 6px;color:#e8ebf0;font-size:15px;} .memo-item p{margin:0 0 8px;color:rgba(255,255,255,0.5);font-size:13px;} .memo-item pre{margin:0;white-space:pre-wrap;color:#c8cdd6;font-family:inherit;font-size:13px;line-height:1.5;}\n' +
+          '  </style>\n' +
+          '</head>\n' +
+          '<body>\n' +
+          '  <header><h1>' + escapeHtml(data.title || "생각블록 캔버스") + '</h1><p class="saved-at">저장: ' + escapeHtml(new Date().toLocaleString()) + '</p></header>\n' +
+          '  <main class="wrap">\n' +
+          '    <section class="diagram" aria-label="저장된 생각블록 다이어그램">\n' +
+          '      <svg viewBox="0 0 ' + width + ' ' + height + '" aria-hidden="true">\n        ' + paths + '\n      </svg>\n' +
+          '      <div>\n        ' + cards + '\n      </div>\n' +
+          '    </section>\n' +
+          (memoItems ? '    <section class="memos" aria-label="세부내용">\n        ' + memoItems + '\n    </section>\n' : "") +
+          '  </main>\n' +
+          '  <script type="application/json" id="thinking-canvas-json">\n' + escapeJsonForHtml(json) + '\n  </scr' + 'ipt>\n' +
+          '</body>\n' +
+          '</html>\n';
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function escapeJsonForHtml(value) {
+        return String(value)
+          .replace(/&/g, "\\u0026")
+          .replace(/</g, "\\u003c")
+          .replace(/>/g, "\\u003e");
+      }
+
+      function openEditModal(blockId) {
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        store.editBlockId = blockId;
+        setSelection([blockId]);
+        els.editTitle.value = block.title;
+        els.editSubtitle.value = block.subtitle || "";
+        setEditBlockTypeValue(block.type);
+        renderColorChips(getBlockColor(block));
+        setEditColorValue(getBlockColor(block));
+        els.editDetail.value = block.detail;
+        els.editLink.value = block.link || "";
+        els.editModal.classList.add("is-open");
+        setTimeout(function () {
+          els.editTitle.focus();
+          els.editTitle.select();
+        }, 0);
+      }
+
+      function closeEditModal() {
+        store.editBlockId = null;
+        els.editModal.classList.remove("is-open");
+        renderAll();
+      }
+
+      function saveEditedBlock() {
+        var block = getBlock(store.editBlockId);
+        if (!block) {
+          closeEditModal();
+          return;
+        }
+        var undoSnapshot = createUndoSnapshot();
+        block.title = els.editTitle.value;
+        block.subtitle = els.editSubtitle.value;
+        block.type = normalizeBlockType(els.editBlockType.value);
+        block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
+        block.detail = els.editDetail.value;
+        block.link = String(els.editLink.value || "").trim();
+        if (!diagramDataEquals(undoSnapshot.data, getExportData())) {
+          pushUndoSnapshot(undoSnapshot);
+        }
+        renderAll();
+        saveLocalState();
+        closeEditModal();
+        showToast("블록을 수정했습니다.");
+      }
+
+      function handleBlockTypeButtonClick(event) {
+        var button = event.target.closest(".block-type-button");
+        if (!button) {
+          return;
+        }
+        setEditBlockTypeValue(button.dataset.type);
+        previewEditedBlockVisual();
+      }
+
+      function handleColorChipClick(event) {
+        var chip = event.target.closest(".color-chip");
+        if (!chip) {
+          return;
+        }
+        setEditColorValue(chip.dataset.color);
+        previewEditedBlockVisual();
+      }
+
+      function previewEditedBlockVisual() {
+        var block = getBlock(store.editBlockId);
+        var card = getBlockElement(store.editBlockId);
+        if (!block || !card) {
+          return;
+        }
+        applyBlockVisual(card, {
+          type: normalizeBlockType(els.editBlockType.value),
+          color: validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category),
+          category: block.category
+        });
+        els.editBlockColorValue.textContent = validColor(els.editBlockColor.value) ? els.editBlockColor.value.toUpperCase() : getCategoryColor(block.category).toUpperCase();
+      }
+
+      function deleteEditedBlock() {
+        var blockId = store.editBlockId;
+        if (!blockId) {
+          return;
+        }
+        closeEditModal();
+        removeBlock(blockId);
+      }
+
+      function closeWhenBackdropIsClicked(event) {
+        if (event.target === els.jsonModal) {
+          closeJsonModal();
+        }
+        if (event.target === els.editModal) {
+          closeEditModal();
+        }
+        if (event.target === els.linkModal) {
+          closeLinkModal();
+        }
+      }
+
+      function handleKeyDown(event) {
+        if (event.code === "Space" && !isTypingTarget(event.target)) {
+          store.isSpaceDown = true;
+          els.viewport.classList.add("is-panning");
+          event.preventDefault();
+          return;
+        }
+        if (isUndoShortcut(event) && canUndoAction(event.target)) {
+          event.preventDefault();
+          undoLastAction();
+          return;
+        }
+        if (isCopyShortcut(event) && canCopySelectedBlocks(event.target)) {
+          event.preventDefault();
+          copySelectedBlocksToClipboard();
+          return;
+        }
+        if (isPasteShortcut(event) && canPasteBlocks(event.target)) {
+          event.preventDefault();
+          pasteBlocksFromClipboard();
+          return;
+        }
+        if ((event.key === "Delete" || event.key === "Backspace") && canDeleteSelectedItems(event.target)) {
+          event.preventDefault();
+          removeSelectedItems();
+          return;
+        }
+        if (event.key !== "Escape") {
+          return;
+        }
+        var modalWasOpen = false;
+        if (els.jsonModal.classList.contains("is-open")) {
+          closeJsonModal();
+          modalWasOpen = true;
+        }
+        if (els.editModal.classList.contains("is-open")) {
+          closeEditModal();
+          modalWasOpen = true;
+        }
+        if (els.linkModal.classList.contains("is-open")) {
+          closeLinkModal();
+          modalWasOpen = true;
+        }
+        if (!modalWasOpen) {
+          clearSelectedBlock();
+        }
+      }
+
+      function handleKeyUp(event) {
+        if (event.code !== "Space") {
+          return;
+        }
+        store.isSpaceDown = false;
+        if (!store.pan) {
+          els.viewport.classList.remove("is-panning");
+        }
+      }
+
+      function renderAll() {
+        renderHeader();
+        renderBlocks();
+        renderConnections();
+      }
+
+      function renderHeader() {
+        var title = store.data.title || "제목 없음";
+        document.title = title + " - 생각블록 캔버스";
+        els.documentTitle.textContent = title;
+      }
+
+      function renderBlocks() {
+        els.blocksLayer.replaceChildren();
+        store.data.blocks.forEach(function (block) {
+          els.blocksLayer.append(createBlockElement(block));
+        });
+        if (store.focusTitleBlockId) {
+          focusBlockTitle(store.focusTitleBlockId);
+          store.focusTitleBlockId = null;
+        }
+      }
+
+      function createBlockElement(block) {
+        var card = document.createElement("article");
+        var top = document.createElement("div");
+        var title = document.createElement("div");
+        var summary = document.createElement("div");
+        var summaryText = getBlockSubtitle(block);
+        var quickActions = document.createElement("div");
+        var editButton = document.createElement("button");
+        var copyButton = document.createElement("button");
+        var deleteButton = document.createElement("button");
+        var handle = document.createElement("button");
+        var linkButton = null;
+        var createMenu = document.createElement("div");
+        var createMainButton = document.createElement("button");
+        var createMiddleButton = document.createElement("button");
+        var createSubButton = document.createElement("button");
+        var connectSelectedButton = document.createElement("button");
+        var isActiveBlock = store.selectedBlockId === block.id;
+        var selectedCount = getSelectedBlockIds().length;
+
+        card.className = "block-card";
+        if (isBlockSelected(block.id)) {
+          card.classList.add("is-selected");
+        }
+        if (isValidLink(block.link)) {
+          card.classList.add("has-link");
+        }
+        card.dataset.blockId = block.id;
+        card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+        applyBlockVisual(card, block);
+        card.title = block.title || "제목 없음";
+        setBlockPosition(card, block);
+
+        top.className = "block-top";
+        title.className = "block-title";
+        title.dataset.titleEditor = "true";
+        title.textContent = block.title || "제목 없음";
+        if (isActiveBlock) {
+          title.contentEditable = "plaintext-only";
+          title.spellcheck = false;
+          title.setAttribute("role", "textbox");
+          title.setAttribute("aria-label", "블록 제목");
+        }
+        summary.className = "block-summary";
+        summary.textContent = summaryText;
+
+        handle.className = "connect-handle";
+        handle.type = "button";
+        handle.title = "연결";
+        handle.setAttribute("aria-label", "연결 만들기");
+
+        if (isValidLink(block.link)) {
+          linkButton = document.createElement("button");
+          linkButton.className = "block-link-button";
+          linkButton.type = "button";
+          linkButton.title = "링크 열기";
+          linkButton.textContent = "🔗";
+          linkButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openBlockLink(block.link, block.title || "자료 보기");
+          });
+        }
+
+        createMenu.className = "block-create-menu";
+        createMainButton.className = "block-action-button primary";
+        createMainButton.type = "button";
+        createMainButton.textContent = "메인";
+        createMainButton.title = "연결된 메인블록 만들기";
+        createMainButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          createConnectedBlock(block.id, "main");
+        });
+
+        createMiddleButton.className = "block-action-button";
+        createMiddleButton.type = "button";
+        createMiddleButton.textContent = "중간";
+        createMiddleButton.title = "연결된 중간블록 만들기";
+        createMiddleButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          createConnectedBlock(block.id, "middle");
+        });
+
+        createSubButton.className = "block-action-button";
+        createSubButton.type = "button";
+        createSubButton.textContent = "서브";
+        createSubButton.title = "연결된 서브블록 만들기";
+        createSubButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          createConnectedBlock(block.id, "sub");
+        });
+        createMenu.append(createMainButton, createMiddleButton, createSubButton);
+
+        quickActions.className = "block-quick-actions";
+        editButton.className = "block-action-button";
+        editButton.type = "button";
+        editButton.textContent = "수정";
+        editButton.title = "세부 수정";
+        editButton.addEventListener("click", function (event) {
+          event.stopPropagation();
+          openEditModal(block.id);
+        });
+
+        copyButton.className = "block-action-button";
+        copyButton.type = "button";
+        copyButton.textContent = "복사";
+        copyButton.title = "블록 복사";
+        copyButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          duplicateBlock(block.id);
+        });
+
+        connectSelectedButton.className = "block-action-button primary";
+        connectSelectedButton.type = "button";
+        connectSelectedButton.textContent = "연결";
+        connectSelectedButton.title = "선택된 블록을 한 번에 연결";
+        connectSelectedButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          connectSelectedBlocks();
+        });
+
+        deleteButton.className = "block-action-button danger";
+        deleteButton.type = "button";
+        deleteButton.textContent = selectedCount > 1 ? selectedCount + "개 삭제" : "삭제";
+        deleteButton.title = selectedCount > 1 ? "선택된 블록 모두 삭제" : "삭제";
+        deleteButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (isBlockSelected(block.id) && getSelectedBlockIds().length > 1) {
+            removeSelectedBlocks();
+            return;
+          }
+          removeBlock(block.id);
+        });
+
+        quickActions.append(editButton, copyButton);
+        if (selectedCount > 1) {
+          quickActions.append(connectSelectedButton);
+        }
+        quickActions.append(deleteButton);
+        top.append(title);
+        if (summaryText) {
+          top.append(summary);
+        }
+        card.append(top, handle);
+        if (linkButton) {
+          card.append(linkButton);
+        }
+        if (isActiveBlock) {
+          card.append(quickActions);
+        }
+        if (store.createMenuBlockId === block.id) {
+          card.append(createMenu);
+        }
+
+        title.addEventListener("pointerdown", function (event) {
+          if (isActiveBlock) {
+            event.stopPropagation();
+          }
+        });
+        title.addEventListener("dblclick", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          openEditModal(block.id);
+        });
+        title.addEventListener("input", function () {
+          if (title.contentEditable !== "false" && title.dataset.undoCaptured !== "true") {
+            title.dataset.undoCaptured = "true";
+            pushUndoSnapshot(createUndoSnapshot());
+          }
+          updateInlineBlockTitle(block.id, title);
+        });
+        title.addEventListener("keydown", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+            title.blur();
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            var currentBlock = getBlock(block.id);
+            title.textContent = currentBlock && currentBlock.title ? currentBlock.title : "제목 없음";
+            title.blur();
+          }
+        });
+        title.addEventListener("blur", function () {
+          commitInlineBlockTitle(block.id, title);
+        });
+
+        top.addEventListener("pointerdown", function (event) {
+          if (isControlTarget(event.target)) {
+            return;
+          }
+          if (event.detail >= 2) {
+            event.preventDefault();
+            event.stopPropagation();
+            openEditModal(block.id);
+            return;
+          }
+          startBlockDrag(event, block.id);
+        });
+        card.addEventListener("dblclick", function (event) {
+          if (isControlTarget(event.target)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          openEditModal(block.id);
+        });
+        handle.addEventListener("pointerdown", function (event) {
+          startHandlePress(event, block.id);
+        });
+
+        return card;
+      }
+
+      function getDetailFirstLine(detail) {
+        return String(detail || "").split(/\r?\n/)[0];
+      }
+
+      function getBlockSubtitle(block) {
+        var subtitle = String(block && block.subtitle || "").trim();
+        return subtitle || getDetailFirstLine(block && block.detail);
+      }
+
+      function updateInlineBlockTitle(blockId, titleElement) {
+        var block = getBlock(blockId);
+        var card = getBlockElement(blockId);
+        if (!block || !titleElement) {
+          return;
+        }
+        block.title = normalizeInlineTitle(titleElement.textContent);
+        if (card) {
+          card.title = block.title || "제목 없음";
+          card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+        }
+        renderConnections();
+        scheduleLocalSave();
+      }
+
+      function commitInlineBlockTitle(blockId, titleElement) {
+        var block = getBlock(blockId);
+        if (!block || !titleElement) {
+          return;
+        }
+        block.title = normalizeInlineTitle(titleElement.textContent);
+        if (!block.title) {
+          titleElement.textContent = "제목 없음";
+        }
+        var card = getBlockElement(blockId);
+        if (card) {
+          card.title = block.title || "제목 없음";
+          card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+        }
+        renderConnections();
+        saveLocalState();
+        delete titleElement.dataset.undoCaptured;
+      }
+
+      function normalizeInlineTitle(value) {
+        return String(value || "").replace(/\s+/g, " ").trim();
+      }
+
+      function focusBlockTitle(blockId) {
+        var card = getBlockElement(blockId);
+        var title = card && card.querySelector("[data-title-editor]");
+        if (!title || title.contentEditable === "false") {
+          return;
+        }
+        window.setTimeout(function () {
+          title.focus();
+          selectNodeText(title);
+        }, 0);
+      }
+
+      function selectNodeText(node) {
+        var selection = window.getSelection && window.getSelection();
+        if (!selection || !document.createRange) {
+          return;
+        }
+        var range = document.createRange();
+        range.selectNodeContents(node);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+
+      function applyBlockVisual(card, block) {
+        var color = getBlockColor(block);
+        var blockType = normalizeBlockType(block.type);
+        var isMain = blockType === "main";
+        var isMiddle = blockType === "middle";
+        var ink = isMain ? getReadableTextColor(color) : "var(--ink)";
+        var muted = isMain ? (ink === "#ffffff" ? "rgba(255,255,255,0.78)" : "rgba(40,39,33,0.68)") : "#777268";
+
+        card.classList.toggle("is-main", isMain);
+        card.classList.toggle("is-middle", isMiddle);
+        card.style.setProperty("--block-color", color);
+        card.style.setProperty("--block-ink", ink);
+        card.style.setProperty("--block-muted", muted);
+      }
+
+      function getBlockColor(block) {
+        return getDiagramBlockColor(store.data, block);
+      }
+
+      function getDiagramBlockColor(diagram, block) {
+        var linkedMainColor = getLinkedMainBlockColor(diagram, block);
+        if (linkedMainColor) {
+          return linkedMainColor;
+        }
+        return getOwnBlockColor(diagram, block);
+      }
+
+      function getOwnBlockColor(diagram, block) {
+        if (block && validColor(block.color)) {
+          return block.color;
+        }
+        return getCategoryColorFromMap(diagram && diagram.categories, block && block.category);
+      }
+
+      function getLinkedMainBlockColor(diagram, block) {
+        var mainBlock = findLinkedMainBlock(diagram, block);
+        return mainBlock ? getOwnBlockColor(diagram, mainBlock) : "";
+      }
+
+      function findLinkedMainBlock(diagram, block) {
+        if (!diagram || !block || !block.id || normalizeBlockType(block.type) === "main") {
+          return null;
+        }
+        var blockMap = new Map((diagram.blocks || []).map(function (item) {
+          return [item.id, item];
+        }));
+        var directMain = findAdjacentMainBlock(diagram, block.id, blockMap);
+        if (directMain) {
+          return directMain;
+        }
+        return findNearestMainBlock(diagram, block.id, blockMap);
+      }
+
+      function findAdjacentMainBlock(diagram, blockId, blockMap) {
+        var connections = diagram.connections || [];
+        for (var index = 0; index < connections.length; index += 1) {
+          var connection = connections[index];
+          var nextId = "";
+          if (connection.from === blockId) {
+            nextId = connection.to;
+          } else if (connection.to === blockId) {
+            nextId = connection.from;
+          }
+          if (!nextId) {
+            continue;
+          }
+          var nextBlock = blockMap.get(nextId);
+          if (nextBlock && normalizeBlockType(nextBlock.type) === "main") {
+            return nextBlock;
+          }
+        }
+        return null;
+      }
+
+      function findNearestMainBlock(diagram, blockId, blockMap) {
+        var visited = new Set([blockId]);
+        var queue = [blockId];
+        var connections = diagram.connections || [];
+
+        while (queue.length) {
+          var currentId = queue.shift();
+          for (var index = 0; index < connections.length; index += 1) {
+            var connection = connections[index];
+            var nextId = "";
+            if (connection.from === currentId) {
+              nextId = connection.to;
+            } else if (connection.to === currentId) {
+              nextId = connection.from;
+            }
+            if (!nextId || visited.has(nextId)) {
+              continue;
+            }
+            visited.add(nextId);
+            var nextBlock = blockMap.get(nextId);
+            if (!nextBlock) {
+              continue;
+            }
+            if (normalizeBlockType(nextBlock.type) === "main") {
+              return nextBlock;
+            }
+            queue.push(nextId);
+          }
+        }
+        return null;
+      }
+
+      function setEditColorValue(color) {
+        var safeColor = validColor(color) ? color : FALLBACK_COLOR;
+        els.editBlockColor.value = safeColor;
+        els.editBlockColorValue.textContent = safeColor.toUpperCase();
+        updateColorChipSelection(safeColor);
+      }
+
+      function setEditBlockTypeValue(type) {
+        var safeType = normalizeBlockType(type);
+        els.editBlockType.value = safeType;
+        updateBlockTypeSelection(safeType);
+      }
+
+      function updateBlockTypeSelection(type) {
+        var safeType = normalizeBlockType(type);
+        els.editBlockTypeToggle.querySelectorAll(".block-type-button").forEach(function (button) {
+          var isSelected = button.dataset.type === safeType;
+          button.classList.toggle("is-selected", isSelected);
+          button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+        });
+      }
+
+      function renderColorChips(currentColor) {
+        els.editColorChips.replaceChildren();
+        getColorChipOptions(currentColor).forEach(function (color) {
+          var chip = document.createElement("button");
+          chip.className = "color-chip";
+          chip.type = "button";
+          chip.dataset.color = color;
+          chip.style.setProperty("--chip-color", color);
+          chip.title = color.toUpperCase();
+          chip.setAttribute("role", "option");
+          chip.setAttribute("aria-label", color.toUpperCase() + " 선택");
+          chip.setAttribute("aria-selected", "false");
+          els.editColorChips.append(chip);
+        });
+        updateColorChipSelection(currentColor);
+      }
+
+      function getColorChipOptions(currentColor) {
+        var colors = [];
+        function addColor(color) {
+          var safeColor = validColor(color) ? color.toUpperCase() : "";
+          if (safeColor && colors.indexOf(safeColor) === -1) {
+            colors.push(safeColor);
+          }
+        }
+
+        Object.entries(store.data.categories || {}).forEach(function (entry) {
+          addColor(entry[1] && entry[1].color);
+        });
+        COLOR_CHIP_PRESETS.forEach(addColor);
+        addColor(currentColor);
+        addColor(FALLBACK_COLOR);
+        return colors;
+      }
+
+      function updateColorChipSelection(color) {
+        var safeColor = validColor(color) ? color.toUpperCase() : FALLBACK_COLOR;
+        els.editColorChips.querySelectorAll(".color-chip").forEach(function (chip) {
+          var isSelected = chip.dataset.color.toUpperCase() === safeColor;
+          chip.classList.toggle("is-selected", isSelected);
+          chip.setAttribute("aria-selected", isSelected ? "true" : "false");
+        });
+      }
+
+      function normalizeBlockType(value) {
+        if (value === "main" || value === "middle") {
+          return value;
+        }
+        return "sub";
+      }
+
+      function getReadableTextColor(color) {
+        var rgb = hexToRgb(color);
+        if (!rgb) {
+          return "#ffffff";
+        }
+        var brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        return brightness >= 150 ? "#282721" : "#ffffff";
+      }
+
+      function hexToRgb(color) {
+        if (!validColor(color)) {
+          return null;
+        }
+        return {
+          r: parseInt(color.slice(1, 3), 16),
+          g: parseInt(color.slice(3, 5), 16),
+          b: parseInt(color.slice(5, 7), 16)
+        };
+      }
+
+      function renderConnections() {
+        els.connectionGroup.replaceChildren();
+        store.data.connections.forEach(function (connection, index) {
+          var fromBlock = getBlock(connection.from);
+          var toBlock = getBlock(connection.to);
+          if (!fromBlock || !toBlock) {
+            return;
+          }
+
+          var key = getConnectionKey(connection);
+          var pathData = getConnectionPath(fromBlock, toBlock);
+          var group = createSvgElement("g");
+          var hit = createSvgElement("path");
+          var visible = createSvgElement("path");
+
+          hit.setAttribute("d", pathData);
+          hit.setAttribute("tabindex", "0");
+          hit.setAttribute("class", "connection-hit");
+          hit.setAttribute("aria-label", "연결선 선택");
+          hit.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+          });
+          hit.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+            }
+          });
+
+          visible.setAttribute("d", pathData);
+          visible.setAttribute("class", isConnectionSelected(key) ? "connection-visible is-selected" : "connection-visible");
+          group.append(hit, visible);
+          els.connectionGroup.append(group);
+        });
+      }
+
+      function addBlockAtViewportCenter() {
+        var rect = els.viewport.getBoundingClientRect();
+        var center = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        var category = Object.keys(store.data.categories || {})[0] || "";
+        var block = {
+          id: createUniqueBlockId(),
+          title: "새 블록",
+          subtitle: "",
+          detail: "",
+          link: "",
+          category: category,
+          type: "main",
+          color: getCategoryColor(category),
+          x: 0,
+          y: 0
+        };
+        block.x = Math.round(center.x - getBlockWidth(block) / 2);
+        block.y = Math.round(center.y - getBlockHeight(block) / 2);
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data.blocks.push(block);
+        renderAll();
+        saveLocalState();
+        showToast("새 블록을 추가했습니다.");
+      }
+
+      function autoArrangeBlocks() {
+        var blocks = store.data.blocks || [];
+        if (!blocks.length) {
+          showToast("정렬할 블록이 없습니다.");
+          return;
+        }
+
+        pushUndoSnapshot(createUndoSnapshot());
+        clearSelectionState();
+        var layout = buildAutoLayout(blocks);
+        applyAutoLayout(layout);
+        resetView();
+        renderAll();
+        saveLocalState();
+        showToast("블록을 자동정렬했습니다.");
+      }
+
+      function alignSelectedBlocksLeft() {
+        var blocks = getArrangementSelection(2, "왼쪽 맞춤");
+        if (!blocks.length) {
+          return;
+        }
+        var targetX = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.x) || 0;
+        }));
+        applySelectedBlockPositions(blocks.map(function (block) {
+          return {
+            block: block,
+            x: targetX,
+            y: Number(block.y) || 0
+          };
+        }), "왼쪽 맞춤했습니다.");
+      }
+
+      function alignSelectedBlocksCenter() {
+        var blocks = getArrangementSelection(2, "중심선 정렬");
+        if (!blocks.length) {
+          return;
+        }
+        var left = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.x) || 0;
+        }));
+        var right = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.x) || 0) + getBlockWidth(block);
+        }));
+        var targetCenterX = (left + right) / 2;
+        applySelectedBlockPositions(blocks.map(function (block) {
+          return {
+            block: block,
+            x: targetCenterX - getBlockWidth(block) / 2,
+            y: Number(block.y) || 0
+          };
+        }), "중심선 정렬했습니다.");
+      }
+
+      function alignSelectedBlocksMiddle() {
+        var blocks = getArrangementSelection(2, "중간정렬");
+        if (!blocks.length) {
+          return;
+        }
+        var top = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.y) || 0;
+        }));
+        var bottom = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.y) || 0) + getBlockHeight(block);
+        }));
+        var targetCenterY = (top + bottom) / 2;
+        applySelectedBlockPositions(blocks.map(function (block) {
+          return {
+            block: block,
+            x: Number(block.x) || 0,
+            y: targetCenterY - getBlockHeight(block) / 2
+          };
+        }), "중간정렬했습니다.");
+      }
+
+      function alignSelectedBlocksBottom() {
+        var blocks = getArrangementSelection(2, "아래쪽 맞춤");
+        if (!blocks.length) {
+          return;
+        }
+        var targetBottom = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.y) || 0) + getBlockHeight(block);
+        }));
+        applySelectedBlockPositions(blocks.map(function (block) {
+          return {
+            block: block,
+            x: Number(block.x) || 0,
+            y: targetBottom - getBlockHeight(block)
+          };
+        }), "아래쪽 맞춤했습니다.");
+      }
+
+      function distributeSelectedBlocksHorizontally() {
+        var blocks = getArrangementSelection(3, "가로 간격 균등");
+        if (!blocks.length) {
+          return;
+        }
+        var sortedBlocks = blocks.slice().sort(function (a, b) {
+          return (Number(a.x) || 0) - (Number(b.x) || 0);
+        });
+        var firstLeft = Number(sortedBlocks[0].x) || 0;
+        var lastBlock = sortedBlocks[sortedBlocks.length - 1];
+        var lastRight = (Number(lastBlock.x) || 0) + getBlockWidth(lastBlock);
+        var totalWidth = sortedBlocks.reduce(function (sum, block) {
+          return sum + getBlockWidth(block);
+        }, 0);
+        var gap = (lastRight - firstLeft - totalWidth) / (sortedBlocks.length - 1);
+        var cursorX = firstLeft;
+        var positions = sortedBlocks.map(function (block) {
+          var position = {
+            block: block,
+            x: cursorX,
+            y: Number(block.y) || 0
+          };
+          cursorX += getBlockWidth(block) + gap;
+          return position;
+        });
+        applySelectedBlockPositions(positions, "가로 간격을 균등하게 맞췄습니다.");
+      }
+
+      function distributeSelectedBlocksVertically() {
+        var blocks = getArrangementSelection(3, "세로 간격 균등");
+        if (!blocks.length) {
+          return;
+        }
+        var sortedBlocks = blocks.slice().sort(function (a, b) {
+          return (Number(a.y) || 0) - (Number(b.y) || 0);
+        });
+        var firstTop = Number(sortedBlocks[0].y) || 0;
+        var lastBlock = sortedBlocks[sortedBlocks.length - 1];
+        var lastBottom = (Number(lastBlock.y) || 0) + getBlockHeight(lastBlock);
+        var totalHeight = sortedBlocks.reduce(function (sum, block) {
+          return sum + getBlockHeight(block);
+        }, 0);
+        var gap = (lastBottom - firstTop - totalHeight) / (sortedBlocks.length - 1);
+        var cursorY = firstTop;
+        var positions = sortedBlocks.map(function (block) {
+          var position = {
+            block: block,
+            x: Number(block.x) || 0,
+            y: cursorY
+          };
+          cursorY += getBlockHeight(block) + gap;
+          return position;
+        });
+        applySelectedBlockPositions(positions, "세로 간격을 균등하게 맞췄습니다.");
+      }
+
+      function getArrangementSelection(minimumCount, actionName) {
+        var blocks = getSelectedBlockIds().map(getBlock).filter(Boolean);
+        if (blocks.length < minimumCount) {
+          showToast(actionName + "은 블록 " + minimumCount + "개 이상 선택하세요.");
+          return [];
+        }
+        return blocks;
+      }
+
+      function applySelectedBlockPositions(positions, successMessage) {
+        var changedPositions = positions.filter(function (position) {
+          return Math.round(Number(position.block.x) || 0) !== Math.round(position.x) ||
+            Math.round(Number(position.block.y) || 0) !== Math.round(position.y);
+        });
+        if (!changedPositions.length) {
+          showToast("이미 맞춰진 상태입니다.");
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        positions.forEach(function (position) {
+          position.block.x = Math.round(position.x);
+          position.block.y = Math.round(position.y);
+        });
+        renderAll();
+        saveLocalState();
+        showToast(successMessage);
+      }
+
+      function buildAutoLayout(blocks) {
+        var blockMap = new Map();
+        var incoming = new Map();
+        var outgoing = new Map();
+        var connectedIds = new Set();
+
+        blocks.forEach(function (block) {
+          blockMap.set(block.id, block);
+          incoming.set(block.id, []);
+          outgoing.set(block.id, []);
+        });
+
+        store.data.connections.forEach(function (connection) {
+          if (!blockMap.has(connection.from) || !blockMap.has(connection.to)) {
+            return;
+          }
+          outgoing.get(connection.from).push(connection.to);
+          incoming.get(connection.to).push(connection.from);
+          connectedIds.add(connection.from);
+          connectedIds.add(connection.to);
+        });
+
+        var connectedBlocks = blocks.filter(function (block) {
+          return connectedIds.has(block.id);
+        });
+        var isolatedBlocks = blocks.filter(function (block) {
+          return !connectedIds.has(block.id);
+        });
+
+        var levelMap = assignLayoutLevels(connectedBlocks, incoming, outgoing);
+        return {
+          connectedGroups: groupBlocksByLevel(connectedBlocks, levelMap),
+          isolatedBlocks: sortLayoutBlocks(isolatedBlocks)
+        };
+      }
+
+      function assignLayoutLevels(blocks, incoming, outgoing) {
+        var levelMap = new Map();
+        var blockIds = new Set(blocks.map(function (block) {
+          return block.id;
+        }));
+        var roots = blocks.filter(function (block) {
+          return (incoming.get(block.id) || []).filter(function (id) {
+            return blockIds.has(id);
+          }).length === 0;
+        });
+
+        if (!roots.length) {
+          roots = blocks.slice();
+        }
+        roots = sortLayoutBlocks(roots);
+
+        function visitFrom(seed) {
+          var queue = [{ id: seed.id, level: levelMap.has(seed.id) ? levelMap.get(seed.id) : 0 }];
+          if (!levelMap.has(seed.id)) {
+            levelMap.set(seed.id, 0);
+          }
+          while (queue.length) {
+            var current = queue.shift();
+            (outgoing.get(current.id) || []).forEach(function (nextId) {
+              if (!blockIds.has(nextId)) {
+                return;
+              }
+              var nextLevel = current.level + 1;
+              if (!levelMap.has(nextId)) {
+                levelMap.set(nextId, nextLevel);
+                queue.push({ id: nextId, level: nextLevel });
+              }
+            });
+          }
+        }
+
+        roots.forEach(visitFrom);
+        sortLayoutBlocks(blocks).forEach(function (block) {
+          if (!levelMap.has(block.id)) {
+            visitFrom(block);
+          }
+        });
+        return levelMap;
+      }
+
+      function groupBlocksByLevel(blocks, levelMap) {
+        var groups = [];
+        blocks.forEach(function (block) {
+          var level = levelMap.get(block.id) || 0;
+          if (!groups[level]) {
+            groups[level] = [];
+          }
+          groups[level].push(block);
+        });
+        return groups.map(function (group) {
+          return sortLayoutBlocks(group || []);
+        });
+      }
+
+      function applyAutoLayout(layout) {
+        var startX = 120;
+        var startY = 100;
+        var columnGap = 260;
+        var rowGap = 76;
+        var isolatedGapY = 150;
+        var currentX = startX;
+        var maxBottom = startY;
+        var hasConnectedLayout = false;
+
+        layout.connectedGroups.forEach(function (group) {
+          if (!group || !group.length) {
+            return;
+          }
+          hasConnectedLayout = true;
+          var columnWidth = Math.max.apply(null, group.map(getBlockWidth));
+          var currentY = startY;
+          group.forEach(function (block) {
+            block.x = Math.round(currentX + (columnWidth - getBlockWidth(block)) / 2);
+            block.y = Math.round(currentY);
+            currentY += getBlockHeight(block) + rowGap;
+          });
+          maxBottom = Math.max(maxBottom, currentY - rowGap);
+          currentX += columnWidth + columnGap;
+        });
+
+        if (layout.isolatedBlocks.length) {
+          placeIsolatedBlocks(layout.isolatedBlocks, startX, hasConnectedLayout ? maxBottom + isolatedGapY : startY);
+        }
+      }
+
+      function placeIsolatedBlocks(blocks, startX, startY) {
+        var maxRowWidth = 1280;
+        var columnGap = 56;
+        var rowGap = 64;
+        var x = startX;
+        var y = startY;
+        var rowHeight = 0;
+
+        blocks.forEach(function (block) {
+          var width = getBlockWidth(block);
+          var height = getBlockHeight(block);
+          if (x > startX && x + width > startX + maxRowWidth) {
+            x = startX;
+            y += rowHeight + rowGap;
+            rowHeight = 0;
+          }
+          block.x = Math.round(x);
+          block.y = Math.round(y);
+          x += width + columnGap;
+          rowHeight = Math.max(rowHeight, height);
+        });
+      }
+
+      function sortLayoutBlocks(blocks) {
+        return blocks.slice().sort(function (a, b) {
+          var typeDiff = getLayoutTypeRank(a) - getLayoutTypeRank(b);
+          if (typeDiff !== 0) {
+            return typeDiff;
+          }
+          var yDiff = (Number(a.y) || 0) - (Number(b.y) || 0);
+          if (yDiff !== 0) {
+            return yDiff;
+          }
+          var xDiff = (Number(a.x) || 0) - (Number(b.x) || 0);
+          if (xDiff !== 0) {
+            return xDiff;
+          }
+          return String(a.title || "").localeCompare(String(b.title || ""), "ko");
+        });
+      }
+
+      function getLayoutTypeRank(block) {
+        var type = normalizeBlockType(block && block.type);
+        if (type === "main") {
+          return 0;
+        }
+        return type === "middle" ? 1 : 2;
+      }
+
+      function removeBlock(blockId) {
+        if (!getBlock(blockId)) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        if (store.selectedBlockId === blockId) {
+          store.selectedBlockId = null;
+        }
+        store.selectedBlockIds = store.selectedBlockIds.filter(function (id) {
+          return id !== blockId;
+        });
+        if (store.editBlockId === blockId) {
+          store.editBlockId = null;
+        }
+        store.data.blocks = store.data.blocks.filter(function (block) {
+          return block.id !== blockId;
+        });
+        store.data.connections = store.data.connections.filter(function (connection) {
+          return connection.from !== blockId && connection.to !== blockId;
+        });
+        setConnectionSelection(store.selectedConnectionKeys);
+        renderAll();
+        saveLocalState();
+        showToast("블록을 삭제했습니다.");
+      }
+
+      function removeSelectedItems() {
+        var blockIds = getSelectedBlockIds();
+        var connectionKeys = getSelectedConnectionKeys();
+        if (!blockIds.length && !connectionKeys.length) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        if (blockIds.length) {
+          var removeIds = new Set(blockIds);
+          store.data.blocks = store.data.blocks.filter(function (block) {
+            return !removeIds.has(block.id);
+          });
+          store.data.connections = store.data.connections.filter(function (connection) {
+            return !removeIds.has(connection.from) && !removeIds.has(connection.to);
+          });
+        }
+        if (connectionKeys.length) {
+          var removeKeys = new Set(connectionKeys);
+          store.data.connections = store.data.connections.filter(function (connection) {
+            return !removeKeys.has(getConnectionKey(connection));
+          });
+        }
+        clearSelectionState();
+        renderAll();
+        saveLocalState();
+        var count = blockIds.length + connectionKeys.length;
+        showToast(count > 1 ? count + "개 항목을 삭제했습니다." : "선택 항목을 삭제했습니다.");
+      }
+
+      function removeSelectedBlocks() {
+        var blockIds = store.selectedBlockIds.length ? store.selectedBlockIds.slice() : (store.selectedBlockId ? [store.selectedBlockId] : []);
+        if (!blockIds.length) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        var removeIds = new Set(blockIds);
+        store.data.blocks = store.data.blocks.filter(function (block) {
+          return !removeIds.has(block.id);
+        });
+        store.data.connections = store.data.connections.filter(function (connection) {
+          return !removeIds.has(connection.from) && !removeIds.has(connection.to);
+        });
+        if (store.editBlockId && removeIds.has(store.editBlockId)) {
+          store.editBlockId = null;
+        }
+        clearSelectionState();
+        renderAll();
+        saveLocalState();
+        showToast(blockIds.length > 1 ? blockIds.length + "개 블록을 삭제했습니다." : "블록을 삭제했습니다.");
+      }
+
+      function duplicateBlock(blockId) {
+        var source = getBlock(blockId);
+        if (!source) {
+          return;
+        }
+        var copy = {
+          id: createUniqueBlockId(),
+          title: source.title,
+          subtitle: source.subtitle || "",
+          detail: source.detail,
+          link: String(source.link || ""),
+          category: source.category,
+          type: normalizeBlockType(source.type),
+          color: getBlockColor(source),
+          x: Math.round((Number(source.x) || 0) + 48),
+          y: Math.round((Number(source.y) || 0) + 48)
+        };
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data.blocks.push(copy);
+        setSelection([copy.id]);
+        renderAll();
+        saveLocalState();
+        showToast("블록을 복사했습니다.");
+      }
+
+      function copySelectedBlocksToClipboard() {
+        var selectedIds = getSelectedBlockIds();
+        if (!selectedIds.length) {
+          return;
+        }
+        var selectedIdSet = new Set(selectedIds);
+        var blocks = selectedIds.map(function (id) {
+          var block = getBlock(id);
+          return block ? cloneBlockForClipboard(block) : null;
+        }).filter(Boolean);
+        var connections = store.data.connections.filter(function (connection) {
+          return selectedIdSet.has(connection.from) && selectedIdSet.has(connection.to);
+        }).map(function (connection) {
+          return {
+            from: connection.from,
+            to: connection.to
+          };
+        });
+        store.clipboard = {
+          blocks: blocks,
+          connections: connections,
+          pasteCount: 1
+        };
+        showToast(blocks.length > 1 ? blocks.length + "개 블록을 복사했습니다." : "블록을 복사했습니다.");
+      }
+
+      function pasteBlocksFromClipboard() {
+        if (!store.clipboard || !store.clipboard.blocks || !store.clipboard.blocks.length) {
+          showToast("복사된 블록이 없습니다.");
+          return;
+        }
+        var offset = 48 * Math.max(1, store.clipboard.pasteCount || 1);
+        var idMap = new Map();
+        var pastedIds = [];
+        pushUndoSnapshot(createUndoSnapshot());
+        store.clipboard.blocks.forEach(function (source) {
+          var block = {
+            id: createUniqueBlockId(),
+            title: source.title,
+            subtitle: source.subtitle || "",
+            detail: source.detail,
+            link: String(source.link || ""),
+            category: source.category,
+            type: normalizeBlockType(source.type),
+            color: validColor(source.color) ? source.color : getCategoryColor(source.category),
+            x: Math.round((Number(source.x) || 0) + offset),
+            y: Math.round((Number(source.y) || 0) + offset)
+          };
+          idMap.set(source.id, block.id);
+          pastedIds.push(block.id);
+          store.data.blocks.push(block);
+        });
+        store.clipboard.connections.forEach(function (connection) {
+          var from = idMap.get(connection.from);
+          var to = idMap.get(connection.to);
+          if (from && to) {
+            store.data.connections.push({ from: from, to: to });
+          }
+        });
+        store.clipboard.pasteCount = (store.clipboard.pasteCount || 1) + 1;
+        setSelection(pastedIds);
+        store.focusTitleBlockId = pastedIds.length === 1 ? pastedIds[0] : null;
+        renderAll();
+        saveLocalState();
+        showToast(pastedIds.length > 1 ? pastedIds.length + "개 블록을 붙여넣었습니다." : "블록을 붙여넣었습니다.");
+      }
+
+      function cloneBlockForClipboard(block) {
+        return {
+          id: block.id,
+          title: String(block.title || ""),
+          subtitle: String(block.subtitle || ""),
+          detail: String(block.detail || ""),
+          link: String(block.link || ""),
+          category: String(block.category || ""),
+          type: normalizeBlockType(block.type),
+          color: getBlockColor(block),
+          x: Number(block.x) || 0,
+          y: Number(block.y) || 0
+        };
+      }
+
+      function createConnectedBlock(sourceId, type) {
+        var source = getBlock(sourceId);
+        if (!source) {
+          return;
+        }
+        var blockType = normalizeBlockType(type);
+        var block = {
+          id: createUniqueBlockId(),
+          title: "새 블록",
+          subtitle: "",
+          detail: "",
+          link: "",
+          category: source.category,
+          type: blockType,
+          color: getBlockColor(source),
+          x: 0,
+          y: 0
+        };
+        block.x = Math.round((Number(source.x) || 0) + getBlockWidth(source) + 96);
+        block.y = Math.round((Number(source.y) || 0) + getBlockHeight(source) / 2 - getBlockHeight(block) / 2);
+        pushUndoSnapshot(createUndoSnapshot());
+        store.data.blocks.push(block);
+        store.data.connections.push({ from: source.id, to: block.id });
+        store.createMenuBlockId = null;
+        setSelection([block.id]);
+        store.focusTitleBlockId = block.id;
+        renderAll();
+        saveLocalState();
+        showToast("연결된 블록을 만들었습니다.");
+      }
+
+      function connectSelectedBlocks() {
+        var blocks = getSelectedBlockIds().map(getBlock).filter(Boolean);
+        if (blocks.length < 2) {
+          showToast("연결할 블록을 2개 이상 선택해주세요.");
+          return;
+        }
+        var ordered = sortBlocksForBatchConnection(blocks);
+        var added = [];
+        ordered.forEach(function (block, index) {
+          var next = ordered[index + 1];
+          if (!next || connectionExists(block.id, next.id)) {
+            return;
+          }
+          added.push({ from: block.id, to: next.id });
+        });
+        if (!added.length) {
+          showToast("선택된 블록은 이미 연결되어 있습니다.");
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        added.forEach(function (connection) {
+          store.data.connections.push(connection);
+        });
+        setConnectionSelection(added.map(getConnectionKey));
+        renderAll();
+        saveLocalState();
+        showToast(added.length + "개 연결선을 만들었습니다.");
+      }
+
+      function sortBlocksForBatchConnection(blocks) {
+        return blocks.slice().sort(function (a, b) {
+          var aCenter = getBlockCenter(a);
+          var bCenter = getBlockCenter(b);
+          var xDiff = aCenter.x - bCenter.x;
+          if (Math.abs(xDiff) > 24) {
+            return xDiff;
+          }
+          var yDiff = aCenter.y - bCenter.y;
+          if (Math.abs(yDiff) > 0) {
+            return yDiff;
+          }
+          return String(a.title || "").localeCompare(String(b.title || ""), "ko");
+        });
+      }
+
+      function selectBlock(blockId, additive) {
+        if (additive) {
+          toggleBlockSelection(blockId);
+          renderBlocks();
+          return;
+        }
+        store.createMenuBlockId = null;
+        store.focusTitleBlockId = blockId;
+        setSelection([blockId]);
+        renderBlocks();
+      }
+
+      function toggleBlockSelection(blockId) {
+        store.selectedConnectionKeys = [];
+        if (isBlockSelected(blockId)) {
+          store.selectedBlockIds = store.selectedBlockIds.filter(function (id) {
+            return id !== blockId;
+          });
+          store.selectedBlockId = store.selectedBlockIds[store.selectedBlockIds.length - 1] || null;
+          return;
+        }
+        store.selectedBlockIds.push(blockId);
+        store.selectedBlockId = blockId;
+      }
+
+      function setSelection(blockIds) {
+        store.selectedConnectionKeys = [];
+        var knownIds = new Set(store.data.blocks.map(function (block) {
+          return block.id;
+        }));
+        store.selectedBlockIds = blockIds.filter(function (id, index) {
+          return knownIds.has(id) && blockIds.indexOf(id) === index;
+        });
+        store.selectedBlockId = store.selectedBlockIds[store.selectedBlockIds.length - 1] || null;
+        if (!store.selectedBlockIds.length) {
+          store.createMenuBlockId = null;
+        }
+      }
+
+      function clearSelectedBlock() {
+        if (!store.selectedBlockIds.length && !store.selectedBlockId && !store.selectedConnectionKeys.length) {
+          return;
+        }
+        clearSelectionState();
+        renderAll();
+      }
+
+      function clearSelectionState() {
+        store.selectedBlockId = null;
+        store.selectedBlockIds = [];
+        store.selectedConnectionKeys = [];
+        store.focusTitleBlockId = null;
+        store.createMenuBlockId = null;
+      }
+
+      function isBlockSelected(blockId) {
+        return store.selectedBlockIds.indexOf(blockId) !== -1;
+      }
+
+      function selectConnection(key, additive) {
+        if (!connectionKeyExists(key)) {
+          return;
+        }
+        if (!additive) {
+          clearSelectionState();
+          store.selectedConnectionKeys = [key];
+          renderAll();
+          return;
+        }
+        toggleConnectionSelection(key);
+        renderConnections();
+      }
+
+      function toggleConnectionSelection(key) {
+        var index = store.selectedConnectionKeys.indexOf(key);
+        if (index !== -1) {
+          store.selectedConnectionKeys.splice(index, 1);
+          return;
+        }
+        store.selectedConnectionKeys.push(key);
+      }
+
+      function setConnectionSelection(keys) {
+        var knownKeys = new Set(store.data.connections.map(getConnectionKey));
+        store.selectedConnectionKeys = keys.filter(function (key, index) {
+          return knownKeys.has(key) && keys.indexOf(key) === index;
+        });
+      }
+
+      function isConnectionSelected(key) {
+        return store.selectedConnectionKeys.indexOf(key) !== -1;
+      }
+
+      function startBlockDrag(event, blockId) {
+        if (event.button !== 0 || store.connect || store.handlePress) {
+          return;
+        }
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        if (!isBlockSelected(blockId) && !(event.shiftKey || event.ctrlKey || event.metaKey)) {
+          setSelection([blockId]);
+        }
+        var worldPoint = screenToWorld(event.clientX, event.clientY);
+        var card = getBlockElement(blockId);
+        var selectedIds = isBlockSelected(blockId) ? store.selectedBlockIds.slice() : [blockId];
+        store.drag = {
+          blockId: blockId,
+          pointerId: event.pointerId,
+          offsetX: worldPoint.x - block.x,
+          offsetY: worldPoint.y - block.y,
+          startWorldX: worldPoint.x,
+          startWorldY: worldPoint.y,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          moved: false,
+          undoSnapshot: createUndoSnapshot(),
+          blocks: selectedIds.map(function (id) {
+            var selectedBlock = getBlock(id);
+            return selectedBlock ? {
+              id: id,
+              x: Number(selectedBlock.x) || 0,
+              y: Number(selectedBlock.y) || 0
+            } : null;
+          }).filter(Boolean)
+        };
+        if (card) {
+          card.classList.add("is-dragging");
+          card.setPointerCapture(event.pointerId);
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function startHandlePress(event, blockId) {
+        if (event.button !== 0) {
+          return;
+        }
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        store.handlePress = {
+          blockId: blockId,
+          pointerId: event.pointerId,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          handle: event.currentTarget
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function beginConnectionFromHandlePress(event) {
+        var press = store.handlePress;
+        var block = press && getBlock(press.blockId);
+        if (!press || !block) {
+          store.handlePress = null;
+          return;
+        }
+        var start = getBlockCenter(block);
+        var current = screenToWorld(event.clientX, event.clientY);
+        store.connect = {
+          from: press.blockId,
+          pointerId: press.pointerId,
+          handle: press.handle,
+          startX: start.x,
+          startY: start.y,
+          endX: current.x,
+          endY: current.y
+        };
+        store.handlePress = null;
+        updateDraftConnection();
+      }
+
+      function finishHandlePress(event) {
+        var press = store.handlePress;
+        if (!press) {
+          return;
+        }
+        safelyReleasePointer(press.handle, event.pointerId);
+        store.handlePress = null;
+        if (event.type === "pointercancel") {
+          return;
+        }
+        openCreateMenu(press.blockId);
+      }
+
+      function openCreateMenu(blockId) {
+        if (!getBlock(blockId)) {
+          return;
+        }
+        setSelection([blockId]);
+        store.focusTitleBlockId = null;
+        store.createMenuBlockId = blockId;
+        renderBlocks();
+      }
+
+      function startConnection(event, blockId) {
+        if (event.button !== 0) {
+          return;
+        }
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        var start = getBlockCenter(block);
+        var current = screenToWorld(event.clientX, event.clientY);
+        store.connect = {
+          from: blockId,
+          pointerId: event.pointerId,
+          startX: start.x,
+          startY: start.y,
+          endX: current.x,
+          endY: current.y
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        updateDraftConnection();
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function startCanvasInteraction(event) {
+        if (store.drag || store.connect || store.marquee || isCanvasControl(event.target)) {
+          return;
+        }
+        if (event.button === 1 || (event.button === 0 && store.isSpaceDown)) {
+          startPan(event);
+          return;
+        }
+        if (event.button === 0) {
+          startMarqueeSelection(event);
+        }
+      }
+
+      function startMarqueeSelection(event) {
+        var viewportPoint = screenToViewport(event.clientX, event.clientY);
+        var worldPoint = screenToWorld(event.clientX, event.clientY);
+        store.marquee = {
+          pointerId: event.pointerId,
+          additive: event.shiftKey || event.ctrlKey || event.metaKey,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startViewportX: viewportPoint.x,
+          startViewportY: viewportPoint.y,
+          startWorldX: worldPoint.x,
+          startWorldY: worldPoint.y
+        };
+        if (!store.marquee.additive) {
+          clearSelectionState();
+          renderBlocks();
+        }
+        els.viewport.classList.add("is-selecting");
+        els.viewport.setPointerCapture(event.pointerId);
+        updateSelectionBox(viewportPoint.x, viewportPoint.y);
+        event.preventDefault();
+      }
+
+      function startPan(event) {
+        if (store.drag || store.connect || store.marquee) {
+          return;
+        }
+        clearSelectedBlock();
+        store.pan = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          panX: store.view.panX,
+          panY: store.view.panY
+        };
+        els.viewport.classList.add("is-panning");
+        els.viewport.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      }
+
+      function handlePointerMove(event) {
+        if (store.handlePress && event.pointerId === store.handlePress.pointerId) {
+          var movedX = Math.abs(event.clientX - store.handlePress.startClientX);
+          var movedY = Math.abs(event.clientY - store.handlePress.startClientY);
+          if (movedX > 4 || movedY > 4) {
+            beginConnectionFromHandlePress(event);
+            if (store.connect) {
+              moveDraftConnection(event);
+            }
+          }
+          return;
+        }
+        if (store.drag && event.pointerId === store.drag.pointerId) {
+          moveDraggedBlock(event);
+          return;
+        }
+        if (store.connect && event.pointerId === store.connect.pointerId) {
+          moveDraftConnection(event);
+          return;
+        }
+        if (store.marquee && event.pointerId === store.marquee.pointerId) {
+          moveMarqueeSelection(event);
+          return;
+        }
+        if (store.pan && event.pointerId === store.pan.pointerId) {
+          moveViewport(event);
+        }
+      }
+
+      function handlePointerUp(event) {
+        if (store.handlePress && event.pointerId === store.handlePress.pointerId) {
+          finishHandlePress(event);
+          return;
+        }
+        if (store.drag && event.pointerId === store.drag.pointerId) {
+          finishBlockDrag(event);
+          return;
+        }
+        if (store.connect && event.pointerId === store.connect.pointerId) {
+          finishConnection(event);
+          return;
+        }
+        if (store.marquee && event.pointerId === store.marquee.pointerId) {
+          finishMarqueeSelection(event);
+          return;
+        }
+        if (store.pan && event.pointerId === store.pan.pointerId) {
+          finishPan(event);
+        }
+      }
+
+      function moveDraggedBlock(event) {
+        var worldPoint = screenToWorld(event.clientX, event.clientY);
+        if (Math.abs(event.clientX - store.drag.startClientX) > 4 || Math.abs(event.clientY - store.drag.startClientY) > 4) {
+          store.drag.moved = true;
+        }
+        var deltaX = worldPoint.x - store.drag.startWorldX;
+        var deltaY = worldPoint.y - store.drag.startWorldY;
+        store.drag.blocks.forEach(function (draggedBlock) {
+          var block = getBlock(draggedBlock.id);
+          var card = getBlockElement(draggedBlock.id);
+          if (!block || !card) {
+            return;
+          }
+          block.x = Math.round(draggedBlock.x + deltaX);
+          block.y = Math.round(draggedBlock.y + deltaY);
+          setBlockPosition(card, block);
+        });
+        renderConnections();
+      }
+
+      function finishBlockDrag(event) {
+        var blockId = store.drag.blockId;
+        var didMove = store.drag.moved;
+        var undoSnapshot = store.drag.undoSnapshot;
+        var card = getBlockElement(store.drag.blockId);
+        if (card) {
+          card.classList.remove("is-dragging");
+          safelyReleasePointer(card, event.pointerId);
+        }
+        store.drag = null;
+        if (!didMove) {
+          selectBlock(blockId, event.shiftKey || event.ctrlKey || event.metaKey);
+        } else {
+          pushUndoSnapshot(undoSnapshot);
+          saveLocalState();
+        }
+      }
+
+      function moveDraftConnection(event) {
+        var worldPoint = screenToWorld(event.clientX, event.clientY);
+        store.connect.endX = worldPoint.x;
+        store.connect.endY = worldPoint.y;
+        markDropTarget(event.clientX, event.clientY, store.connect.from);
+        updateDraftConnection();
+      }
+
+      function moveMarqueeSelection(event) {
+        var viewportPoint = screenToViewport(event.clientX, event.clientY);
+        updateSelectionBox(viewportPoint.x, viewportPoint.y);
+      }
+
+      function finishMarqueeSelection(event) {
+        var endWorld = screenToWorld(event.clientX, event.clientY);
+        var rect = normalizeRect(store.marquee.startWorldX, store.marquee.startWorldY, endWorld.x, endWorld.y);
+        var selectedIds = store.data.blocks.filter(function (block) {
+          return rectsIntersect(rect, {
+            left: Number(block.x) || 0,
+            top: Number(block.y) || 0,
+            right: (Number(block.x) || 0) + getBlockWidth(block),
+            bottom: (Number(block.y) || 0) + getBlockHeight(block)
+          });
+        }).map(function (block) {
+          return block.id;
+        });
+        var selectedConnectionKeys = store.data.connections.filter(function (connection) {
+          return connectionIntersectsRect(connection, rect);
+        }).map(getConnectionKey);
+
+        if (store.marquee.additive) {
+          selectedIds.forEach(function (id) {
+            if (!isBlockSelected(id)) {
+              store.selectedBlockIds.push(id);
+            }
+          });
+          selectedConnectionKeys.forEach(function (key) {
+            if (!isConnectionSelected(key)) {
+              store.selectedConnectionKeys.push(key);
+            }
+          });
+          store.selectedBlockId = selectedIds[selectedIds.length - 1] || store.selectedBlockId;
+        } else {
+          setSelection(selectedIds);
+          setConnectionSelection(selectedConnectionKeys);
+        }
+
+        hideSelectionBox();
+        safelyReleasePointer(els.viewport, event.pointerId);
+        els.viewport.classList.remove("is-selecting");
+        store.marquee = null;
+        renderAll();
+      }
+
+      function updateSelectionBox(currentViewportX, currentViewportY) {
+        var rect = normalizeRect(store.marquee.startViewportX, store.marquee.startViewportY, currentViewportX, currentViewportY);
+        els.selectionBox.classList.add("is-visible");
+        els.selectionBox.style.left = rect.left + "px";
+        els.selectionBox.style.top = rect.top + "px";
+        els.selectionBox.style.width = rect.right - rect.left + "px";
+        els.selectionBox.style.height = rect.bottom - rect.top + "px";
+      }
+
+      function hideSelectionBox() {
+        els.selectionBox.classList.remove("is-visible");
+        els.selectionBox.style.width = "0px";
+        els.selectionBox.style.height = "0px";
+      }
+
+      function finishConnection(event) {
+        var fromId = store.connect.from;
+        var target = getBlockFromPoint(event.clientX, event.clientY);
+        clearDropTargets();
+        els.draftConnection.classList.remove("is-active");
+        els.draftConnection.setAttribute("d", "");
+
+        if (target && target.dataset.blockId && target.dataset.blockId !== fromId) {
+          addConnectionsToTarget(getConnectionSourceIds(fromId, target.dataset.blockId), target.dataset.blockId);
+        }
+        safelyReleasePointer(store.connect.handle || event.target, event.pointerId);
+        store.connect = null;
+      }
+
+      function moveViewport(event) {
+        store.view.panX = store.pan.panX + event.clientX - store.pan.startX;
+        store.view.panY = store.pan.panY + event.clientY - store.pan.startY;
+        updateTransform();
+      }
+
+      function finishPan(event) {
+        safelyReleasePointer(els.viewport, event.pointerId);
+        store.pan = null;
+        if (!store.isSpaceDown) {
+          els.viewport.classList.remove("is-panning");
+        }
+      }
+
+      function addConnection(fromId, toId) {
+        addConnectionsToTarget([fromId], toId);
+      }
+
+      function getConnectionSourceIds(fromId, targetId) {
+        var selectedIds = getSelectedBlockIds();
+        var useSelectedBlocks = selectedIds.length > 1 && selectedIds.indexOf(fromId) !== -1;
+        var sourceIds = useSelectedBlocks ? selectedIds : [fromId];
+        var seen = new Set();
+        return sourceIds.filter(function (sourceId) {
+          if (!sourceId || sourceId === targetId || seen.has(sourceId) || !getBlock(sourceId)) {
+            return false;
+          }
+          seen.add(sourceId);
+          return true;
+        });
+      }
+
+      function addConnectionsToTarget(sourceIds, targetId) {
+        if (!targetId || !getBlock(targetId)) {
+          return;
+        }
+        var added = [];
+        sourceIds.forEach(function (sourceId) {
+          if (!sourceId || sourceId === targetId || connectionExists(sourceId, targetId)) {
+            return;
+          }
+          added.push({ from: sourceId, to: targetId });
+        });
+        if (!added.length) {
+          showToast("이미 연결되어 있습니다.");
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        added.forEach(function (connection) {
+          store.data.connections.push(connection);
+        });
+        setConnectionSelection(added.map(getConnectionKey));
+        renderAll();
+        saveLocalState();
+        showToast(added.length > 1 ? added.length + "개 블록을 한 곳에 연결했습니다." : "연결선을 만들었습니다.");
+      }
+
+      function connectionExists(fromId, toId) {
+        return store.data.connections.some(function (connection) {
+          return (connection.from === fromId && connection.to === toId) ||
+            (connection.from === toId && connection.to === fromId);
+        });
+      }
+
+      function getConnectionKey(connection) {
+        return String(connection.from) + "\u0000" + String(connection.to);
+      }
+
+      function connectionKeyExists(key) {
+        return store.data.connections.some(function (connection) {
+          return getConnectionKey(connection) === key;
+        });
+      }
+
+      function updateDraftConnection() {
+        if (!store.connect) {
+          return;
+        }
+        var path = "M " + store.connect.startX + " " + store.connect.startY +
+          " L " + store.connect.endX + " " + store.connect.endY;
+        els.draftConnection.setAttribute("d", path);
+        els.draftConnection.classList.add("is-active");
+      }
+
+      function markDropTarget(clientX, clientY, fromId) {
+        clearDropTargets();
+        var target = getBlockFromPoint(clientX, clientY);
+        if (target && target.dataset.blockId !== fromId) {
+          target.classList.add("is-drop-target");
+        }
+      }
+
+      function clearDropTargets() {
+        els.blocksLayer.querySelectorAll(".is-drop-target").forEach(function (node) {
+          node.classList.remove("is-drop-target");
+        });
+      }
+
+      function zoomCanvas(event) {
+        event.preventDefault();
+        var before = screenToWorld(event.clientX, event.clientY);
+        var oldScale = store.view.scale;
+        var factor = event.deltaY < 0 ? 1.08 : 0.925;
+        var nextScale = clamp(oldScale * factor, 0.35, 2.4);
+        var rect = els.viewport.getBoundingClientRect();
+
+        store.view.scale = nextScale;
+        store.view.panX = event.clientX - rect.left - before.x * nextScale;
+        store.view.panY = event.clientY - rect.top - before.y * nextScale;
+        updateTransform();
+      }
+
+      function updateTransform() {
+        var scale = store.view.scale;
+        els.world.style.transform = "translate(" + store.view.panX + "px, " + store.view.panY + "px) scale(" + scale + ")";
+        updateGrid();
+      }
+
+      function updateGrid() {
+        var gridSize = 48 * store.view.scale;
+        var x = store.view.panX % gridSize;
+        var y = store.view.panY % gridSize;
+        els.viewport.style.setProperty("--grid-size", gridSize + "px");
+        els.viewport.style.setProperty("--grid-x", x + "px");
+        els.viewport.style.setProperty("--grid-y", y + "px");
+      }
+
+      function resetView() {
+        store.view.panX = 72;
+        store.view.panY = 64;
+        store.view.scale = 1;
+        updateTransform();
+      }
+
+      function setBlockPosition(card, block) {
+        card.style.transform = "translate(" + block.x + "px, " + block.y + "px)";
+      }
+
+      function getConnectionPath(fromBlock, toBlock) {
+        var start = edgePoint(fromBlock, toBlock);
+        var end = edgePoint(toBlock, fromBlock);
+        return "M " + start.x + " " + start.y + " L " + end.x + " " + end.y;
+      }
+
+      function edgePoint(block, targetBlock) {
+        var center = getBlockCenter(block);
+        var target = getBlockCenter(targetBlock);
+        var dx = target.x - center.x;
+        var dy = target.y - center.y;
+        if (dx === 0 && dy === 0) {
+          return { x: center.x, y: center.y };
+        }
+        var halfHeight = getBlockHeight(block) / 2;
+        var tx = Math.abs(dx) > 0 ? (getBlockWidth(block) / 2) / Math.abs(dx) : Infinity;
+        var ty = Math.abs(dy) > 0 ? halfHeight / Math.abs(dy) : Infinity;
+        var t = Math.min(tx, ty);
+        return {
+          x: Math.round((center.x + dx * t) * 100) / 100,
+          y: Math.round((center.y + dy * t) * 100) / 100
+        };
+      }
+
+      function getBlockCenter(block) {
+        return {
+          x: Number(block.x) + getBlockWidth(block) / 2,
+          y: Number(block.y) + getBlockHeight(block) / 2
+        };
+      }
+
+      function getBlockWidth(block) {
+        var blockType = normalizeBlockType(block && block.type);
+        var isMain = blockType === "main";
+        var isMiddle = blockType === "middle";
+        var title = String(block && block.title || "제목 없음");
+        var summary = getBlockSubtitle(block);
+        var titleFontSize = isMain ? 26 : (isMiddle ? 18 : 14);
+        var summaryFontSize = 12;
+        var linkSpace = isValidLink(block && block.link) ? 34 : 0;
+        var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace;
+        var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
+        var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
+        return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth);
+      }
+
+      function estimateTextWidth(text, fontSize) {
+        return Array.from(String(text || "")).reduce(function (total, character) {
+          if (/\s/.test(character)) {
+            return total + fontSize * 0.36;
+          }
+          if (/[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af\u3040-\u30ff\u4e00-\u9fff]/.test(character)) {
+            return total + fontSize;
+          }
+          if (/[A-Z0-9]/.test(character)) {
+            return total + fontSize * 0.68;
+          }
+          if (/[il.,:;!|'"`]/.test(character)) {
+            return total + fontSize * 0.34;
+          }
+          return total + fontSize * 0.58;
+        }, 0);
+      }
+
+      function getBlockHeight(block) {
+        var type = normalizeBlockType(block && block.type);
+        if (type === "main") {
+          return MAIN_CARD_HEIGHT;
+        }
+        return type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT;
+      }
+
+      function screenToWorld(clientX, clientY) {
+        var rect = els.viewport.getBoundingClientRect();
+        return {
+          x: (clientX - rect.left - store.view.panX) / store.view.scale,
+          y: (clientY - rect.top - store.view.panY) / store.view.scale
+        };
+      }
+
+      function screenToViewport(clientX, clientY) {
+        var rect = els.viewport.getBoundingClientRect();
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top
+        };
+      }
+
+      function normalizeRect(x1, y1, x2, y2) {
+        return {
+          left: Math.min(x1, x2),
+          top: Math.min(y1, y2),
+          right: Math.max(x1, x2),
+          bottom: Math.max(y1, y2)
+        };
+      }
+
+      function rectsIntersect(a, b) {
+        return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
+      }
+
+      function connectionIntersectsRect(connection, rect) {
+        var fromBlock = getBlock(connection.from);
+        var toBlock = getBlock(connection.to);
+        if (!fromBlock || !toBlock) {
+          return false;
+        }
+        return segmentIntersectsRect(edgePoint(fromBlock, toBlock), edgePoint(toBlock, fromBlock), rect);
+      }
+
+      function segmentIntersectsRect(start, end, rect) {
+        var topLeft = { x: rect.left, y: rect.top };
+        var topRight = { x: rect.right, y: rect.top };
+        var bottomRight = { x: rect.right, y: rect.bottom };
+        var bottomLeft = { x: rect.left, y: rect.bottom };
+
+        if (pointInRect(start, rect) || pointInRect(end, rect)) {
+          return true;
+        }
+        return segmentsIntersect(start, end, topLeft, topRight) ||
+          segmentsIntersect(start, end, topRight, bottomRight) ||
+          segmentsIntersect(start, end, bottomRight, bottomLeft) ||
+          segmentsIntersect(start, end, bottomLeft, topLeft);
+      }
+
+      function pointInRect(point, rect) {
+        return point.x >= rect.left && point.x <= rect.right &&
+          point.y >= rect.top && point.y <= rect.bottom;
+      }
+
+      function segmentsIntersect(a, b, c, d) {
+        var d1 = crossProduct(c, d, a);
+        var d2 = crossProduct(c, d, b);
+        var d3 = crossProduct(a, b, c);
+        var d4 = crossProduct(a, b, d);
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+          ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+          return true;
+        }
+        return isPointOnSegment(a, c, d, d1) ||
+          isPointOnSegment(b, c, d, d2) ||
+          isPointOnSegment(c, a, b, d3) ||
+          isPointOnSegment(d, a, b, d4);
+      }
+
+      function crossProduct(a, b, point) {
+        return (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+      }
+
+      function isPointOnSegment(point, start, end, cross) {
+        var tolerance = 0.0001;
+        if (Math.abs(cross) > tolerance) {
+          return false;
+        }
+        return point.x >= Math.min(start.x, end.x) - tolerance &&
+          point.x <= Math.max(start.x, end.x) + tolerance &&
+          point.y >= Math.min(start.y, end.y) - tolerance &&
+          point.y <= Math.max(start.y, end.y) + tolerance;
+      }
+
+      function getBlockFromPoint(clientX, clientY) {
+        var node = document.elementFromPoint(clientX, clientY);
+        return node && node.closest ? node.closest(".block-card") : null;
+      }
+
+      function getBlockElement(blockId) {
+        return els.blocksLayer.querySelector('[data-block-id="' + cssEscape(blockId) + '"]');
+      }
+
+      function getBlock(blockId) {
+        return store.data.blocks.find(function (block) {
+          return block.id === blockId;
+        });
+      }
+
+      function isValidLink(url) {
+        return /^https?:\/\//i.test(String(url || "").trim());
+      }
+
+      function openBlockLink(url, title) {
+        var safeUrl = String(url || "").trim();
+        if (!isValidLink(safeUrl)) {
+          return;
+        }
+        openLinkModal(safeUrl, title || "자료 보기");
+      }
+
+      function openLinkModal(url, title) {
+        var preview = getLinkPreviewInfo(url);
+        els.linkModalTitle.textContent = title || "자료 보기";
+        els.linkPreviewType.textContent = preview.label + " - " + url;
+        els.openLinkNewTabButton.href = url;
+        els.linkPreviewShell.replaceChildren(createLinkPreviewElement(preview));
+        els.linkModal.classList.add("is-open");
+      }
+
+      function closeLinkModal() {
+        if (!els.linkModal) {
+          return;
+        }
+        if (els.linkPreviewShell) {
+          els.linkPreviewShell.replaceChildren();
+        }
+        if (els.openLinkNewTabButton) {
+          els.openLinkNewTabButton.removeAttribute("href");
+        }
+        els.linkModal.classList.remove("is-open");
+      }
+
+      function createLinkPreviewElement(preview) {
+        var element;
+        var note = document.createElement("div");
+        note.className = "link-preview-note";
+        note.textContent = preview.note;
+
+        if (preview.kind === "image") {
+          element = document.createElement("img");
+          element.src = preview.previewUrl;
+          element.alt = "링크 이미지 미리보기";
+        } else if (preview.kind === "video-file") {
+          element = document.createElement("video");
+          element.src = preview.previewUrl;
+          element.controls = true;
+          element.playsInline = true;
+        } else {
+          element = document.createElement("iframe");
+          element.src = preview.previewUrl;
+          element.title = preview.label + " 미리보기";
+          element.loading = "lazy";
+          element.referrerPolicy = "no-referrer";
+          element.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
+          element.allowFullscreen = true;
+        }
+
+        var fragment = document.createDocumentFragment();
+        fragment.append(element, note);
+        return fragment;
+      }
+
+      function getLinkPreviewInfo(url) {
+        var safeUrl = String(url || "").trim();
+        var parsed = parseHttpUrl(safeUrl);
+        var path = parsed ? parsed.pathname.toLowerCase() : "";
+        var extension = getUrlExtension(path);
+        var youtubeEmbedUrl = getYouTubeEmbedUrl(parsed);
+        var drivePreviewUrl = getGooglePreviewUrl(parsed);
+
+        if (isImageExtension(extension)) {
+          return createPreviewInfo("image", "이미지", safeUrl, "이미지 파일은 팝업 안에서 바로 표시합니다.");
+        }
+        if (isVideoExtension(extension)) {
+          return createPreviewInfo("video-file", "영상", safeUrl, "영상 파일은 팝업 안에서 재생할 수 있습니다.");
+        }
+        if (youtubeEmbedUrl) {
+          return createPreviewInfo("iframe", "영상", youtubeEmbedUrl, "영상은 팝업 안에서 재생합니다.");
+        }
+        if (drivePreviewUrl) {
+          return createPreviewInfo("iframe", "Google Drive 자료", drivePreviewUrl, "Drive 자료는 팝업 안에서 미리보기를 시도합니다. 권한이 필요하면 새 탭에서 열어주세요.");
+        }
+        if (extension === "pdf") {
+          return createPreviewInfo("iframe", "PDF 문서", safeUrl, "PDF는 팝업 안에서 미리보기를 시도합니다.");
+        }
+        if (isOfficeExtension(extension)) {
+          return createPreviewInfo("iframe", "문서", "https://docs.google.com/gview?embedded=1&url=" + encodeURIComponent(safeUrl), "PPT/문서는 공개 URL일 때 팝업 안에서 미리보기를 시도합니다.");
+        }
+        return createPreviewInfo("iframe", "웹페이지", safeUrl, "일부 웹페이지는 보안 정책 때문에 팝업 안에서 보이지 않을 수 있습니다. 그때는 새 탭으로 열어주세요.");
+      }
+
+      function createPreviewInfo(kind, label, previewUrl, note) {
+        return {
+          kind: kind,
+          label: label,
+          previewUrl: previewUrl,
+          note: note
+        };
+      }
+
+      function parseHttpUrl(url) {
+        try {
+          var parsed = new URL(url);
+          return /^https?:$/i.test(parsed.protocol) ? parsed : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function getUrlExtension(path) {
+        var cleanPath = String(path || "").split("/").pop() || "";
+        var match = cleanPath.match(/\.([a-z0-9]+)$/i);
+        return match ? match[1].toLowerCase() : "";
+      }
+
+      function isImageExtension(extension) {
+        return ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif"].indexOf(extension) !== -1;
+      }
+
+      function isVideoExtension(extension) {
+        return ["mp4", "webm", "ogg", "ogv", "mov", "m4v"].indexOf(extension) !== -1;
+      }
+
+      function isOfficeExtension(extension) {
+        return ["ppt", "pptx", "pps", "ppsx", "doc", "docx", "xls", "xlsx"].indexOf(extension) !== -1;
+      }
+
+      function getYouTubeEmbedUrl(parsed) {
+        if (!parsed) {
+          return "";
+        }
+        var host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+        var id = "";
+        if (host === "youtu.be") {
+          id = parsed.pathname.split("/").filter(Boolean)[0] || "";
+        } else if (host === "youtube.com" || host === "m.youtube.com") {
+          if (parsed.pathname === "/watch") {
+            id = parsed.searchParams.get("v") || "";
+          } else if (parsed.pathname.indexOf("/shorts/") === 0 || parsed.pathname.indexOf("/embed/") === 0) {
+            id = parsed.pathname.split("/").filter(Boolean)[1] || "";
+          }
+        }
+        return id ? "https://www.youtube.com/embed/" + encodeURIComponent(id) : "";
+      }
+
+      function getGooglePreviewUrl(parsed) {
+        if (!parsed) {
+          return "";
+        }
+        var host = parsed.hostname.toLowerCase();
+        var fileId = "";
+        var pathParts = parsed.pathname.split("/").filter(Boolean);
+        if (host === "drive.google.com") {
+          var fileIndex = pathParts.indexOf("d");
+          if (pathParts[0] === "file" && fileIndex !== -1 && pathParts[fileIndex + 1]) {
+            fileId = pathParts[fileIndex + 1];
+          } else {
+            fileId = parsed.searchParams.get("id") || "";
+          }
+          return fileId ? "https://drive.google.com/file/d/" + encodeURIComponent(fileId) + "/preview" : "";
+        }
+        if (host === "docs.google.com" && pathParts.length >= 3 && pathParts[1] === "d") {
+          var app = pathParts[0];
+          var id = pathParts[2];
+          if (app === "presentation") {
+            return "https://docs.google.com/presentation/d/" + encodeURIComponent(id) + "/embed";
+          }
+          if (app === "document" || app === "spreadsheets" || app === "drawings") {
+            return "https://docs.google.com/" + app + "/d/" + encodeURIComponent(id) + "/preview";
+          }
+        }
+        return "";
+      }
+
+      function getCategoryColor(categoryKey) {
+        var category = store.data.categories && store.data.categories[categoryKey];
+        return category && validColor(category.color) ? category.color : FALLBACK_COLOR;
+      }
+
+      function getCategoryColorFromMap(categories, categoryKey) {
+        var category = categories && categories[categoryKey];
+        return category && validColor(category.color) ? category.color : FALLBACK_COLOR;
+      }
+
+      function getExportData() {
+        return {
+          title: String(store.data.title || ""),
+          categories: cloneCategories(store.data.categories),
+          blocks: store.data.blocks.map(function (block) {
+            return {
+              id: String(block.id),
+              title: String(block.title || ""),
+              subtitle: String(block.subtitle || ""),
+              detail: String(block.detail || ""),
+              link: String(block.link || ""),
+              category: String(block.category || ""),
+              type: normalizeBlockType(block.type),
+              color: getBlockColor(block),
+              x: Number(block.x),
+              y: Number(block.y)
+            };
+          }),
+          connections: store.data.connections.map(function (connection) {
+            return {
+              from: String(connection.from),
+              to: String(connection.to)
+            };
+          })
+        };
+      }
+
+      function cloneCategories(categories) {
+        var result = {};
+        Object.entries(categories || {}).forEach(function (entry) {
+          result[entry[0]] = {
+            label: String(entry[1].label || ""),
+            color: validColor(entry[1].color) ? entry[1].color : FALLBACK_COLOR
+          };
+        });
+        return result;
+      }
+
+      function normalizeDiagram(input) {
+        var source = isPlainObject(input) ? input : {};
+        var result = {
+          title: typeof source.title === "string" ? source.title : String(source.title || ""),
+          categories: {},
+          blocks: [],
+          connections: []
+        };
+        var usedIds = new Set();
+
+        if (isPlainObject(source.categories)) {
+          Object.entries(source.categories).forEach(function (entry) {
+            var key = String(entry[0]);
+            var value = isPlainObject(entry[1]) ? entry[1] : {};
+            result.categories[key] = {
+              label: typeof value.label === "string" ? value.label : String(value.label || key),
+              color: validColor(value.color) ? value.color : FALLBACK_COLOR
+            };
+          });
+        }
+
+        if (Array.isArray(source.blocks)) {
+          source.blocks.forEach(function (block, index) {
+            var raw = isPlainObject(block) ? block : {};
+            var id = typeof raw.id === "string" && raw.id ? raw.id : createUniqueBlockId();
+            var category = typeof raw.category === "string" ? raw.category : String(raw.category || "");
+            while (usedIds.has(id)) {
+              id = createUniqueBlockId();
+            }
+            usedIds.add(id);
+            result.blocks.push({
+              id: id,
+              title: typeof raw.title === "string" ? raw.title : String(raw.title || ""),
+              subtitle: typeof raw.subtitle === "string" ? raw.subtitle : String(raw.subtitle || ""),
+              detail: typeof raw.detail === "string" ? raw.detail : String(raw.detail || ""),
+              link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
+              category: category,
+              type: normalizeBlockType(raw.type || raw.blockType),
+              color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
+              x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
+              y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
+            });
+          });
+        }
+
+        if (Array.isArray(source.connections)) {
+          var blockIds = new Set(result.blocks.map(function (block) {
+            return block.id;
+          }));
+          var connectionKeys = new Set();
+          source.connections.forEach(function (connection) {
+            var raw = isPlainObject(connection) ? connection : {};
+            var from = typeof raw.from === "string" ? raw.from : String(raw.from || "");
+            var to = typeof raw.to === "string" ? raw.to : String(raw.to || "");
+            var key = from + "\u0000" + to;
+            if (!blockIds.has(from) || !blockIds.has(to) || from === to || connectionKeys.has(key)) {
+              return;
+            }
+            connectionKeys.add(key);
+            result.connections.push({ from: from, to: to });
+          });
+        }
+
+        return result;
+      }
+
+      function createUniqueBlockId() {
+        var id;
+        do {
+          id = "block-" + Date.now().toString(36) + "-" + uidCounter++;
+        } while (getBlock(id));
+        return id;
+      }
+
+      function createSvgElement(name) {
+        return document.createElementNS("http://www.w3.org/2000/svg", name);
+      }
+
+      function isControlTarget(target) {
+        return Boolean(target.closest("button, select, input, textarea, [contenteditable], .block-create-menu"));
+      }
+
+      function isTypingTarget(target) {
+        return Boolean(target && target.closest && target.closest("input, textarea, select, [contenteditable]"));
+      }
+
+      function isUndoShortcut(event) {
+        return (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.code === "KeyZ";
+      }
+
+      function isCopyShortcut(event) {
+        return (event.ctrlKey || event.metaKey) && !event.altKey && event.code === "KeyC";
+      }
+
+      function isPasteShortcut(event) {
+        return (event.ctrlKey || event.metaKey) && !event.altKey && event.code === "KeyV";
+      }
+
+      function canCopySelectedBlocks(target) {
+        if (isFormTypingTarget(target) || isModalOpen()) {
+          return false;
+        }
+        return getSelectedBlockIds().length > 0;
+      }
+
+      function canPasteBlocks(target) {
+        if (isFormTypingTarget(target) || isModalOpen()) {
+          return false;
+        }
+        return Boolean(store.clipboard && store.clipboard.blocks && store.clipboard.blocks.length);
+      }
+
+      function canUndoAction(target) {
+        if (isFormTypingTarget(target) || isModalOpen()) {
+          return false;
+        }
+        return true;
+      }
+
+      function isFormTypingTarget(target) {
+        return Boolean(target && target.closest && target.closest("input, textarea, select"));
+      }
+
+      function isModalOpen() {
+        return els.jsonModal.classList.contains("is-open") ||
+          els.editModal.classList.contains("is-open") ||
+          els.linkModal.classList.contains("is-open");
+      }
+
+      function getSelectedBlockIds() {
+        return store.selectedBlockIds.length ? store.selectedBlockIds.slice() : (store.selectedBlockId ? [store.selectedBlockId] : []);
+      }
+
+      function getSelectedConnectionKeys() {
+        return store.selectedConnectionKeys.slice();
+      }
+
+      function canDeleteSelectedItems(target) {
+        if (isTypingTarget(target)) {
+          return false;
+        }
+        if (isModalOpen()) {
+          return false;
+        }
+        return getSelectedBlockIds().length > 0 || getSelectedConnectionKeys().length > 0;
+      }
+
+      function isCanvasControl(target) {
+        if (!target || !target.closest) {
+          return false;
+        }
+        return Boolean(
+          target.closest(".block-card") ||
+          target.closest(".block-create-menu") ||
+          target.closest(".connection-hit") ||
+          target.closest("button, select, input, textarea")
+        );
+      }
+
+      function safelyReleasePointer(target, pointerId) {
+        if (target && target.releasePointerCapture) {
+          try {
+            target.releasePointerCapture(pointerId);
+          } catch (error) {
+            return;
+          }
+        }
+      }
+
+      function validColor(color) {
+        return typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color);
+      }
+
+      function finiteNumber(value) {
+        return typeof value === "number" && Number.isFinite(value);
+      }
+
+      function isPlainObject(value) {
+        return Boolean(value) && Object.prototype.toString.call(value) === "[object Object]";
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function cssEscape(value) {
+        if (window.CSS && CSS.escape) {
+          return CSS.escape(value);
+        }
+        return String(value).replace(/["\\]/g, "\\$&");
+      }
+
+      function showToast(message) {
+        window.clearTimeout(store.toastTimer);
+        els.toast.textContent = message;
+        els.toast.classList.add("is-visible");
+        store.toastTimer = window.setTimeout(function () {
+          els.toast.classList.remove("is-visible");
+        }, 1800);
+      }
+    }());
+
+  </script>
+</body>
+</html>
