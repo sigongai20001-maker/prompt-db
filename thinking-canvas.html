@@ -722,6 +722,88 @@
       box-shadow: inset 0 0 0 3px rgba(61,220,151,0.18);
     }
 
+    .image-drop-zone {
+      display: grid;
+      gap: 4px;
+      min-height: 86px;
+      place-items: center;
+      padding: 14px;
+      border: 1px dashed rgba(255,255,255,0.22);
+      border-radius: 8px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.035);
+      text-align: center;
+      outline: none;
+    }
+
+    .image-drop-zone strong {
+      color: var(--ink);
+      font-size: 14px;
+    }
+
+    .image-drop-zone span {
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .image-drop-zone.is-drop-target,
+    .image-drop-zone:focus {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 3px rgba(61,220,151,0.16);
+    }
+
+    .image-file-input {
+      max-width: 100%;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .image-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .image-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(15,17,21,0.75);
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 94px;
+      display: block;
+      object-fit: cover;
+      background: #0f1115;
+    }
+
+    .image-card button {
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      min-width: 28px;
+      height: 28px;
+      border: 1px solid rgba(239,83,80,0.55);
+      border-radius: 7px;
+      color: #fff;
+      background: rgba(239,83,80,0.88);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .image-card-name {
+      overflow: hidden;
+      padding: 7px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     #jsonText {
       min-height: min(56vh, 520px);
       font-family: Consolas, "Courier New", monospace;
@@ -1048,6 +1130,15 @@
           <textarea class="text-area" id="editDetail"></textarea>
         </div>
         <div class="field">
+          <label for="editImageFile">이미지 첨부</label>
+          <div class="image-drop-zone" id="editImageDropZone" tabindex="0">
+            <strong>이미지 드래그 또는 Ctrl+V</strong>
+            <span>복사한 이미지나 이미지 파일을 이 영역에 붙여넣거나 끌어오세요.</span>
+            <input class="image-file-input" id="editImageFile" type="file" accept="image/*" multiple>
+          </div>
+          <div class="image-list" id="editImageList"></div>
+        </div>
+        <div class="field">
           <label for="editLink">통합 링크 (웹페이지·문서·이미지·영상)</label>
           <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
         </div>
@@ -1117,6 +1208,7 @@
         marquee: null,
         handlePress: null,
         editBlockId: null,
+        editImages: [],
         selectedBlockId: null,
         selectedBlockIds: [],
         selectedConnectionKeys: [],
@@ -1180,6 +1272,9 @@
         els.editColorChips = document.getElementById("editColorChips");
         els.editBlockColorValue = document.getElementById("editBlockColorValue");
         els.editDetail = document.getElementById("editDetail");
+        els.editImageDropZone = document.getElementById("editImageDropZone");
+        els.editImageFile = document.getElementById("editImageFile");
+        els.editImageList = document.getElementById("editImageList");
         els.editLink = document.getElementById("editLink");
         els.deleteEditButton = document.getElementById("deleteEditButton");
         els.saveEditButton = document.getElementById("saveEditButton");
@@ -1221,6 +1316,12 @@
         els.copyJsonButton.addEventListener("click", copyJsonText);
         els.editBlockTypeToggle.addEventListener("click", handleBlockTypeButtonClick);
         els.editColorChips.addEventListener("click", handleColorChipClick);
+        els.editImageFile.addEventListener("change", handleEditImageFileSelect);
+        els.editImageDropZone.addEventListener("dragenter", handleEditImageDragEnter);
+        els.editImageDropZone.addEventListener("dragover", handleEditImageDragOver);
+        els.editImageDropZone.addEventListener("dragleave", handleEditImageDragLeave);
+        els.editImageDropZone.addEventListener("drop", handleEditImageDrop);
+        els.editModal.addEventListener("paste", handleEditImagePaste);
         els.deleteEditButton.addEventListener("click", deleteEditedBlock);
         els.saveEditButton.addEventListener("click", saveEditedBlock);
         els.cancelEditButton.addEventListener("click", closeEditModal);
@@ -1890,6 +1991,7 @@
             subtitle: block.subtitle,
             detail: block.detail,
             link: block.link,
+            images: getBlockImages(block),
             category: block.category,
             type: block.type,
             color: getDiagramBlockColor(data, block),
@@ -1921,11 +2023,16 @@
 
         var memoItems = blocks.map(function (block) {
           var link = isValidLink(block.link) ? String(block.link).trim() : "";
+          var images = getBlockImages(block);
+          var imageMarkup = images.map(function (image) {
+            return '<figure><img src="' + escapeHtml(image.data) + '" alt="' + escapeHtml(image.name || "첨부 이미지") + '"><figcaption>' + escapeHtml(image.name || "첨부 이미지") + '</figcaption></figure>';
+          }).join("");
           return '<section class="memo-item">\n' +
             '          <h2>' + escapeHtml(block.title || "제목 없음") + '</h2>\n' +
             (block.subtitle ? '          <p>' + escapeHtml(block.subtitle) + '</p>\n' : "") +
             (link ? '          <p><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">자료 링크</a></p>\n' : "") +
             '          <pre>' + escapeHtml(block.detail || "") + '</pre>\n' +
+            (imageMarkup ? '          <div class="memo-images">' + imageMarkup + '</div>\n' : "") +
             '        </section>';
         }).join("\n        ");
 
@@ -1952,6 +2059,7 @@
           '    .card a{position:absolute;right:8px;top:8px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.16);border-radius:7px;background:rgba(15,17,21,0.72);text-decoration:none;font-size:13px;line-height:1;}\n' +
           '    .memos{margin-top:22px;display:grid;gap:10px;max-width:900px;} .memo-item{border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#1c2129;padding:12px 14px;}\n' +
           '    .memo-item h2{margin:0 0 6px;color:#e8ebf0;font-size:15px;} .memo-item p{margin:0 0 8px;color:rgba(255,255,255,0.5);font-size:13px;} .memo-item pre{margin:0;white-space:pre-wrap;color:#c8cdd6;font-family:inherit;font-size:13px;line-height:1.5;}\n' +
+          '    .memo-images{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px;} .memo-images figure{margin:0;border:1px solid rgba(255,255,255,0.10);border-radius:8px;overflow:hidden;background:#0f1115;} .memo-images img{display:block;width:100%;height:140px;object-fit:cover;} .memo-images figcaption{padding:7px 8px;color:rgba(255,255,255,0.58);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\n' +
           '  </style>\n' +
           '</head>\n' +
           '<body>\n' +
@@ -1997,6 +2105,8 @@
         renderColorChips(getBlockColor(block));
         setEditColorValue(getBlockColor(block));
         els.editDetail.value = block.detail;
+        store.editImages = getBlockImages(block);
+        renderEditImages();
         els.editLink.value = block.link || "";
         els.editModal.classList.add("is-open");
         setTimeout(function () {
@@ -2007,6 +2117,13 @@
 
       function closeEditModal() {
         store.editBlockId = null;
+        store.editImages = [];
+        if (els.editImageDropZone) {
+          els.editImageDropZone.classList.remove("is-drop-target");
+        }
+        if (els.editImageFile) {
+          els.editImageFile.value = "";
+        }
         els.editModal.classList.remove("is-open");
         renderAll();
       }
@@ -2023,6 +2140,7 @@
         block.type = normalizeBlockType(els.editBlockType.value);
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
         block.detail = els.editDetail.value;
+        block.images = cloneBlockImages(store.editImages);
         block.link = String(els.editLink.value || "").trim();
         if (!diagramDataEquals(undoSnapshot.data, getExportData())) {
           pushUndoSnapshot(undoSnapshot);
@@ -2072,6 +2190,146 @@
         }
         closeEditModal();
         removeBlock(blockId);
+      }
+
+      function handleEditImageFileSelect(event) {
+        addEditImageFiles(event.target.files);
+        event.target.value = "";
+      }
+
+      function handleEditImageDragEnter(event) {
+        if (!hasImageFiles(event.dataTransfer)) {
+          return;
+        }
+        event.preventDefault();
+        els.editImageDropZone.classList.add("is-drop-target");
+      }
+
+      function handleEditImageDragOver(event) {
+        if (!hasImageFiles(event.dataTransfer)) {
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        els.editImageDropZone.classList.add("is-drop-target");
+      }
+
+      function handleEditImageDragLeave(event) {
+        if (!els.editImageDropZone.contains(event.relatedTarget)) {
+          els.editImageDropZone.classList.remove("is-drop-target");
+        }
+      }
+
+      function handleEditImageDrop(event) {
+        if (!hasImageFiles(event.dataTransfer)) {
+          return;
+        }
+        event.preventDefault();
+        els.editImageDropZone.classList.remove("is-drop-target");
+        addEditImageFiles(event.dataTransfer.files);
+      }
+
+      function handleEditImagePaste(event) {
+        if (!els.editModal.classList.contains("is-open")) {
+          return;
+        }
+        var files = getImageFilesFromClipboard(event.clipboardData);
+        if (!files.length) {
+          return;
+        }
+        event.preventDefault();
+        addEditImageFiles(files);
+      }
+
+      function addEditImageFiles(fileList) {
+        var files = getImageFilesFromFileList(fileList);
+        if (!files.length) {
+          showToast("이미지 파일만 첨부할 수 있습니다.");
+          return;
+        }
+        Promise.all(files.map(readImageFileAsDataUrl)).then(function (images) {
+          store.editImages = cloneBlockImages(store.editImages).concat(images);
+          renderEditImages();
+          showToast(images.length > 1 ? images.length + "개 이미지를 첨부했습니다." : "이미지를 첨부했습니다.");
+        }).catch(function () {
+          showToast("이미지를 읽지 못했습니다.");
+        });
+      }
+
+      function readImageFileAsDataUrl(file) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve({
+              id: createImageId(),
+              name: file.name || "clipboard-image.png",
+              type: file.type || "image/png",
+              data: String(reader.result || "")
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function renderEditImages() {
+        els.editImageList.replaceChildren();
+        cloneBlockImages(store.editImages).forEach(function (image) {
+          var card = document.createElement("div");
+          var img = document.createElement("img");
+          var removeButton = document.createElement("button");
+          var name = document.createElement("div");
+
+          card.className = "image-card";
+          img.src = image.data;
+          img.alt = image.name || "첨부 이미지";
+          removeButton.type = "button";
+          removeButton.textContent = "×";
+          removeButton.title = "이미지 삭제";
+          removeButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            removeEditImage(image.id);
+          });
+          name.className = "image-card-name";
+          name.textContent = image.name || "첨부 이미지";
+
+          card.append(img, removeButton, name);
+          els.editImageList.append(card);
+        });
+      }
+
+      function removeEditImage(imageId) {
+        store.editImages = cloneBlockImages(store.editImages).filter(function (image) {
+          return image.id !== imageId;
+        });
+        renderEditImages();
+      }
+
+      function hasImageFiles(dataTransfer) {
+        if (!dataTransfer) {
+          return false;
+        }
+        if (dataTransfer.items && dataTransfer.items.length) {
+          return Array.from(dataTransfer.items).some(function (item) {
+            return item.kind === "file" && /^image\//i.test(item.type || "");
+          });
+        }
+        return getImageFilesFromFileList(dataTransfer.files).length > 0;
+      }
+
+      function getImageFilesFromClipboard(clipboardData) {
+        if (!clipboardData || !clipboardData.items) {
+          return [];
+        }
+        return Array.from(clipboardData.items).map(function (item) {
+          return item.kind === "file" && /^image\//i.test(item.type || "") ? item.getAsFile() : null;
+        }).filter(Boolean);
+      }
+
+      function getImageFilesFromFileList(fileList) {
+        return Array.from(fileList || []).filter(function (file) {
+          return file && /^image\//i.test(file.type || "");
+        });
       }
 
       function closeWhenBackdropIsClicked(event) {
@@ -2706,6 +2964,7 @@
           subtitle: "",
           detail: "",
           link: "",
+          images: [],
           category: category,
           type: "main",
           color: getCategoryColor(category),
@@ -3161,6 +3420,7 @@
           subtitle: source.subtitle || "",
           detail: source.detail,
           link: String(source.link || ""),
+          images: getBlockImages(source),
           category: source.category,
           type: normalizeBlockType(source.type),
           color: getBlockColor(source),
@@ -3217,6 +3477,7 @@
             subtitle: source.subtitle || "",
             detail: source.detail,
             link: String(source.link || ""),
+            images: cloneBlockImages(source.images),
             category: source.category,
             type: normalizeBlockType(source.type),
             color: validColor(source.color) ? source.color : getCategoryColor(source.category),
@@ -3249,6 +3510,7 @@
           subtitle: String(block.subtitle || ""),
           detail: String(block.detail || ""),
           link: String(block.link || ""),
+          images: getBlockImages(block),
           category: String(block.category || ""),
           type: normalizeBlockType(block.type),
           color: getBlockColor(block),
@@ -3269,6 +3531,7 @@
           subtitle: "",
           detail: "",
           link: "",
+          images: [],
           category: source.category,
           type: blockType,
           color: getBlockColor(source),
@@ -4292,6 +4555,41 @@
         return category && validColor(category.color) ? category.color : FALLBACK_COLOR;
       }
 
+      function getBlockImages(block) {
+        return cloneBlockImages(block && block.images);
+      }
+
+      function cloneBlockImages(images) {
+        return Array.isArray(images) ? images.map(normalizeBlockImage).filter(Boolean) : [];
+      }
+
+      function normalizeBlockImage(image, index) {
+        var raw = isPlainObject(image) ? image : { data: image };
+        var data = typeof raw.data === "string" ? raw.data : String(raw.data || raw.src || "");
+        if (!isImageDataUrl(data)) {
+          return null;
+        }
+        return {
+          id: typeof raw.id === "string" && raw.id ? raw.id : createImageId(index),
+          name: typeof raw.name === "string" && raw.name ? raw.name : "첨부 이미지",
+          type: typeof raw.type === "string" && raw.type ? raw.type : getDataUrlMimeType(data),
+          data: data
+        };
+      }
+
+      function isImageDataUrl(value) {
+        return /^data:image\/[a-z0-9.+-]+;base64,/i.test(String(value || ""));
+      }
+
+      function getDataUrlMimeType(value) {
+        var match = String(value || "").match(/^data:([^;]+);/i);
+        return match ? match[1] : "image/png";
+      }
+
+      function createImageId(seed) {
+        return "img-" + Date.now().toString(36) + "-" + String(seed == null ? Math.random().toString(36).slice(2, 8) : seed);
+      }
+
       function getExportData() {
         return {
           title: String(store.data.title || ""),
@@ -4303,6 +4601,7 @@
               subtitle: String(block.subtitle || ""),
               detail: String(block.detail || ""),
               link: String(block.link || ""),
+              images: getBlockImages(block),
               category: String(block.category || ""),
               type: normalizeBlockType(block.type),
               color: getBlockColor(block),
@@ -4366,6 +4665,7 @@
               subtitle: typeof raw.subtitle === "string" ? raw.subtitle : String(raw.subtitle || ""),
               detail: typeof raw.detail === "string" ? raw.detail : String(raw.detail || ""),
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
+              images: cloneBlockImages(raw.images),
               category: category,
               type: normalizeBlockType(raw.type || raw.blockType),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
