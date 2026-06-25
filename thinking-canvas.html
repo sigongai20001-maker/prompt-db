@@ -1048,8 +1048,8 @@
           <textarea class="text-area" id="editDetail"></textarea>
         </div>
         <div class="field">
-          <label for="editLink">링크 (Google Drive URL)</label>
-          <input class="text-input" id="editLink" type="url" placeholder="https://drive.google.com/...">
+          <label for="editLink">통합 링크 (웹페이지·문서·이미지·영상)</label>
+          <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
         </div>
       </div>
       <footer class="modal-footer">
@@ -4179,6 +4179,9 @@
         if (drivePreviewUrl) {
           return createPreviewInfo("iframe", "Google Drive 자료", drivePreviewUrl, "Drive 자료는 팝업 안에서 미리보기를 시도합니다. 권한이 필요하면 새 탭에서 열어주세요.");
         }
+        if (isNotionUrl(parsed)) {
+          return createPreviewInfo("iframe", "Notion 페이지", safeUrl, "Notion 페이지는 팝업 안에서 미리보기를 시도합니다. 보안 정책으로 막히면 새 탭에서 열어주세요.");
+        }
         if (extension === "pdf") {
           return createPreviewInfo("iframe", "PDF 문서", safeUrl, "PDF는 팝업 안에서 미리보기를 시도합니다.");
         }
@@ -4222,6 +4225,14 @@
 
       function isOfficeExtension(extension) {
         return ["ppt", "pptx", "pps", "ppsx", "doc", "docx", "xls", "xlsx"].indexOf(extension) !== -1;
+      }
+
+      function isNotionUrl(parsed) {
+        if (!parsed) {
+          return false;
+        }
+        var host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+        return host === "notion.so" || host.endsWith(".notion.site");
       }
 
       function getYouTubeEmbedUrl(parsed) {
