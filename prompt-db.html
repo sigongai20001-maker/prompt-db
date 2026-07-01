@@ -423,6 +423,34 @@
       gap: 8px;
     }
 
+    .tag-button-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .modal-tag-button {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: rgba(23, 25, 21, 0.7);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .modal-tag-button:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .modal-tag-button[aria-pressed="true"] {
+      color: #07140e;
+      background: var(--accent);
+      border-color: var(--accent-strong);
+    }
+
     .checkbox-pill {
       display: inline-flex;
       align-items: center;
@@ -1110,8 +1138,9 @@
       <div class="form-grid">
         <label>
           사용자 이름
-          <input id="ownerInput" name="owner" type="text" list="ownerOptions" maxlength="40" required>
+          <input id="ownerInput" name="owner" type="hidden" required>
           <datalist id="ownerOptions"></datalist>
+          <div id="promptOwnerOptions" class="tag-button-grid"></div>
         </label>
 
         <label>
@@ -1121,12 +1150,13 @@
 
         <label>
           카테고리
-          <select id="categoryInput" name="category" required></select>
+          <select id="categoryInput" name="category" required hidden></select>
+          <div id="promptCategoryOptions" class="tag-button-grid"></div>
         </label>
 
         <label>
           구분태그
-          <div id="promptTagOptions" class="checkbox-grid"></div>
+          <div id="promptTagOptions" class="tag-button-grid"></div>
         </label>
 
         <label>
@@ -1302,8 +1332,10 @@
       els.saveButton = $("#saveButton");
       els.ownerInput = $("#ownerInput");
       els.ownerOptions = $("#ownerOptions");
+      els.promptOwnerOptions = $("#promptOwnerOptions");
       els.titleInput = $("#titleInput");
       els.categoryInput = $("#categoryInput");
+      els.promptCategoryOptions = $("#promptCategoryOptions");
       els.promptTagOptions = $("#promptTagOptions");
       els.contentInput = $("#contentInput");
       els.promptProgress = $("#promptProgress");
@@ -2093,8 +2125,49 @@
       `).join("");
     }
 
+    function renderPromptOwnerOptions(selectedOwner = els.ownerInput.value) {
+      const owners = mergeOwners(getOwners(), [selectedOwner || getDefaultNewOwner()]);
+      els.promptOwnerOptions.innerHTML = owners.map((owner) => `
+        <button class="modal-tag-button" type="button" aria-pressed="${owner === selectedOwner}" data-prompt-owner="${escapeHtml(owner)}">
+          ${escapeHtml(owner)}
+        </button>
+      `).join("");
+
+      els.promptOwnerOptions.querySelectorAll("[data-prompt-owner]").forEach((button) => {
+        button.addEventListener("click", () => {
+          els.ownerInput.value = button.dataset.promptOwner;
+          renderPromptOwnerOptions(els.ownerInput.value);
+          renderPromptCategoryOptions(els.categoryInput.value);
+          renderPromptTagOptions(getSelectedPromptTags());
+        });
+      });
+    }
+
+    function renderPromptCategoryOptions(selectedCategory = els.categoryInput.value) {
+      const owner = els.ownerInput.value || state.activeOwner;
+      const categories = mergeCategories(getCategories(owner), [selectedCategory || getDefaultNewCategory()]);
+      els.categoryInput.innerHTML = categories.map((category) => `
+        <option value="${escapeHtml(category)}">${escapeHtml(category)}</option>
+      `).join("");
+      els.categoryInput.value = categories.includes(selectedCategory) ? selectedCategory : categories[0];
+
+      els.promptCategoryOptions.innerHTML = categories.map((category) => `
+        <button class="modal-tag-button" type="button" aria-pressed="${category === els.categoryInput.value}" data-prompt-category="${escapeHtml(category)}">
+          ${escapeHtml(category)}
+        </button>
+      `).join("");
+
+      els.promptCategoryOptions.querySelectorAll("[data-prompt-category]").forEach((button) => {
+        button.addEventListener("click", () => {
+          els.categoryInput.value = button.dataset.promptCategory;
+          renderPromptCategoryOptions(els.categoryInput.value);
+          renderPromptTagOptions(getSelectedPromptTags());
+        });
+      });
+    }
+
     function renderPromptTagOptions(selectedTags = []) {
-      const tags = getTagsForCategory(els.categoryInput.value);
+      const tags = getTagsForCategory(els.categoryInput.value, els.ownerInput.value || state.activeOwner);
       if (tags.length === 0) {
         els.promptTagOptions.innerHTML = "<span class=\"card-preview\">구분태그 없음</span>";
         return;
@@ -2102,11 +2175,16 @@
 
       const selectedSet = new Set(selectedTags);
       els.promptTagOptions.innerHTML = tags.map((tag) => `
-        <label class="checkbox-pill">
-          <input type="checkbox" value="${escapeHtml(tag)}" ${selectedSet.has(tag) ? "checked" : ""}>
-          <span>${escapeHtml(tag)}</span>
-        </label>
+        <button class="modal-tag-button" type="button" aria-pressed="${selectedSet.has(tag)}" data-prompt-tag="${escapeHtml(tag)}">
+          ${escapeHtml(tag)}
+        </button>
       `).join("");
+
+      els.promptTagOptions.querySelectorAll("[data-prompt-tag]").forEach((button) => {
+        button.addEventListener("click", () => {
+          button.setAttribute("aria-pressed", button.getAttribute("aria-pressed") !== "true");
+        });
+      });
     }
 
     function renderPrompts() {
@@ -2572,6 +2650,8 @@
       els.titleInput.value = prompt?.title || "";
       const category = prompt?.category || getDefaultNewCategory();
       els.categoryInput.value = category;
+      renderPromptOwnerOptions(els.ownerInput.value);
+      renderPromptCategoryOptions(category);
       renderPromptTagOptions(prompt ? prompt.tags : getDefaultNewPromptTags(category));
       els.contentInput.value = prompt?.content || "";
       els.deleteButton.hidden = !prompt;
@@ -3241,8 +3321,8 @@
     }
 
     function getSelectedPromptTags() {
-      return Array.from(els.promptTagOptions.querySelectorAll("input[type='checkbox']:checked"))
-        .map((input) => input.value);
+      return Array.from(els.promptTagOptions.querySelectorAll("[data-prompt-tag][aria-pressed='true']"))
+        .map((button) => button.dataset.promptTag);
     }
 
     function structuredCloneSafe(value) {
