@@ -2663,6 +2663,13 @@
           }
           startBlockDrag(event, block.id);
         });
+        top.addEventListener("click", function (event) {
+          if (isControlTarget(event.target) || event.detail > 1) {
+            return;
+          }
+          event.stopPropagation();
+          focusBlockTitle(block.id);
+        });
         card.addEventListener("dblclick", function (event) {
           if (isControlTarget(event.target)) {
             return;
