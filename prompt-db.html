@@ -1787,6 +1787,7 @@
       const prompts = defaultSeeds.map(([category, title, content]) => ({
         id: createId(),
         owner: DEFAULT_OWNER,
+        owners: [DEFAULT_OWNER],
         category: normalizePromptCategory(category),
         tags: defaultTagsForCategory(category),
         title,
@@ -1809,21 +1810,25 @@
     function normalizePrompts(value) {
       if (!Array.isArray(value)) return [];
 
-      return value.map((prompt) => ({
-        id: prompt.id || createId(),
-        owner: String(prompt.owner || DEFAULT_OWNER).trim() || DEFAULT_OWNER,
-        category: normalizePromptCategory(prompt.category || "CODEX"),
-        tags: normalizePromptTags(prompt),
-        title: String(prompt.title || "").trim() || "제목 없음",
-        content: String(prompt.content || ""),
-        usageCount: Number(prompt.usageCount || 0),
-        lastUsedAt: prompt.lastUsedAt || "",
-        createdAt: prompt.createdAt || today()
-      }));
+      return value.map((prompt) => {
+        const owners = normalizePromptOwners(prompt);
+        return {
+          id: prompt.id || createId(),
+          owner: owners[0],
+          owners,
+          category: normalizePromptCategory(prompt.category || "CODEX"),
+          tags: normalizePromptTags(prompt),
+          title: String(prompt.title || "").trim() || "제목 없음",
+          content: String(prompt.content || ""),
+          usageCount: Number(prompt.usageCount || 0),
+          lastUsedAt: prompt.lastUsedAt || "",
+          createdAt: prompt.createdAt || today()
+        };
+      });
     }
 
     function promptsNeedOwnerMigration(value) {
-      return Array.isArray(value) && value.some((prompt) => !prompt.owner);
+      return Array.isArray(value) && value.some((prompt) => !prompt.owner || !Array.isArray(prompt.owners));
     }
 
     function promptsNeedTagMigration(value) {
@@ -1834,9 +1839,15 @@
       const ownerSet = new Set(Array.isArray(value) ? value.map((owner) => String(owner || "").trim()).filter(Boolean) : []);
       prompts.forEach((prompt) => {
         if (prompt.owner) ownerSet.add(prompt.owner);
+        normalizePromptOwners(prompt).forEach((owner) => ownerSet.add(owner));
       });
       ownerSet.add(DEFAULT_OWNER);
       return [...ownerSet].sort((a, b) => a.localeCompare(b, "ko-KR"));
+    }
+
+    function normalizePromptOwners(prompt) {
+      const owners = Array.isArray(prompt?.owners) ? prompt.owners : [prompt?.owner];
+      return mergeOwners([], owners.length ? owners : [DEFAULT_OWNER]);
     }
 
     function normalizeDeletedCategories(value) {
@@ -1910,10 +1921,11 @@
       });
 
       prompts.forEach((prompt) => {
-        const owner = prompt.owner || DEFAULT_OWNER;
         const category = normalizePromptCategory(prompt.category);
-        if (!groups[owner]) groups[owner] = {};
-        groups[owner][category] = mergeTagNames(groups[owner][category] || [], prompt.tags || []);
+        normalizePromptOwners(prompt).forEach((owner) => {
+          if (!groups[owner]) groups[owner] = {};
+          groups[owner][category] = mergeTagNames(groups[owner][category] || [], prompt.tags || []);
+        });
       });
 
       Object.keys(groups).forEach((owner) => {
@@ -2125,18 +2137,22 @@
       `).join("");
     }
 
-    function renderPromptOwnerOptions(selectedOwner = els.ownerInput.value) {
-      const owners = mergeOwners(getOwners(), [selectedOwner || getDefaultNewOwner()]);
+    function renderPromptOwnerOptions(selectedOwners = getSelectedPromptOwners()) {
+      const selectedSet = new Set(selectedOwners.length ? selectedOwners : [getDefaultNewOwner()]);
+      const owners = mergeOwners(getOwners(), [...selectedSet]);
+      els.ownerInput.value = [...selectedSet][0] || "";
       els.promptOwnerOptions.innerHTML = owners.map((owner) => `
-        <button class="modal-tag-button" type="button" aria-pressed="${owner === selectedOwner}" data-prompt-owner="${escapeHtml(owner)}">
+        <button class="modal-tag-button" type="button" aria-pressed="${selectedSet.has(owner)}" data-prompt-owner="${escapeHtml(owner)}">
           ${escapeHtml(owner)}
         </button>
       `).join("");
 
       els.promptOwnerOptions.querySelectorAll("[data-prompt-owner]").forEach((button) => {
         button.addEventListener("click", () => {
-          els.ownerInput.value = button.dataset.promptOwner;
-          renderPromptOwnerOptions(els.ownerInput.value);
+          button.setAttribute("aria-pressed", button.getAttribute("aria-pressed") !== "true");
+          const owners = getSelectedPromptOwners();
+          els.ownerInput.value = owners[0] || "";
+          renderPromptOwnerOptions(owners);
           renderPromptCategoryOptions(els.categoryInput.value);
           renderPromptTagOptions(getSelectedPromptTags());
         });
@@ -2144,8 +2160,11 @@
     }
 
     function renderPromptCategoryOptions(selectedCategory = els.categoryInput.value) {
-      const owner = els.ownerInput.value || state.activeOwner;
-      const categories = mergeCategories(getCategories(owner), [selectedCategory || getDefaultNewCategory()]);
+      const selectedOwners = getSelectedPromptOwners();
+      const categories = mergeCategories(
+        selectedOwners.flatMap((owner) => getCategories(owner)),
+        [selectedCategory || getDefaultNewCategory()]
+      );
       els.categoryInput.innerHTML = categories.map((category) => `
         <option value="${escapeHtml(category)}">${escapeHtml(category)}</option>
       `).join("");
@@ -2167,7 +2186,8 @@
     }
 
     function renderPromptTagOptions(selectedTags = []) {
-      const tags = getTagsForCategory(els.categoryInput.value, els.ownerInput.value || state.activeOwner);
+      const selectedOwners = getSelectedPromptOwners();
+      const tags = mergeTagNames([], selectedOwners.flatMap((owner) => getTagsForCategory(els.categoryInput.value, owner)));
       if (tags.length === 0) {
         els.promptTagOptions.innerHTML = "<span class=\"card-preview\">구분태그 없음</span>";
         return;
@@ -2203,7 +2223,7 @@
         return `
           <article class="prompt-card">
             <button class="copy-card ${copied ? "copied" : ""}" type="button" data-copy-id="${escapeHtml(prompt.id)}">
-              <span class="card-owner">${escapeHtml(prompt.owner)}</span>
+              <span class="card-owner">${escapeHtml(formatPromptOwners(prompt))}</span>
               <span class="card-category">${escapeHtml(formatPromptTags(prompt))}</span>
               <strong class="card-title">${escapeHtml(prompt.title)}</strong>
               <span class="card-preview">${escapeHtml(prompt.content)}</span>
@@ -2232,7 +2252,7 @@
     function getFilteredPrompts() {
       const keyword = state.searchTerm.toLocaleLowerCase("ko-KR");
       return state.prompts.filter((prompt) => {
-        const matchesOwner = state.activeOwner === "전체" || prompt.owner === state.activeOwner;
+        const matchesOwner = state.activeOwner === "전체" || normalizePromptOwners(prompt).includes(state.activeOwner);
         let matchesCategory = state.activeCategory === "전체" || prompt.category === state.activeCategory;
         if (state.activeCategory !== "전체" && state.activeSubTag !== "전체") {
           matchesCategory = matchesCategory && prompt.tags.includes(state.activeSubTag);
@@ -2268,7 +2288,7 @@
 
       const categorySet = new Set(Object.keys(state.ownerTagGroups[owner] || {}));
       state.prompts.forEach((prompt) => {
-        if (prompt.owner === owner && prompt.category) categorySet.add(normalizePromptCategory(prompt.category));
+        if (normalizePromptOwners(prompt).includes(owner) && prompt.category) categorySet.add(normalizePromptCategory(prompt.category));
       });
 
       const deletedSet = new Set(normalizeDeletedCategories(state.deletedCategories));
@@ -2292,11 +2312,15 @@
 
       const tags = mergeTagNames([], state.ownerTagGroups[owner]?.[category] || []);
       state.prompts.forEach((prompt) => {
-        if (prompt.owner === owner && prompt.category === category) {
+        if (normalizePromptOwners(prompt).includes(owner) && prompt.category === category) {
           tags.splice(0, tags.length, ...mergeTagNames(tags, prompt.tags || []));
         }
       });
       return tags;
+    }
+
+    function formatPromptOwners(prompt) {
+      return normalizePromptOwners(prompt).join(", ");
     }
 
     function formatPromptTags(prompt) {
@@ -2650,7 +2674,7 @@
       els.titleInput.value = prompt?.title || "";
       const category = prompt?.category || getDefaultNewCategory();
       els.categoryInput.value = category;
-      renderPromptOwnerOptions(els.ownerInput.value);
+      renderPromptOwnerOptions(prompt ? normalizePromptOwners(prompt) : [els.ownerInput.value]);
       renderPromptCategoryOptions(category);
       renderPromptTagOptions(prompt ? prompt.tags : getDefaultNewPromptTags(category));
       els.contentInput.value = prompt?.content || "";
@@ -2675,8 +2699,10 @@
 
     function getForcedNewPromptContext() {
       const category = getDefaultNewCategory();
+      const owner = getDefaultNewOwner();
       return {
-        owner: getDefaultNewOwner(),
+        owner,
+        owners: [owner],
         category,
         tags: getDefaultNewPromptTags(category)
       };
@@ -2690,8 +2716,20 @@
       return state.activeOwner === "전체" ? getDefaultNewOwner() : state.activeOwner;
     }
 
+    function replacePromptOwner(prompt, current, value) {
+      const owners = normalizePromptOwners(prompt).map((owner) => owner === current ? value : owner);
+      const nextOwners = mergeOwners([], owners);
+      return { ...prompt, owner: nextOwners[0], owners: nextOwners };
+    }
+
+    function removePromptOwner(prompt, current) {
+      const owners = normalizePromptOwners(prompt).filter((owner) => owner !== current);
+      const nextOwners = owners.length ? owners : [DEFAULT_OWNER];
+      return { ...prompt, owner: nextOwners[0], owners: nextOwners };
+    }
+
     function isPromptInActiveOwnerScope(prompt) {
-      return state.activeOwner === "전체" || prompt.owner === state.activeOwner;
+      return state.activeOwner === "전체" || normalizePromptOwners(prompt).includes(state.activeOwner);
     }
 
     function updateOwnerTagGroupsInScope(updater) {
@@ -2739,7 +2777,7 @@
 
       await persistChange(() => {
         state.owners = state.owners.map((owner) => owner === current ? value : owner);
-        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: value } : prompt);
+        state.prompts = state.prompts.map((prompt) => normalizePromptOwners(prompt).includes(current) ? replacePromptOwner(prompt, current, value) : prompt);
         state.activeOwner = value;
       }, "사용자 이름 변경됨");
     }
@@ -2756,7 +2794,7 @@
 
       await persistChange(() => {
         state.owners = state.owners.filter((owner) => owner !== current);
-        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: DEFAULT_OWNER } : prompt);
+        state.prompts = state.prompts.map((prompt) => normalizePromptOwners(prompt).includes(current) ? removePromptOwner(prompt, current) : prompt);
         state.activeOwner = "전체";
       }, "사용자 삭제됨");
     }
@@ -2875,7 +2913,7 @@
         if (!window.confirm(`"${current}" 사용자를 삭제할까요? 해당 프롬프트는 ${DEFAULT_OWNER}(으)로 이동합니다.`)) return;
         await persistChange(() => {
           state.owners = state.owners.filter((owner) => owner !== current);
-          state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: DEFAULT_OWNER } : prompt);
+          state.prompts = state.prompts.map((prompt) => normalizePromptOwners(prompt).includes(current) ? removePromptOwner(prompt, current) : prompt);
           state.activeOwner = "전체";
         }, "사용자 삭제됨");
         return;
@@ -2884,7 +2922,7 @@
       if (!value || value === current) return;
       await persistChange(() => {
         state.owners = state.owners.map((owner) => owner === current ? value : owner);
-        state.prompts = state.prompts.map((prompt) => prompt.owner === current ? { ...prompt, owner: value } : prompt);
+        state.prompts = state.prompts.map((prompt) => normalizePromptOwners(prompt).includes(current) ? replacePromptOwner(prompt, current, value) : prompt);
         state.activeOwner = value;
       }, "사용자 이름 변경됨");
     }
@@ -3016,13 +3054,14 @@
       setModalProgress("입력 확인 중");
 
       const forcedContext = state.editingId ? null : getForcedNewPromptContext();
-      const owner = forcedContext?.owner || els.ownerInput.value.trim();
+      const owners = forcedContext?.owners || getSelectedPromptOwners();
+      const owner = forcedContext?.owner || owners[0] || "";
       const title = els.titleInput.value.trim();
       const content = els.contentInput.value;
       const category = forcedContext?.category || els.categoryInput.value;
       const tags = forcedContext?.tags || getSelectedPromptTags();
 
-      if (!owner || !title || !content.trim()) {
+      if (!owners.length || !title || !content.trim()) {
         setModalProgress("필수 항목을 확인해 주세요.", "error");
         showToast("사용자 이름, 제목, 내용을 입력해 주세요.", "error");
         return;
@@ -3035,6 +3074,7 @@
             return {
               ...prompt,
               owner,
+              owners,
               title,
               content,
               category,
@@ -3045,6 +3085,7 @@
           state.prompts = [{
             id: createId(),
             owner,
+            owners,
             category,
             tags,
             title,
@@ -3054,10 +3095,12 @@
             createdAt: today()
           }, ...state.prompts];
         }
-        state.owners = mergeOwners(state.owners, [owner]);
+        state.owners = mergeOwners(state.owners, owners);
         state.categories = mergeCategories(state.categories, [category]);
         state.tagGroups = mergeTagGroups(state.tagGroups, category, tags);
-        state.ownerTagGroups = mergeOwnerTagGroups(state.ownerTagGroups, owner, category, tags);
+        owners.forEach((ownerName) => {
+          state.ownerTagGroups = mergeOwnerTagGroups(state.ownerTagGroups, ownerName, category, tags);
+        });
       }, "저장됨", { background: true });
 
       if (saved) closePromptModal();
@@ -3239,7 +3282,7 @@
 
       return prompts.map((prompt) => {
         const tagsToRemove = deletedSubTags
-          .filter((item) => item.category === prompt.category && (!item.owner || item.owner === "전체" || item.owner === prompt.owner))
+          .filter((item) => item.category === prompt.category && (!item.owner || item.owner === "전체" || normalizePromptOwners(prompt).includes(item.owner)))
           .map((item) => item.tag);
         if (!tagsToRemove.length) return prompt;
 
@@ -3323,6 +3366,11 @@
     function getSelectedPromptTags() {
       return Array.from(els.promptTagOptions.querySelectorAll("[data-prompt-tag][aria-pressed='true']"))
         .map((button) => button.dataset.promptTag);
+    }
+
+    function getSelectedPromptOwners() {
+      return Array.from(els.promptOwnerOptions.querySelectorAll("[data-prompt-owner][aria-pressed='true']"))
+        .map((button) => button.dataset.promptOwner);
     }
 
     function structuredCloneSafe(value) {
