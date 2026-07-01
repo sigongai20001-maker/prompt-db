@@ -1074,11 +1074,12 @@
           <rect x="7" y="14" width="10" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
         </svg>
       </button>
-      <button class="toolbar-button icon-button" id="alignMiddleButton" type="button" title="선택 블록 중간정렬" aria-label="선택 블록 중간정렬">
+      <button class="toolbar-button icon-button" id="alignHorizontalCenterButton" type="button" title="선택 블록 가로축 중심정렬" aria-label="선택 블록 가로축 중심정렬">
         <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
-          <rect x="6" y="5" width="12" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
-          <rect x="8" y="14" width="8" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <path d="M4 12h16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          <rect x="5" y="5" width="8" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <rect x="11" y="14" width="8" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+          <path d="M9 10v4M15 10v4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"></path>
         </svg>
       </button>
       <button class="toolbar-button icon-button" id="alignBottomButton" type="button" title="선택 블록 아래쪽 맞춤" aria-label="선택 블록 아래쪽 맞춤">
@@ -1327,7 +1328,7 @@
         els.arrangeButton = document.getElementById("arrangeButton");
         els.alignLeftButton = document.getElementById("alignLeftButton");
         els.alignCenterButton = document.getElementById("alignCenterButton");
-        els.alignMiddleButton = document.getElementById("alignMiddleButton");
+        els.alignHorizontalCenterButton = document.getElementById("alignHorizontalCenterButton");
         els.alignBottomButton = document.getElementById("alignBottomButton");
         els.distributeHorizontalButton = document.getElementById("distributeHorizontalButton");
         els.distributeVerticalButton = document.getElementById("distributeVerticalButton");
@@ -1386,7 +1387,7 @@
         els.arrangeButton.addEventListener("click", autoArrangeBlocks);
         els.alignLeftButton.addEventListener("click", alignSelectedBlocksLeft);
         els.alignCenterButton.addEventListener("click", alignSelectedBlocksCenter);
-        els.alignMiddleButton.addEventListener("click", alignSelectedBlocksMiddle);
+        els.alignHorizontalCenterButton.addEventListener("click", alignSelectedBlocksHorizontalCenter);
         els.alignBottomButton.addEventListener("click", alignSelectedBlocksBottom);
         els.distributeHorizontalButton.addEventListener("click", distributeSelectedBlocksHorizontally);
         els.distributeVerticalButton.addEventListener("click", distributeSelectedBlocksVertically);
@@ -3212,8 +3213,8 @@
         }), "중심선 정렬했습니다.");
       }
 
-      function alignSelectedBlocksMiddle() {
-        var blocks = getArrangementSelection(2, "중간정렬");
+      function alignSelectedBlocksHorizontalCenter() {
+        var blocks = getArrangementSelection(2, "가로축 중심정렬");
         if (!blocks.length) {
           return;
         }
@@ -3230,7 +3231,7 @@
             x: Number(block.x) || 0,
             y: targetCenterY - getBlockHeight(block) / 2
           };
-        }), "중간정렬했습니다.");
+        }), "가로축 중심정렬했습니다.");
       }
 
       function alignSelectedBlocksBottom() {
