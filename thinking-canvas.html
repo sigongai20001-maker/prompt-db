@@ -777,6 +777,12 @@
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 8px;
       background: rgba(15,17,21,0.75);
+      cursor: zoom-in;
+    }
+
+    .image-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(61,220,151,0.24);
     }
 
     .image-card img {
@@ -799,6 +805,7 @@
       background: rgba(239,83,80,0.88);
       font-size: 13px;
       font-weight: 800;
+      cursor: pointer;
     }
 
     .image-card-name {
@@ -819,6 +826,42 @@
     .link-modal-body {
       grid-template-rows: auto minmax(0, 1fr);
       min-height: min(64vh, 620px);
+    }
+
+    .image-preview-panel {
+      width: min(92vw, 980px);
+      max-height: 92vh;
+    }
+
+    .image-preview-body {
+      min-height: min(68vh, 720px);
+      overflow: hidden;
+    }
+
+    .image-preview-frame {
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(0,0,0,0.28);
+    }
+
+    .image-preview-frame img {
+      max-width: 100%;
+      max-height: 68vh;
+      display: block;
+      object-fit: contain;
+    }
+
+    .image-preview-name {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .link-preview-toolbar {
@@ -1187,6 +1230,21 @@
     </section>
   </div>
 
+  <div class="modal-backdrop" id="imagePreviewModal" role="dialog" aria-modal="true" aria-labelledby="imagePreviewTitle">
+    <section class="modal-panel image-preview-panel">
+      <header class="modal-header">
+        <h2 id="imagePreviewTitle">이미지 미리보기</h2>
+        <button class="modal-button" id="closeImagePreviewButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body image-preview-body">
+        <div class="image-preview-frame">
+          <img id="imagePreviewImage" alt="첨부 이미지 미리보기">
+        </div>
+        <div class="image-preview-name" id="imagePreviewName"></div>
+      </div>
+    </section>
+  </div>
+
   <div class="toast" id="toast" aria-live="polite"></div>
   <script>
 (function () {
@@ -1309,6 +1367,11 @@
         els.linkPreviewShell = document.getElementById("linkPreviewShell");
         els.closeLinkButton = document.getElementById("closeLinkButton");
         els.openLinkNewTabButton = document.getElementById("openLinkNewTabButton");
+        els.imagePreviewModal = document.getElementById("imagePreviewModal");
+        els.imagePreviewTitle = document.getElementById("imagePreviewTitle");
+        els.imagePreviewImage = document.getElementById("imagePreviewImage");
+        els.imagePreviewName = document.getElementById("imagePreviewName");
+        els.closeImagePreviewButton = document.getElementById("closeImagePreviewButton");
         els.toast = document.getElementById("toast");
       }
 
@@ -1356,9 +1419,11 @@
         els.cancelEditButton.addEventListener("click", closeEditModal);
         els.cancelEditTopButton.addEventListener("click", closeEditModal);
         els.closeLinkButton.addEventListener("click", closeLinkModal);
+        els.closeImagePreviewButton.addEventListener("click", closeImagePreviewModal);
         els.jsonModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.editModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.linkModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.imagePreviewModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.viewport.addEventListener("pointerdown", startCanvasInteraction);
         els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
         document.addEventListener("pointermove", handlePointerMove);
@@ -1523,6 +1588,9 @@
         }
         if (els.linkModal) {
           closeLinkModal();
+        }
+        if (els.imagePreviewModal) {
+          closeImagePreviewModal();
         }
         if (els.draftConnection) {
           els.draftConnection.classList.remove("is-active");
@@ -2280,6 +2348,9 @@
         Promise.all(files.map(readImageFileAsDataUrl)).then(function (images) {
           store.editImages = cloneBlockImages(store.editImages).concat(images);
           renderEditImages();
+          if (images[0]) {
+            openImagePreview(images[0]);
+          }
           showToast(images.length > 1 ? images.length + "개 이미지를 첨부했습니다." : "이미지를 첨부했습니다.");
         }).catch(function () {
           showToast("이미지를 읽지 못했습니다.");
@@ -2311,6 +2382,17 @@
           var name = document.createElement("div");
 
           card.className = "image-card";
+          card.tabIndex = 0;
+          card.title = "이미지 크게 보기";
+          card.addEventListener("click", function () {
+            openImagePreview(image);
+          });
+          card.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openImagePreview(image);
+            }
+          });
           img.src = image.data;
           img.alt = image.name || "첨부 이미지";
           removeButton.type = "button";
@@ -2318,6 +2400,7 @@
           removeButton.title = "이미지 삭제";
           removeButton.addEventListener("click", function (event) {
             event.preventDefault();
+            event.stopPropagation();
             removeEditImage(image.id);
           });
           name.className = "image-card-name";
@@ -2326,6 +2409,31 @@
           card.append(img, removeButton, name);
           els.editImageList.append(card);
         });
+      }
+
+      function openImagePreview(image) {
+        var safeImage = normalizeBlockImage(image);
+        if (!safeImage) {
+          return;
+        }
+        els.imagePreviewTitle.textContent = safeImage.name || "이미지 미리보기";
+        els.imagePreviewImage.src = safeImage.data;
+        els.imagePreviewImage.alt = safeImage.name || "첨부 이미지 미리보기";
+        els.imagePreviewName.textContent = safeImage.name || "첨부 이미지";
+        els.imagePreviewModal.classList.add("is-open");
+      }
+
+      function closeImagePreviewModal() {
+        if (!els.imagePreviewModal) {
+          return;
+        }
+        els.imagePreviewModal.classList.remove("is-open");
+        if (els.imagePreviewImage) {
+          els.imagePreviewImage.removeAttribute("src");
+        }
+        if (els.imagePreviewName) {
+          els.imagePreviewName.textContent = "";
+        }
       }
 
       function removeEditImage(imageId) {
@@ -2372,6 +2480,9 @@
         if (event.target === els.linkModal) {
           closeLinkModal();
         }
+        if (event.target === els.imagePreviewModal) {
+          closeImagePreviewModal();
+        }
       }
 
       function handleKeyDown(event) {
@@ -2415,6 +2526,10 @@
         }
         if (els.linkModal.classList.contains("is-open")) {
           closeLinkModal();
+          modalWasOpen = true;
+        }
+        if (els.imagePreviewModal.classList.contains("is-open")) {
+          closeImagePreviewModal();
           modalWasOpen = true;
         }
         if (!modalWasOpen) {
@@ -4905,7 +5020,8 @@
       function isModalOpen() {
         return els.jsonModal.classList.contains("is-open") ||
           els.editModal.classList.contains("is-open") ||
-          els.linkModal.classList.contains("is-open");
+          els.linkModal.classList.contains("is-open") ||
+          els.imagePreviewModal.classList.contains("is-open");
       }
 
       function getSelectedBlockIds() {
