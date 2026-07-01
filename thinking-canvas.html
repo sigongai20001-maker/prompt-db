@@ -236,6 +236,33 @@
       opacity: 1;
     }
 
+    .connection-label-box {
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .connection-label {
+      max-width: 180px;
+      overflow: hidden;
+      padding: 4px 8px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      background: rgba(28,33,41,0.92);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.28);
+    }
+
+    .connection-label-box.is-selected .connection-label {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(61,220,151,0.22), 0 6px 16px rgba(0,0,0,0.28);
+    }
+
     .draft-connection {
       fill: none;
       stroke: var(--accent);
@@ -2316,6 +2343,19 @@
           return '<path d="' + escapeHtml(getConnectionPath(from, to, data.connectionStyle)) + '"></path>';
         }).join("\n        ");
 
+        var connectionLabels = (data.connections || []).map(function (connection) {
+          var label = getConnectionLabel(connection);
+          var from = projected.get(connection.from);
+          var to = projected.get(connection.to);
+          if (!label || !from || !to) {
+            return "";
+          }
+          var point = getConnectionLabelPoint(from, to);
+          var labelWidth = clamp(Math.ceil(estimateTextWidth(label, 12) + 22), 56, 190);
+          return '<foreignObject x="' + Math.round(point.x - labelWidth / 2) + '" y="' + Math.round(point.y - 14) + '" width="' + labelWidth + '" height="28">' +
+            '<div xmlns="http://www.w3.org/1999/xhtml" class="conn-label">' + escapeHtml(label) + '</div></foreignObject>';
+        }).filter(Boolean).join("\n        ");
+
         var cards = Array.from(projected.values()).map(function (block) {
           var category = categories[block.category] || {};
           var color = validColor(block.color) ? block.color : (category && validColor(category.color) ? category.color : FALLBACK_COLOR);
@@ -2359,6 +2399,7 @@
           '    .diagram{position:relative;width:' + width + 'px;height:' + height + 'px;max-width:100%;overflow:auto;border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#13161c;background-image:radial-gradient(rgba(255,255,255,0.05) 1px,transparent 1px);background-size:48px 48px;}\n' +
           '    svg{position:absolute;left:0;top:0;width:' + width + 'px;height:' + height + 'px;overflow:visible;}\n' +
           '    path{fill:none;stroke:#5b6472;stroke-width:2.2;stroke-linecap:round;opacity:.85;}\n' +
+          '    .conn-label{box-sizing:border-box;max-width:180px;overflow:hidden;padding:4px 8px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(28,33,41,0.92);color:#e8ebf0;font-size:12px;font-weight:700;line-height:1.25;text-align:center;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,0.28);}\n' +
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -2373,7 +2414,7 @@
           '  <header><h1>' + escapeHtml(data.title || "생각블록 캔버스") + '</h1><p class="saved-at">저장: ' + escapeHtml(new Date().toLocaleString()) + '</p></header>\n' +
           '  <main class="wrap">\n' +
           '    <section class="diagram" aria-label="저장된 생각블록 다이어그램">\n' +
-          '      <svg viewBox="0 0 ' + width + ' ' + height + '" aria-hidden="true">\n        ' + paths + '\n      </svg>\n' +
+          '      <svg viewBox="0 0 ' + width + ' ' + height + '" aria-hidden="true">\n        ' + paths + (connectionLabels ? '\n        ' + connectionLabels : "") + '\n      </svg>\n' +
           '      <div>\n        ' + cards + '\n      </div>\n' +
           '    </section>\n' +
           (memoItems ? '    <section class="memos" aria-label="세부내용">\n        ' + memoItems + '\n    </section>\n' : "") +
@@ -2957,6 +2998,11 @@
         if (isPasteShortcut(event) && canPasteBlocks(event.target)) {
           event.preventDefault();
           pasteBlocksFromClipboard();
+          return;
+        }
+        if (event.key === "Enter" && canEditSelectedConnectionLabel(event.target)) {
+          event.preventDefault();
+          editConnectionLabel(store.selectedConnectionKeys[0]);
           return;
         }
         if ((event.key === "Delete" || event.key === "Backspace") && canDeleteSelectedItems(event.target)) {
@@ -3575,28 +3621,96 @@
           var group = createSvgElement("g");
           var hit = createSvgElement("path");
           var visible = createSvgElement("path");
+          var label = createConnectionLabelElement(connection, fromBlock, toBlock, key);
 
           hit.setAttribute("d", pathData);
           hit.setAttribute("tabindex", "0");
           hit.setAttribute("class", "connection-hit");
-          hit.setAttribute("aria-label", "연결선 선택");
+          hit.setAttribute("aria-label", getConnectionLabel(connection) ? "연결선 선택: " + getConnectionLabel(connection) : "연결선 선택");
           hit.addEventListener("click", function (event) {
             event.preventDefault();
             event.stopPropagation();
             selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
           });
+          hit.addEventListener("dblclick", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            editConnectionLabel(key);
+          });
           hit.addEventListener("keydown", function (event) {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+              if (event.key === "Enter" && isConnectionSelected(key)) {
+                editConnectionLabel(key);
+              } else {
+                selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+              }
             }
           });
 
           visible.setAttribute("d", pathData);
           visible.setAttribute("class", isConnectionSelected(key) ? "connection-visible is-selected" : "connection-visible");
           group.append(hit, visible);
+          if (label) {
+            group.append(label);
+          }
           els.connectionGroup.append(group);
         });
+      }
+
+      function createConnectionLabelElement(connection, fromBlock, toBlock, key) {
+        var labelText = getConnectionLabel(connection);
+        if (!labelText) {
+          return null;
+        }
+        var point = getConnectionLabelPoint(fromBlock, toBlock);
+        var width = clamp(Math.ceil(estimateTextWidth(labelText, 12) + 22), 56, 190);
+        var height = 28;
+        var foreignObject = createSvgElement("foreignObject");
+        var label = document.createElement("div");
+        foreignObject.setAttribute("x", Math.round(point.x - width / 2));
+        foreignObject.setAttribute("y", Math.round(point.y - height / 2));
+        foreignObject.setAttribute("width", width);
+        foreignObject.setAttribute("height", height);
+        foreignObject.setAttribute("class", isConnectionSelected(key) ? "connection-label-box is-selected" : "connection-label-box");
+        label.className = "connection-label";
+        label.textContent = labelText;
+        foreignObject.append(label);
+        return foreignObject;
+      }
+
+      function getConnectionLabelPoint(fromBlock, toBlock) {
+        var start = edgePoint(fromBlock, toBlock);
+        var end = edgePoint(toBlock, fromBlock);
+        return {
+          x: (start.x + end.x) / 2,
+          y: (start.y + end.y) / 2
+        };
+      }
+
+      function getConnectionLabel(connection) {
+        return String(connection && connection.label || "").trim();
+      }
+
+      function editConnectionLabel(key) {
+        var connection = findConnectionByKey(key);
+        if (!connection) {
+          return;
+        }
+        var currentLabel = getConnectionLabel(connection);
+        var nextLabel = window.prompt("연결 내용", currentLabel);
+        if (nextLabel === null) {
+          return;
+        }
+        nextLabel = String(nextLabel || "").trim();
+        if (nextLabel === currentLabel) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        connection.label = nextLabel;
+        renderConnections();
+        saveLocalState();
+        showToast(nextLabel ? "연결 내용을 저장했습니다." : "연결 내용을 비웠습니다.");
       }
 
       function addBlockAtViewportCenter() {
@@ -4121,7 +4235,8 @@
         }).map(function (connection) {
           return {
             from: connection.from,
-            to: connection.to
+            to: connection.to,
+            label: getConnectionLabel(connection)
           };
         });
         store.clipboard = {
@@ -4164,7 +4279,7 @@
           var from = idMap.get(connection.from);
           var to = idMap.get(connection.to);
           if (from && to) {
-            store.data.connections.push({ from: from, to: to });
+            store.data.connections.push({ from: from, to: to, label: getConnectionLabel(connection) });
           }
         });
         store.clipboard.pasteCount = (store.clipboard.pasteCount || 1) + 1;
@@ -4216,7 +4331,7 @@
         block.y = Math.round((Number(source.y) || 0) + getBlockHeight(source) / 2 - getBlockHeight(block) / 2);
         pushUndoSnapshot(createUndoSnapshot());
         store.data.blocks.push(block);
-        store.data.connections.push({ from: source.id, to: block.id });
+        store.data.connections.push({ from: source.id, to: block.id, label: "" });
         store.createMenuBlockId = null;
         setSelection([block.id]);
         store.focusTitleBlockId = block.id;
@@ -4238,7 +4353,7 @@
           if (!next || connectionExists(block.id, next.id)) {
             return;
           }
-          added.push({ from: block.id, to: next.id });
+          added.push({ from: block.id, to: next.id, label: "" });
         });
         if (!added.length) {
           showToast("선택된 블록은 이미 연결되어 있습니다.");
@@ -4768,7 +4883,7 @@
           if (!sourceId || sourceId === targetId || connectionExists(sourceId, targetId)) {
             return;
           }
-          added.push({ from: sourceId, to: targetId });
+          added.push({ from: sourceId, to: targetId, label: "" });
         });
         if (!added.length) {
           showToast("이미 연결되어 있습니다.");
@@ -4799,6 +4914,12 @@
         return store.data.connections.some(function (connection) {
           return getConnectionKey(connection) === key;
         });
+      }
+
+      function findConnectionByKey(key) {
+        return store.data.connections.find(function (connection) {
+          return getConnectionKey(connection) === key;
+        }) || null;
       }
 
       function updateDraftConnection() {
@@ -5510,7 +5631,8 @@
           connections: store.data.connections.map(function (connection) {
             return {
               from: String(connection.from),
-              to: String(connection.to)
+              to: String(connection.to),
+              label: getConnectionLabel(connection)
             };
           })
         };
@@ -5589,7 +5711,11 @@
               return;
             }
             connectionKeys.add(key);
-            result.connections.push({ from: from, to: to });
+            result.connections.push({
+              from: from,
+              to: to,
+              label: typeof raw.label === "string" ? raw.label : String(raw.label || "")
+            });
           });
         }
 
@@ -5647,6 +5773,13 @@
           return false;
         }
         return true;
+      }
+
+      function canEditSelectedConnectionLabel(target) {
+        if (isTypingTarget(target) || isModalOpen()) {
+          return false;
+        }
+        return store.selectedConnectionKeys.length === 1;
       }
 
       function isFormTypingTarget(target) {
