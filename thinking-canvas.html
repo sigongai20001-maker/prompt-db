@@ -4796,20 +4796,31 @@
           setBlockPosition(card, block);
         });
         renderConnections();
+        markInnerDiagramDropTarget(event.clientX, event.clientY, store.drag.blocks.map(function (block) {
+          return block.id;
+        }));
       }
 
       function finishBlockDrag(event) {
-        var blockId = store.drag.blockId;
-        var didMove = store.drag.moved;
-        var undoSnapshot = store.drag.undoSnapshot;
-        var card = getBlockElement(store.drag.blockId);
+        var drag = store.drag;
+        var blockId = drag.blockId;
+        var didMove = drag.moved;
+        var undoSnapshot = drag.undoSnapshot;
+        var draggedIds = drag.blocks.map(function (block) {
+          return block.id;
+        });
+        var targetCard = didMove ? getBlockFromPoint(event.clientX, event.clientY, draggedIds) : null;
+        var card = getBlockElement(drag.blockId);
         if (card) {
           card.classList.remove("is-dragging");
           safelyReleasePointer(card, event.pointerId);
         }
         store.drag = null;
+        clearDropTargets();
         if (!didMove) {
           selectBlock(blockId, event.shiftKey || event.ctrlKey || event.metaKey);
+        } else if (targetCard && moveBlocksIntoInnerDiagram(targetCard.dataset.blockId, draggedIds, undoSnapshot)) {
+          return;
         } else {
           pushUndoSnapshot(undoSnapshot);
           saveLocalState();
@@ -4887,7 +4898,7 @@
 
       function finishConnection(event) {
         var fromId = store.connect.from;
-        var target = getBlockFromPoint(event.clientX, event.clientY);
+        var target = getBlockFromPoint(event.clientX, event.clientY, [fromId]);
         clearDropTargets();
         els.draftConnection.classList.remove("is-active");
         els.draftConnection.setAttribute("d", "");
@@ -4996,8 +5007,16 @@
 
       function markDropTarget(clientX, clientY, fromId) {
         clearDropTargets();
-        var target = getBlockFromPoint(clientX, clientY);
+        var target = getBlockFromPoint(clientX, clientY, [fromId]);
         if (target && target.dataset.blockId !== fromId) {
+          target.classList.add("is-drop-target");
+        }
+      }
+
+      function markInnerDiagramDropTarget(clientX, clientY, sourceIds) {
+        clearDropTargets();
+        var target = getBlockFromPoint(clientX, clientY, sourceIds);
+        if (target && target.dataset.blockId) {
           target.classList.add("is-drop-target");
         }
       }
@@ -5006,6 +5025,116 @@
         els.blocksLayer.querySelectorAll(".is-drop-target").forEach(function (node) {
           node.classList.remove("is-drop-target");
         });
+      }
+
+      function moveBlocksIntoInnerDiagram(targetId, blockIds, undoSnapshot) {
+        var targetBlock = getBlock(targetId);
+        var sourceIds = blockIds.filter(function (id, index) {
+          return id && id !== targetId && blockIds.indexOf(id) === index;
+        });
+        var sourceBlocks = sourceIds.map(getBlock).filter(Boolean);
+        if (!targetBlock || !sourceBlocks.length) {
+          return false;
+        }
+
+        var sourceIdSet = new Set(sourceBlocks.map(function (block) {
+          return block.id;
+        }));
+        var innerDiagram = cloneInnerDiagram(targetBlock.innerDiagram);
+        var sourceBounds = getOuterBlocksBounds(sourceBlocks);
+        var placement = getInnerInsertionPoint(innerDiagram, sourceBounds);
+        var idMap = new Map();
+
+        sourceBlocks.forEach(function (sourceBlock) {
+          var innerId = createInnerBlockId(innerDiagram);
+          idMap.set(sourceBlock.id, innerId);
+          innerDiagram.blocks.push({
+            id: innerId,
+            title: sourceBlock.title || "내부 블록",
+            color: getBlockColor(sourceBlock),
+            x: Math.round(clamp(placement.x + (Number(sourceBlock.x) || 0) - sourceBounds.left, 0, INNER_WORLD_WIDTH - INNER_BLOCK_WIDTH)),
+            y: Math.round(clamp(placement.y + (Number(sourceBlock.y) || 0) - sourceBounds.top, 0, INNER_WORLD_HEIGHT - INNER_BLOCK_HEIGHT))
+          });
+        });
+
+        store.data.connections.forEach(function (connection) {
+          if (!sourceIdSet.has(connection.from) || !sourceIdSet.has(connection.to)) {
+            return;
+          }
+          addInnerConnectionToDiagram(innerDiagram, idMap.get(connection.from), idMap.get(connection.to));
+        });
+
+        pushUndoSnapshot(undoSnapshot);
+        targetBlock.innerDiagram = innerDiagram;
+        store.data.blocks = store.data.blocks.filter(function (block) {
+          return !sourceIdSet.has(block.id);
+        });
+        store.data.connections = store.data.connections.filter(function (connection) {
+          return !sourceIdSet.has(connection.from) && !sourceIdSet.has(connection.to);
+        });
+        clearSelectionState();
+        setSelection([targetId]);
+        renderAll();
+        saveLocalState();
+        showToast(sourceBlocks.length + "개 블록을 내부 다이어그램으로 옮겼습니다.");
+        return true;
+      }
+
+      function getOuterBlocksBounds(blocks) {
+        var left = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.x) || 0;
+        }));
+        var top = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.y) || 0;
+        }));
+        var right = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.x) || 0) + getBlockWidth(block);
+        }));
+        var bottom = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.y) || 0) + getBlockHeight(block);
+        }));
+        return {
+          left: left,
+          top: top,
+          right: right,
+          bottom: bottom,
+          width: right - left,
+          height: bottom - top
+        };
+      }
+
+      function getInnerInsertionPoint(innerDiagram, sourceBounds) {
+        if (!innerDiagram.blocks.length) {
+          return { x: 80, y: 80 };
+        }
+        var existingRight = Math.max.apply(null, innerDiagram.blocks.map(function (block) {
+          return (Number(block.x) || 0) + INNER_BLOCK_WIDTH;
+        }));
+        var existingBottom = Math.max.apply(null, innerDiagram.blocks.map(function (block) {
+          return (Number(block.y) || 0) + INNER_BLOCK_HEIGHT;
+        }));
+        var x = existingRight + 80;
+        var y = 80;
+        if (x + sourceBounds.width > INNER_WORLD_WIDTH - 40) {
+          x = 80;
+          y = existingBottom + 80;
+        }
+        return {
+          x: Math.round(clamp(x, 40, Math.max(40, INNER_WORLD_WIDTH - sourceBounds.width - 40))),
+          y: Math.round(clamp(y, 40, Math.max(40, INNER_WORLD_HEIGHT - sourceBounds.height - 40)))
+        };
+      }
+
+      function addInnerConnectionToDiagram(innerDiagram, from, to) {
+        if (!from || !to || from === to) {
+          return;
+        }
+        var exists = innerDiagram.connections.some(function (connection) {
+          return connection.from === from && connection.to === to;
+        });
+        if (!exists) {
+          innerDiagram.connections.push({ from: from, to: to });
+        }
       }
 
       function zoomCanvas(event) {
@@ -5289,9 +5418,22 @@
           point.y <= Math.max(start.y, end.y) + tolerance;
       }
 
-      function getBlockFromPoint(clientX, clientY) {
-        var node = document.elementFromPoint(clientX, clientY);
-        return node && node.closest ? node.closest(".block-card") : null;
+      function getBlockFromPoint(clientX, clientY, excludedIds) {
+        var excluded = new Set(excludedIds || []);
+        var nodes = document.elementsFromPoint ? document.elementsFromPoint(clientX, clientY) : [document.elementFromPoint(clientX, clientY)];
+        var seen = new Set();
+        for (var index = 0; index < nodes.length; index += 1) {
+          var node = nodes[index];
+          var block = node && node.closest ? node.closest(".block-card") : null;
+          if (!block || seen.has(block)) {
+            continue;
+          }
+          seen.add(block);
+          if (!excluded.has(block.dataset.blockId)) {
+            return block;
+          }
+        }
+        return null;
       }
 
       function getBlockElement(blockId) {
