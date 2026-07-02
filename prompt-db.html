@@ -1836,7 +1836,7 @@
     }
 
     function normalizeOwners(value, prompts = state.prompts) {
-      const ownerSet = new Set(Array.isArray(value) ? value.map((owner) => String(owner || "").trim()).filter(Boolean) : []);
+      const ownerSet = new Set(normalizeOwnerNames(value));
       prompts.forEach((prompt) => {
         if (prompt.owner) ownerSet.add(prompt.owner);
         normalizePromptOwners(prompt).forEach((owner) => ownerSet.add(owner));
@@ -1847,7 +1847,13 @@
 
     function normalizePromptOwners(prompt) {
       const owners = Array.isArray(prompt?.owners) ? prompt.owners : [prompt?.owner];
-      return mergeOwners([], owners.length ? owners : [DEFAULT_OWNER]);
+      const normalizedOwners = normalizeOwnerNames(owners);
+      return normalizedOwners.length ? normalizedOwners : [DEFAULT_OWNER];
+    }
+
+    function normalizeOwnerNames(value) {
+      return [...new Set((Array.isArray(value) ? value : []).map((owner) => String(owner || "").trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, "ko-KR"));
     }
 
     function normalizeDeletedCategories(value) {
@@ -2718,7 +2724,7 @@
 
     function replacePromptOwner(prompt, current, value) {
       const owners = normalizePromptOwners(prompt).map((owner) => owner === current ? value : owner);
-      const nextOwners = mergeOwners([], owners);
+      const nextOwners = normalizeOwnerNames(owners);
       return { ...prompt, owner: nextOwners[0], owners: nextOwners };
     }
 
