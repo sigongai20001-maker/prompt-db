@@ -238,7 +238,8 @@
 
     .connection-label-box {
       overflow: visible;
-      pointer-events: none;
+      cursor: pointer;
+      pointer-events: auto;
     }
 
     .connection-label {
@@ -302,6 +303,11 @@
     .connection-label-box.is-selected .connection-label {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(61,220,151,0.22), 0 6px 16px rgba(0,0,0,0.28);
+    }
+
+    .connection-label-box.is-drop-target .connection-label {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(61,220,151,0.28), 0 8px 20px rgba(0,0,0,0.36);
     }
 
     .draft-connection {
@@ -1579,6 +1585,7 @@
       var AUTO_SAVE_DELAY = 250;
       var UNDO_LIMIT = 80;
       var CONNECTION_STYLE_DEFAULT = "curve";
+      var CONNECTION_LABEL_ENDPOINT_PREFIX = "connection-label:";
       var FALLBACK_COLOR = "#888780";
       var WORLD_WIDTH = 6000;
       var WORLD_HEIGHT = 4000;
@@ -2456,6 +2463,7 @@
         var height = Math.max(460, Math.round(maxY - minY + padding * 2));
         var projected = new Map();
         var categories = data.categories || {};
+        var snapshotConnections = data.connections || [];
 
         blocks.forEach(function (block) {
           projected.set(block.id, {
@@ -2473,21 +2481,57 @@
           });
         });
 
-        var paths = (data.connections || []).map(function (connection) {
+        function findProjectedConnectionByKey(key) {
+          return snapshotConnections.find(function (connection) {
+            return getConnectionKey(connection) === key;
+          }) || null;
+        }
+
+        function resolveProjectedEndpoint(endpointId, excludedConnectionKey) {
+          if (projected.has(endpointId)) {
+            return projected.get(endpointId);
+          }
+          var parsed = parseConnectionLabelEndpointId(endpointId);
+          if (!parsed || parsed.key === excludedConnectionKey) {
+            return null;
+          }
+          var connection = findProjectedConnectionByKey(parsed.key);
+          if (!connection || !getConnectionLabel(connection)) {
+            return null;
+          }
           var from = projected.get(connection.from);
           var to = projected.get(connection.to);
+          if (!from || !to) {
+            return null;
+          }
+          var point = getConnectionLabelPoint(from, to);
+          var size = getConnectionLabelSize(connection);
+          return {
+            id: String(endpointId),
+            x: point.x - size.width / 2,
+            y: point.y - size.height / 2,
+            width: size.width,
+            height: size.height
+          };
+        }
+
+        var paths = snapshotConnections.map(function (connection) {
+          var key = getConnectionKey(connection);
+          var from = resolveProjectedEndpoint(connection.from, key);
+          var to = resolveProjectedEndpoint(connection.to, key);
           if (!from || !to) {
             return "";
           }
           return '<path d="' + escapeHtml(getConnectionPath(from, to, data.connectionStyle)) + '"></path>';
         }).join("\n        ");
 
-        var connectionLabels = (data.connections || []).map(function (connection) {
+        var connectionLabels = snapshotConnections.map(function (connection) {
+          var key = getConnectionKey(connection);
           var label = getConnectionLabel(connection);
           var ioType = getConnectionIoType(connection);
           var ioLabel = getConnectionIoLabel(ioType);
-          var from = projected.get(connection.from);
-          var to = projected.get(connection.to);
+          var from = resolveProjectedEndpoint(connection.from, key);
+          var to = resolveProjectedEndpoint(connection.to, key);
           if (!label || !from || !to) {
             return "";
           }
@@ -3801,18 +3845,18 @@
       function renderConnections() {
         els.connectionGroup.replaceChildren();
         store.data.connections.forEach(function (connection, index) {
-          var fromBlock = getBlock(connection.from);
-          var toBlock = getBlock(connection.to);
-          if (!fromBlock || !toBlock) {
+          var key = getConnectionKey(connection);
+          var fromEndpoint = resolveConnectionEndpoint(connection.from, key);
+          var toEndpoint = resolveConnectionEndpoint(connection.to, key);
+          if (!fromEndpoint || !toEndpoint) {
             return;
           }
 
-          var key = getConnectionKey(connection);
-          var pathData = getConnectionPath(fromBlock, toBlock);
+          var pathData = getConnectionPath(fromEndpoint, toEndpoint);
           var group = createSvgElement("g");
           var hit = createSvgElement("path");
           var visible = createSvgElement("path");
-          var label = createConnectionLabelElement(connection, fromBlock, toBlock, key);
+          var label = createConnectionLabelElement(connection, fromEndpoint, toEndpoint, key);
 
           hit.setAttribute("d", pathData);
           hit.setAttribute("tabindex", "0");
@@ -3857,16 +3901,42 @@
         var ioType = getConnectionIoType(connection);
         var ioLabel = getConnectionIoLabel(ioType);
         var point = getConnectionLabelPoint(fromBlock, toBlock);
-        var width = Math.max(56, Math.ceil(estimateTextWidth(labelText, 12) + (ioLabel ? estimateTextWidth(ioLabel, 9) + 42 : 22)));
-        var height = 30;
+        var size = getConnectionLabelSize(connection);
+        var endpointId = createConnectionLabelEndpointId(connection);
         var foreignObject = createSvgElement("foreignObject");
         var label = document.createElement("div");
         var text = document.createElement("span");
-        foreignObject.setAttribute("x", Math.round(point.x - width / 2));
-        foreignObject.setAttribute("y", Math.round(point.y - height / 2));
-        foreignObject.setAttribute("width", width);
-        foreignObject.setAttribute("height", height);
+        foreignObject.setAttribute("x", Math.round(point.x - size.width / 2));
+        foreignObject.setAttribute("y", Math.round(point.y - size.height / 2));
+        foreignObject.setAttribute("width", size.width);
+        foreignObject.setAttribute("height", size.height);
         foreignObject.setAttribute("class", isConnectionSelected(key) ? "connection-label-box is-selected" : "connection-label-box");
+        foreignObject.setAttribute("tabindex", "0");
+        foreignObject.setAttribute("aria-label", "연결 내용 블록: " + labelText);
+        foreignObject.dataset.connectionKey = key;
+        if (endpointId) {
+          foreignObject.dataset.connectionEndpointId = endpointId;
+        }
+        foreignObject.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+        });
+        foreignObject.addEventListener("dblclick", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          editConnectionLabel(key);
+        });
+        foreignObject.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (event.key === "Enter" && isConnectionSelected(key)) {
+              editConnectionLabel(key);
+            } else {
+              selectConnection(key, event.shiftKey || event.ctrlKey || event.metaKey);
+            }
+          }
+        });
         label.className = "connection-label" + (ioType ? " is-" + ioType : "");
         if (ioLabel) {
           var badge = document.createElement("span");
@@ -3892,6 +3962,92 @@
 
       function getConnectionLabel(connection) {
         return String(connection && connection.label || "").trim();
+      }
+
+      function getConnectionLabelSize(connection) {
+        var labelText = getConnectionLabel(connection);
+        var ioLabel = getConnectionIoLabel(getConnectionIoType(connection));
+        return {
+          width: Math.max(56, Math.ceil(estimateTextWidth(labelText, 12) + (ioLabel ? estimateTextWidth(ioLabel, 9) + 42 : 22))),
+          height: 30
+        };
+      }
+
+      function createConnectionLabelEndpointId(connection) {
+        if (!connection || !getConnectionLabel(connection) || !getBlock(connection.from) || !getBlock(connection.to)) {
+          return "";
+        }
+        return CONNECTION_LABEL_ENDPOINT_PREFIX + encodeConnectionEndpointPart(connection.from) + "|" + encodeConnectionEndpointPart(connection.to);
+      }
+
+      function encodeConnectionEndpointPart(value) {
+        return encodeURIComponent(String(value || ""));
+      }
+
+      function parseConnectionLabelEndpointId(endpointId) {
+        var raw = String(endpointId || "");
+        if (raw.indexOf(CONNECTION_LABEL_ENDPOINT_PREFIX) !== 0) {
+          return null;
+        }
+        var body = raw.slice(CONNECTION_LABEL_ENDPOINT_PREFIX.length);
+        var splitAt = body.indexOf("|");
+        if (splitAt === -1) {
+          return null;
+        }
+        try {
+          var from = decodeURIComponent(body.slice(0, splitAt));
+          var to = decodeURIComponent(body.slice(splitAt + 1));
+          if (!from || !to || from === to) {
+            return null;
+          }
+          return {
+            from: from,
+            to: to,
+            key: from + "\u0000" + to
+          };
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function isConnectionLabelEndpointId(endpointId) {
+        return Boolean(parseConnectionLabelEndpointId(endpointId));
+      }
+
+      function getConnectionLabelReferenceKey(endpointId) {
+        var parsed = parseConnectionLabelEndpointId(endpointId);
+        return parsed ? parsed.key : "";
+      }
+
+      function resolveConnectionEndpoint(endpointId, excludedConnectionKey) {
+        var block = getBlock(endpointId);
+        if (block) {
+          return block;
+        }
+        var parsed = parseConnectionLabelEndpointId(endpointId);
+        if (!parsed || parsed.key === excludedConnectionKey) {
+          return null;
+        }
+        var connection = findConnectionByKey(parsed.key);
+        if (!connection || !getConnectionLabel(connection)) {
+          return null;
+        }
+        var fromBlock = getBlock(connection.from);
+        var toBlock = getBlock(connection.to);
+        if (!fromBlock || !toBlock) {
+          return null;
+        }
+        var point = getConnectionLabelPoint(fromBlock, toBlock);
+        var size = getConnectionLabelSize(connection);
+        return {
+          id: String(endpointId),
+          endpointType: "connection-label",
+          title: getConnectionLabel(connection),
+          x: point.x - size.width / 2,
+          y: point.y - size.height / 2,
+          width: size.width,
+          height: size.height
+        };
       }
 
       function getConnectionIoType(connection) {
@@ -4401,8 +4557,9 @@
         store.data.blocks = store.data.blocks.filter(function (block) {
           return block.id !== blockId;
         });
+        var removeIds = new Set([blockId]);
         store.data.connections = store.data.connections.filter(function (connection) {
-          return connection.from !== blockId && connection.to !== blockId;
+          return !connectionTouchesBlockIds(connection, removeIds);
         });
         setConnectionSelection(store.selectedConnectionKeys);
         renderAll();
@@ -4423,13 +4580,13 @@
             return !removeIds.has(block.id);
           });
           store.data.connections = store.data.connections.filter(function (connection) {
-            return !removeIds.has(connection.from) && !removeIds.has(connection.to);
+            return !connectionTouchesBlockIds(connection, removeIds);
           });
         }
         if (connectionKeys.length) {
           var removeKeys = new Set(connectionKeys);
           store.data.connections = store.data.connections.filter(function (connection) {
-            return !removeKeys.has(getConnectionKey(connection));
+            return !removeKeys.has(getConnectionKey(connection)) && !connectionReferencesConnectionKeys(connection, removeKeys);
           });
         }
         clearSelectionState();
@@ -4450,7 +4607,7 @@
           return !removeIds.has(block.id);
         });
         store.data.connections = store.data.connections.filter(function (connection) {
-          return !removeIds.has(connection.from) && !removeIds.has(connection.to);
+          return !connectionTouchesBlockIds(connection, removeIds);
         });
         if (store.editBlockId && removeIds.has(store.editBlockId)) {
           store.editBlockId = null;
@@ -5114,12 +5271,15 @@
 
       function finishConnection(event) {
         var fromId = store.connect.from;
-        var target = getBlockFromPoint(event.clientX, event.clientY, [fromId]);
+        var labelTarget = getConnectionLabelFromPoint(event.clientX, event.clientY, [fromId]);
+        var target = labelTarget ? null : getBlockFromPoint(event.clientX, event.clientY, [fromId]);
         clearDropTargets();
         els.draftConnection.classList.remove("is-active");
         els.draftConnection.setAttribute("d", "");
 
-        if (target && target.dataset.blockId && target.dataset.blockId !== fromId) {
+        if (labelTarget && labelTarget.dataset.connectionEndpointId) {
+          addConnectionsToTarget(getConnectionSourceIds(fromId, labelTarget.dataset.connectionEndpointId), labelTarget.dataset.connectionEndpointId);
+        } else if (target && target.dataset.blockId && target.dataset.blockId !== fromId) {
           addConnectionsToTarget(getConnectionSourceIds(fromId, target.dataset.blockId), target.dataset.blockId);
         }
         safelyReleasePointer(store.connect.handle || event.target, event.pointerId);
@@ -5159,7 +5319,7 @@
       }
 
       function addConnectionsToTarget(sourceIds, targetId) {
-        if (!targetId || !getBlock(targetId)) {
+        if (!targetId || !resolveConnectionEndpoint(targetId)) {
           return;
         }
         var added = [];
@@ -5188,6 +5348,27 @@
           return (connection.from === fromId && connection.to === toId) ||
             (connection.from === toId && connection.to === fromId);
         });
+      }
+
+      function connectionTouchesBlockIds(connection, blockIds) {
+        return endpointTouchesBlockIds(connection.from, blockIds) || endpointTouchesBlockIds(connection.to, blockIds);
+      }
+
+      function endpointTouchesBlockIds(endpointId, blockIds) {
+        if (blockIds.has(endpointId)) {
+          return true;
+        }
+        var parsed = parseConnectionLabelEndpointId(endpointId);
+        return Boolean(parsed && (blockIds.has(parsed.from) || blockIds.has(parsed.to)));
+      }
+
+      function connectionReferencesConnectionKeys(connection, connectionKeys) {
+        return endpointReferencesConnectionKeys(connection.from, connectionKeys) || endpointReferencesConnectionKeys(connection.to, connectionKeys);
+      }
+
+      function endpointReferencesConnectionKeys(endpointId, connectionKeys) {
+        var key = getConnectionLabelReferenceKey(endpointId);
+        return Boolean(key && connectionKeys.has(key));
       }
 
       function getConnectionKey(connection) {
@@ -5223,6 +5404,11 @@
 
       function markDropTarget(clientX, clientY, fromId) {
         clearDropTargets();
+        var labelTarget = getConnectionLabelFromPoint(clientX, clientY, [fromId]);
+        if (labelTarget) {
+          labelTarget.classList.add("is-drop-target");
+          return;
+        }
         var target = getBlockFromPoint(clientX, clientY, [fromId]);
         if (target && target.dataset.blockId !== fromId) {
           target.classList.add("is-drop-target");
@@ -5239,6 +5425,9 @@
 
       function clearDropTargets() {
         els.blocksLayer.querySelectorAll(".is-drop-target").forEach(function (node) {
+          node.classList.remove("is-drop-target");
+        });
+        els.connectionGroup.querySelectorAll(".connection-label-box.is-drop-target").forEach(function (node) {
           node.classList.remove("is-drop-target");
         });
       }
@@ -5286,7 +5475,7 @@
           return !sourceIdSet.has(block.id);
         });
         store.data.connections = store.data.connections.filter(function (connection) {
-          return !sourceIdSet.has(connection.from) && !sourceIdSet.has(connection.to);
+          return !connectionTouchesBlockIds(connection, sourceIdSet);
         });
         clearSelectionState();
         setSelection([targetId]);
@@ -5442,8 +5631,8 @@
         if (dx === 0 && dy === 0) {
           return { x: center.x, y: center.y };
         }
-        var halfHeight = getBlockHeight(block) / 2;
-        var tx = Math.abs(dx) > 0 ? (getBlockWidth(block) / 2) / Math.abs(dx) : Infinity;
+        var halfHeight = getEndpointHeight(block) / 2;
+        var tx = Math.abs(dx) > 0 ? (getEndpointWidth(block) / 2) / Math.abs(dx) : Infinity;
         var ty = Math.abs(dy) > 0 ? halfHeight / Math.abs(dy) : Infinity;
         var t = Math.min(tx, ty);
         return {
@@ -5454,9 +5643,17 @@
 
       function getBlockCenter(block) {
         return {
-          x: Number(block.x) + getBlockWidth(block) / 2,
-          y: Number(block.y) + getBlockHeight(block) / 2
+          x: Number(block.x) + getEndpointWidth(block) / 2,
+          y: Number(block.y) + getEndpointHeight(block) / 2
         };
+      }
+
+      function getEndpointWidth(endpoint) {
+        return finiteNumber(endpoint && endpoint.width) ? Number(endpoint.width) : getBlockWidth(endpoint);
+      }
+
+      function getEndpointHeight(endpoint) {
+        return finiteNumber(endpoint && endpoint.height) ? Number(endpoint.height) : getBlockHeight(endpoint);
       }
 
       function getBlockWidth(block) {
@@ -5531,12 +5728,13 @@
       }
 
       function connectionIntersectsRect(connection, rect) {
-        var fromBlock = getBlock(connection.from);
-        var toBlock = getBlock(connection.to);
-        if (!fromBlock || !toBlock) {
+        var key = getConnectionKey(connection);
+        var fromEndpoint = resolveConnectionEndpoint(connection.from, key);
+        var toEndpoint = resolveConnectionEndpoint(connection.to, key);
+        if (!fromEndpoint || !toEndpoint) {
           return false;
         }
-        var points = getConnectionSamplePoints(edgePoint(fromBlock, toBlock), edgePoint(toBlock, fromBlock), store.data.connectionStyle);
+        var points = getConnectionSamplePoints(edgePoint(fromEndpoint, toEndpoint), edgePoint(toEndpoint, fromEndpoint), store.data.connectionStyle);
         return points.some(function (point, index) {
           return index > 0 && segmentIntersectsRect(points[index - 1], point, rect);
         });
@@ -5647,6 +5845,25 @@
           seen.add(block);
           if (!excluded.has(block.dataset.blockId)) {
             return block;
+          }
+        }
+        return null;
+      }
+
+      function getConnectionLabelFromPoint(clientX, clientY, excludedIds) {
+        var excluded = new Set(excludedIds || []);
+        var nodes = document.elementsFromPoint ? document.elementsFromPoint(clientX, clientY) : [document.elementFromPoint(clientX, clientY)];
+        var seen = new Set();
+        for (var index = 0; index < nodes.length; index += 1) {
+          var node = nodes[index];
+          var label = node && node.closest ? node.closest(".connection-label-box") : null;
+          if (!label || seen.has(label)) {
+            continue;
+          }
+          seen.add(label);
+          var endpointId = label.dataset.connectionEndpointId || "";
+          if (endpointId && !excluded.has(endpointId) && resolveConnectionEndpoint(endpointId)) {
+            return label;
           }
         }
         return null;
@@ -6120,13 +6337,11 @@
             return block.id;
           }));
           var connectionKeys = new Set();
-          source.connections.forEach(function (connection) {
-            var raw = isPlainObject(connection) ? connection : {};
-            var from = typeof raw.from === "string" ? raw.from : String(raw.from || "");
-            var to = typeof raw.to === "string" ? raw.to : String(raw.to || "");
+          var deferredConnections = [];
+          function addNormalizedConnection(raw, from, to) {
             var key = from + "\u0000" + to;
-            if (!blockIds.has(from) || !blockIds.has(to) || from === to || connectionKeys.has(key)) {
-              return;
+            if (from === to || connectionKeys.has(key)) {
+              return false;
             }
             connectionKeys.add(key);
             result.connections.push({
@@ -6135,6 +6350,38 @@
               label: typeof raw.label === "string" ? raw.label : String(raw.label || ""),
               ioType: normalizeConnectionIoType(raw.ioType || raw.flow || raw.kind)
             });
+            return true;
+          }
+          function normalizedConnectionLabelEndpointExists(endpointId) {
+            var parsed = parseConnectionLabelEndpointId(endpointId);
+            if (!parsed) {
+              return false;
+            }
+            var connection = result.connections.find(function (item) {
+              return getConnectionKey(item) === parsed.key;
+            });
+            return Boolean(connection && getConnectionLabel(connection) && blockIds.has(connection.from) && blockIds.has(connection.to));
+          }
+          function normalizedEndpointExists(endpointId) {
+            return blockIds.has(endpointId) || normalizedConnectionLabelEndpointExists(endpointId);
+          }
+          source.connections.forEach(function (connection) {
+            var raw = isPlainObject(connection) ? connection : {};
+            var from = typeof raw.from === "string" ? raw.from : String(raw.from || "");
+            var to = typeof raw.to === "string" ? raw.to : String(raw.to || "");
+            if (!from || !to || from === to) {
+              return;
+            }
+            if (blockIds.has(from) && blockIds.has(to)) {
+              addNormalizedConnection(raw, from, to);
+            } else {
+              deferredConnections.push({ raw: raw, from: from, to: to });
+            }
+          });
+          deferredConnections.forEach(function (item) {
+            if (normalizedEndpointExists(item.from) && normalizedEndpointExists(item.to)) {
+              addNormalizedConnection(item.raw, item.from, item.to);
+            }
           });
         }
 
