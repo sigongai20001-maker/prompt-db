@@ -300,6 +300,51 @@
       white-space: nowrap;
     }
 
+    .connection-label-shell {
+      width: 100%;
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      overflow: visible;
+    }
+
+    .connection-label-actions {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .connection-label-action-button {
+      min-width: 62px;
+      height: 24px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(15,17,21,0.86);
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .connection-label-action-button:hover {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.16);
+    }
+
+    .connection-label-action-button[data-io="input"].is-selected {
+      border-color: transparent;
+      color: #ffffff;
+      background: #ff5360;
+    }
+
+    .connection-label-action-button[data-io="output"].is-selected {
+      border-color: transparent;
+      color: #ffffff;
+      background: #3a86ff;
+    }
+
     .connection-label-box.is-selected .connection-label {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(61,220,151,0.22), 0 6px 16px rgba(0,0,0,0.28);
@@ -3902,15 +3947,19 @@
         var ioLabel = getConnectionIoLabel(ioType);
         var point = getConnectionLabelPoint(fromBlock, toBlock);
         var size = getConnectionLabelSize(connection);
+        var isSelected = isConnectionSelected(key);
+        var actionHeight = isSelected ? 34 : 0;
+        var boxWidth = isSelected ? Math.max(size.width, 148) : size.width;
         var endpointId = createConnectionLabelEndpointId(connection);
         var foreignObject = createSvgElement("foreignObject");
+        var shell = document.createElement("div");
         var label = document.createElement("div");
         var text = document.createElement("span");
-        foreignObject.setAttribute("x", Math.round(point.x - size.width / 2));
+        foreignObject.setAttribute("x", Math.round(point.x - boxWidth / 2));
         foreignObject.setAttribute("y", Math.round(point.y - size.height / 2));
-        foreignObject.setAttribute("width", size.width);
-        foreignObject.setAttribute("height", size.height);
-        foreignObject.setAttribute("class", isConnectionSelected(key) ? "connection-label-box is-selected" : "connection-label-box");
+        foreignObject.setAttribute("width", boxWidth);
+        foreignObject.setAttribute("height", size.height + actionHeight);
+        foreignObject.setAttribute("class", isSelected ? "connection-label-box is-selected" : "connection-label-box");
         foreignObject.setAttribute("tabindex", "0");
         foreignObject.setAttribute("aria-label", "연결 내용 블록: " + labelText);
         foreignObject.dataset.connectionKey = key;
@@ -3947,8 +3996,35 @@
         text.className = "connection-label-text";
         text.textContent = labelText;
         label.append(text);
-        foreignObject.append(label);
+        shell.className = "connection-label-shell";
+        shell.append(label);
+        if (isSelected) {
+          shell.append(createConnectionLabelActions(key, ioType));
+        }
+        foreignObject.append(shell);
         return foreignObject;
+      }
+
+      function createConnectionLabelActions(key, currentIoType) {
+        var actions = document.createElement("div");
+        actions.className = "connection-label-actions";
+        ["input", "output"].forEach(function (type) {
+          var button = document.createElement("button");
+          var isSelected = currentIoType === type;
+          button.className = "connection-label-action-button" + (isSelected ? " is-selected" : "");
+          button.type = "button";
+          button.dataset.io = type;
+          button.textContent = getConnectionIoLabel(type);
+          button.title = getConnectionIoLabel(type) + " 상태로 설정";
+          button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+          button.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            setConnectionIoType(key, type);
+          });
+          actions.append(button);
+        });
+        return actions;
       }
 
       function getConnectionLabelPoint(fromBlock, toBlock) {
@@ -4116,6 +4192,22 @@
           showToast(nextLabel ? "연결 내용을 저장했습니다." : "연결 내용을 비웠습니다.");
         }
         closeConnectionEditModal();
+      }
+
+      function setConnectionIoType(key, type) {
+        var connection = findConnectionByKey(key);
+        if (!connection || !getConnectionLabel(connection)) {
+          return;
+        }
+        var nextIoType = normalizeConnectionIoType(type);
+        if (!nextIoType || getConnectionIoType(connection) === nextIoType) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        connection.ioType = nextIoType;
+        renderConnections();
+        saveLocalState();
+        showToast(getConnectionIoLabel(nextIoType) + " 상태로 설정했습니다.");
       }
 
       function handleConnectionIoButtonClick(event) {
