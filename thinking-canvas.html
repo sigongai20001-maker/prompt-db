@@ -874,6 +874,10 @@
       max-height: min(88vh, 860px);
     }
 
+    #editModal .modal-panel {
+      max-height: min(94vh, 920px);
+    }
+
     .modal-header,
     .modal-footer {
       display: flex;
@@ -901,6 +905,10 @@
       padding: 15px;
     }
 
+    #editModal .modal-body {
+      overflow-y: auto;
+    }
+
     .modal-footer {
       justify-content: flex-end;
       border-top: 1px solid var(--line);
@@ -919,51 +927,86 @@
     }
 
     .subtitle-field {
-      min-height: 104px;
+      min-height: max-content;
+      height: max-content;
+      grid-template-rows: auto auto max-content;
     }
 
     .subtitle-tags {
       box-sizing: border-box;
       min-height: 34px;
-      max-height: 34px;
+      height: max-content;
       display: flex;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       gap: 6px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: 6px;
+      align-items: flex-start;
+      overflow: visible;
+      padding: 8px;
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 7px;
       background: rgba(255,255,255,0.035);
     }
 
-    .subtitle-tag-button {
+    .subtitle-tag-pill {
       flex: 0 0 auto;
-      max-width: 180px;
-      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
       overflow: hidden;
-      padding: 4px 9px;
       border: 1px solid rgba(255,255,255,0.16);
       border-radius: 999px;
       color: var(--ink);
       background: rgba(15,17,21,0.72);
+    }
+
+    .subtitle-tag-pill.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .subtitle-tag-button {
+      flex: 0 0 auto;
+      min-height: 26px;
+      padding: 4px 8px 4px 10px;
+      border: 0;
+      color: inherit;
+      background: transparent;
       font-size: 12px;
       font-weight: 800;
       line-height: 1.2;
-      text-overflow: ellipsis;
       white-space: nowrap;
       cursor: pointer;
     }
 
-    .subtitle-tag-button:hover {
+    .subtitle-tag-delete-button {
+      flex: 0 0 auto;
+      width: 24px;
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-left: 1px solid rgba(255,255,255,0.12);
+      color: inherit;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .subtitle-tag-pill:not(.is-active):hover,
+    .subtitle-tag-pill:not(.is-active):focus-within {
       border-color: var(--accent);
       background: rgba(61,220,151,0.14);
     }
 
-    .subtitle-tag-button.is-active {
-      border-color: transparent;
-      color: var(--accent-ink);
-      background: var(--accent);
+    .subtitle-tag-pill.is-active .subtitle-tag-delete-button {
+      border-left-color: rgba(0,0,0,0.16);
+    }
+
+    .subtitle-tag-delete-button:hover {
+      background: rgba(0,0,0,0.16);
     }
 
     .json-file-row {
@@ -1759,6 +1802,7 @@
       var JSON_PICKER_ID = "thinking-canvas-json";
       var JSON_DIRECTORY_PICKER_ID = "thinking-canvas-json-folder";
       var JSON_DIRECTORY_HANDLE_KEY = "json-directory:thinking-canvas";
+      var SUBTITLE_TAG_HIDDEN_STORAGE_KEY = "thinkingCanvasSubtitleHiddenTags.v1";
       var AUTO_SAVE_DELAY = 250;
       var UNDO_LIMIT = 80;
       var CONNECTION_STYLE_DEFAULT = "curve";
@@ -1812,6 +1856,7 @@
         focusTitleBlockId: null,
         createMenuBlockId: null,
         subtitleTags: [],
+        subtitleHiddenTagKeys: [],
         isSpaceDown: false,
         jsonMode: "import",
         undoStack: [],
@@ -1827,6 +1872,7 @@
         cacheElements();
         loadSavedDiagram();
         store.subtitleTags = loadSubtitleTagMemory();
+        store.subtitleHiddenTagKeys = loadSubtitleHiddenTagKeys();
         bindEvents();
         renderAll();
         updateTransform();
@@ -2901,24 +2947,47 @@
         var tags = getSubtitleTagOptions();
         els.subtitleTagButtons.replaceChildren();
         tags.forEach(function (tag) {
+          var pill = document.createElement("span");
           var button = document.createElement("button");
-          button.className = "subtitle-tag-button" + (currentSet.has(normalizeSubtitleTagKey(tag)) ? " is-active" : "");
+          var deleteButton = document.createElement("button");
+          var isActive = currentSet.has(normalizeSubtitleTagKey(tag));
+          pill.className = "subtitle-tag-pill" + (isActive ? " is-active" : "");
+          pill.dataset.tag = tag;
+          button.className = "subtitle-tag-button";
           button.type = "button";
           button.dataset.tag = tag;
           button.textContent = tag;
           button.title = tag + " 추가";
+          deleteButton.className = "subtitle-tag-delete-button";
+          deleteButton.type = "button";
+          deleteButton.dataset.tag = tag;
+          deleteButton.textContent = "×";
+          deleteButton.title = tag + " 삭제";
+          deleteButton.setAttribute("aria-label", tag + " 태그 삭제");
           function chooseTag(event) {
             event.preventDefault();
             event.stopPropagation();
             appendSubtitleTag(tag);
           }
+          function deleteTag(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            deleteSubtitleTag(tag);
+          }
           button.addEventListener("pointerdown", chooseTag);
           button.addEventListener("click", chooseTag);
-          els.subtitleTagButtons.append(button);
+          deleteButton.addEventListener("click", deleteTag);
+          pill.append(button, deleteButton);
+          els.subtitleTagButtons.append(pill);
         });
       }
 
       function handleSubtitleTagClick(event) {
+        var deleteButton = event.target.closest(".subtitle-tag-delete-button");
+        if (deleteButton) {
+          deleteSubtitleTag(deleteButton.dataset.tag || "");
+          return;
+        }
         var button = event.target.closest(".subtitle-tag-button");
         if (!button) {
           return;
@@ -2942,13 +3011,40 @@
         els.editSubtitle.focus();
       }
 
+      function deleteSubtitleTag(tag) {
+        var safeTag = normalizeSubtitleTag(tag);
+        var key = normalizeSubtitleTagKey(safeTag);
+        if (!safeTag || !key) {
+          return;
+        }
+        store.subtitleTags = store.subtitleTags.filter(function (item) {
+          return normalizeSubtitleTagKey(item) !== key;
+        });
+        if (store.subtitleHiddenTagKeys.indexOf(key) === -1) {
+          store.subtitleHiddenTagKeys.push(key);
+        }
+        removeSubtitleTagFromInput(safeTag);
+        saveSubtitleTagMemory();
+        saveSubtitleHiddenTagKeys();
+        renderSubtitleTags();
+        els.editSubtitle.focus();
+      }
+
+      function removeSubtitleTagFromInput(tag) {
+        var key = normalizeSubtitleTagKey(tag);
+        var tags = parseSubtitleTags(els.editSubtitle.value).filter(function (item) {
+          return normalizeSubtitleTagKey(item) !== key;
+        });
+        els.editSubtitle.value = tags.join(", ");
+      }
+
       function getSubtitleTagOptions() {
         var result = [];
         var seen = new Set();
         function add(tag) {
           var safeTag = normalizeSubtitleTag(tag);
           var key = normalizeSubtitleTagKey(safeTag);
-          if (!safeTag || seen.has(key)) {
+          if (!safeTag || seen.has(key) || store.subtitleHiddenTagKeys.indexOf(key) !== -1) {
             return;
           }
           seen.add(key);
@@ -2983,6 +3079,7 @@
         }
         var merged = [];
         var seen = new Set();
+        var rememberedKeys = new Set(newTags.map(normalizeSubtitleTagKey));
         newTags.concat(store.subtitleTags).forEach(function (tag) {
           var safeTag = normalizeSubtitleTag(tag);
           var key = normalizeSubtitleTagKey(safeTag);
@@ -2993,7 +3090,11 @@
           merged.push(safeTag);
         });
         store.subtitleTags = merged.slice(0, SUBTITLE_TAG_LIMIT);
+        store.subtitleHiddenTagKeys = store.subtitleHiddenTagKeys.filter(function (key) {
+          return !rememberedKeys.has(key);
+        });
         saveSubtitleTagMemory();
+        saveSubtitleHiddenTagKeys();
       }
 
       function loadSubtitleTagMemory() {
@@ -3023,6 +3124,33 @@
           localStorage.setItem(SUBTITLE_TAG_STORAGE_KEY, JSON.stringify(store.subtitleTags.slice(0, SUBTITLE_TAG_LIMIT)));
         } catch (error) {
           console.warn("Subtitle tags could not be saved.", error);
+        }
+      }
+
+      function loadSubtitleHiddenTagKeys() {
+        try {
+          var raw = JSON.parse(localStorage.getItem(SUBTITLE_TAG_HIDDEN_STORAGE_KEY) || "[]");
+          if (!Array.isArray(raw)) {
+            return [];
+          }
+          var keys = [];
+          raw.forEach(function (key) {
+            var safeKey = normalizeSubtitleTagKey(key);
+            if (safeKey && keys.indexOf(safeKey) === -1) {
+              keys.push(safeKey);
+            }
+          });
+          return keys.slice(0, SUBTITLE_TAG_LIMIT);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveSubtitleHiddenTagKeys() {
+        try {
+          localStorage.setItem(SUBTITLE_TAG_HIDDEN_STORAGE_KEY, JSON.stringify(store.subtitleHiddenTagKeys.slice(0, SUBTITLE_TAG_LIMIT)));
+        } catch (error) {
+          console.warn("Subtitle hidden tags could not be saved.", error);
         }
       }
 
