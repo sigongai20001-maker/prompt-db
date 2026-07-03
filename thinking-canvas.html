@@ -873,6 +873,54 @@
       font-weight: 700;
     }
 
+    .subtitle-field {
+      min-height: 104px;
+    }
+
+    .subtitle-tags {
+      box-sizing: border-box;
+      min-height: 34px;
+      max-height: 34px;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 6px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px;
+      background: rgba(255,255,255,0.035);
+    }
+
+    .subtitle-tag-button {
+      flex: 0 0 auto;
+      max-width: 180px;
+      min-height: 26px;
+      overflow: hidden;
+      padding: 4px 9px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(15,17,21,0.72);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .subtitle-tag-button:hover {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.14);
+    }
+
+    .subtitle-tag-button.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
     .json-file-row {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
@@ -1473,9 +1521,10 @@
           <label for="editTitle">제목</label>
           <input class="text-input" id="editTitle" type="text">
         </div>
-        <div class="field">
+        <div class="field subtitle-field">
           <label for="editSubtitle">서브타이틀</label>
           <input class="text-input" id="editSubtitle" type="text">
+          <div class="subtitle-tags" id="subtitleTagButtons" aria-label="서브타이틀 태그"></div>
         </div>
         <div class="field">
           <label for="editBlockType">블록 종류</label>
@@ -1624,6 +1673,7 @@
       var STORAGE_KEY = "thinkingCanvasState.v1";
       var FILE_HANDLE_DB_NAME = "thinkingCanvasFiles.v1";
       var FILE_HANDLE_STORE = "handles";
+      var SUBTITLE_TAG_STORAGE_KEY = "thinkingCanvasSubtitleTags.v1";
       var JSON_PICKER_ID = "thinking-canvas-json";
       var JSON_DIRECTORY_PICKER_ID = "thinking-canvas-json-folder";
       var JSON_DIRECTORY_HANDLE_KEY = "json-directory:thinking-canvas";
@@ -1643,6 +1693,7 @@
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
       var INNER_BLOCK_HEIGHT = 56;
+      var SUBTITLE_TAG_LIMIT = 80;
       var COLOR_CHIP_PRESETS = [
         "#7F77DD", "#1D9E75", "#E24B4A", "#F4A11A",
         "#2F8EDC", "#2AA36B", "#E0B93C", "#B85AD8",
@@ -1677,6 +1728,7 @@
         clipboard: null,
         focusTitleBlockId: null,
         createMenuBlockId: null,
+        subtitleTags: [],
         isSpaceDown: false,
         jsonMode: "import",
         undoStack: [],
@@ -1691,6 +1743,7 @@
       function init() {
         cacheElements();
         loadSavedDiagram();
+        store.subtitleTags = loadSubtitleTagMemory();
         bindEvents();
         renderAll();
         updateTransform();
@@ -1730,6 +1783,7 @@
         els.editModal = document.getElementById("editModal");
         els.editTitle = document.getElementById("editTitle");
         els.editSubtitle = document.getElementById("editSubtitle");
+        els.subtitleTagButtons = document.getElementById("subtitleTagButtons");
         els.editBlockType = document.getElementById("editBlockType");
         els.editBlockTypeToggle = document.getElementById("editBlockTypeToggle");
         els.editBlockColor = document.getElementById("editBlockColor");
@@ -1813,6 +1867,8 @@
         els.jsonText.addEventListener("drop", handleJsonDrop);
         els.copyJsonButton.addEventListener("click", copyJsonText);
         els.editBlockTypeToggle.addEventListener("click", handleBlockTypeButtonClick);
+        els.editSubtitle.addEventListener("input", renderSubtitleTags);
+        els.subtitleTagButtons.addEventListener("click", handleSubtitleTagClick);
         els.editColorChips.addEventListener("click", handleColorChipClick);
         els.inheritBlockColorButton.addEventListener("click", handleInheritBlockColorClick);
         els.editImageFile.addEventListener("change", handleEditImageFileSelect);
@@ -2681,6 +2737,7 @@
         setSelection([blockId]);
         els.editTitle.value = block.title;
         els.editSubtitle.value = block.subtitle || "";
+        renderSubtitleTags();
         setEditBlockTypeValue(block.type);
         renderColorChips(getBlockColor(block));
         setEditColorValue(getBlockColor(block));
@@ -2719,6 +2776,7 @@
         var undoSnapshot = createUndoSnapshot();
         block.title = els.editTitle.value;
         block.subtitle = els.editSubtitle.value;
+        rememberSubtitleTags(block.subtitle);
         block.type = normalizeBlockType(els.editBlockType.value);
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
         block.inheritColor = normalizeBlockType(block.type) !== "main" && els.editColorInherited.value === "true";
@@ -2732,6 +2790,140 @@
         saveLocalState();
         closeEditModal();
         showToast("블록을 수정했습니다.");
+      }
+
+      function renderSubtitleTags() {
+        if (!els.subtitleTagButtons) {
+          return;
+        }
+        var currentTags = parseSubtitleTags(els.editSubtitle.value);
+        var currentSet = new Set(currentTags.map(normalizeSubtitleTagKey));
+        var tags = getSubtitleTagOptions();
+        els.subtitleTagButtons.replaceChildren();
+        tags.forEach(function (tag) {
+          var button = document.createElement("button");
+          button.className = "subtitle-tag-button" + (currentSet.has(normalizeSubtitleTagKey(tag)) ? " is-active" : "");
+          button.type = "button";
+          button.dataset.tag = tag;
+          button.textContent = tag;
+          button.title = tag + " 추가";
+          function chooseTag(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            appendSubtitleTag(tag);
+          }
+          button.addEventListener("pointerdown", chooseTag);
+          button.addEventListener("click", chooseTag);
+          els.subtitleTagButtons.append(button);
+        });
+      }
+
+      function handleSubtitleTagClick(event) {
+        var button = event.target.closest(".subtitle-tag-button");
+        if (!button) {
+          return;
+        }
+        appendSubtitleTag(button.dataset.tag || button.textContent || "");
+      }
+
+      function appendSubtitleTag(tag) {
+        var safeTag = normalizeSubtitleTag(tag);
+        if (!safeTag) {
+          return;
+        }
+        var tags = parseSubtitleTags(els.editSubtitle.value);
+        var existing = new Set(tags.map(normalizeSubtitleTagKey));
+        if (!existing.has(normalizeSubtitleTagKey(safeTag))) {
+          tags.push(safeTag);
+          els.editSubtitle.value = tags.join(", ");
+        }
+        rememberSubtitleTags(safeTag);
+        renderSubtitleTags();
+        els.editSubtitle.focus();
+      }
+
+      function getSubtitleTagOptions() {
+        var result = [];
+        var seen = new Set();
+        function add(tag) {
+          var safeTag = normalizeSubtitleTag(tag);
+          var key = normalizeSubtitleTagKey(safeTag);
+          if (!safeTag || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          result.push(safeTag);
+        }
+        store.subtitleTags.forEach(add);
+        store.data.blocks.forEach(function (block) {
+          parseSubtitleTags(block.subtitle).forEach(add);
+        });
+        return result.slice(0, SUBTITLE_TAG_LIMIT);
+      }
+
+      function parseSubtitleTags(value) {
+        return String(value || "")
+          .split(/[,;|/＋+·ㆍ\n\r]+/g)
+          .map(normalizeSubtitleTag)
+          .filter(Boolean);
+      }
+
+      function normalizeSubtitleTag(tag) {
+        return String(tag || "").replace(/\s+/g, " ").trim();
+      }
+
+      function normalizeSubtitleTagKey(tag) {
+        return normalizeSubtitleTag(tag).toLowerCase();
+      }
+
+      function rememberSubtitleTags(value) {
+        var newTags = parseSubtitleTags(value);
+        if (!newTags.length) {
+          return;
+        }
+        var merged = [];
+        var seen = new Set();
+        newTags.concat(store.subtitleTags).forEach(function (tag) {
+          var safeTag = normalizeSubtitleTag(tag);
+          var key = normalizeSubtitleTagKey(safeTag);
+          if (!safeTag || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          merged.push(safeTag);
+        });
+        store.subtitleTags = merged.slice(0, SUBTITLE_TAG_LIMIT);
+        saveSubtitleTagMemory();
+      }
+
+      function loadSubtitleTagMemory() {
+        try {
+          var raw = JSON.parse(localStorage.getItem(SUBTITLE_TAG_STORAGE_KEY) || "[]");
+          if (!Array.isArray(raw)) {
+            return [];
+          }
+          var tags = [];
+          var seen = new Set();
+          raw.forEach(function (tag) {
+            var safeTag = normalizeSubtitleTag(tag);
+            var key = normalizeSubtitleTagKey(safeTag);
+            if (safeTag && !seen.has(key)) {
+              seen.add(key);
+              tags.push(safeTag);
+            }
+          });
+          return tags.slice(0, SUBTITLE_TAG_LIMIT);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveSubtitleTagMemory() {
+        try {
+          localStorage.setItem(SUBTITLE_TAG_STORAGE_KEY, JSON.stringify(store.subtitleTags.slice(0, SUBTITLE_TAG_LIMIT)));
+        } catch (error) {
+          console.warn("Subtitle tags could not be saved.", error);
+        }
       }
 
       function handleBlockTypeButtonClick(event) {
