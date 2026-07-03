@@ -425,6 +425,51 @@
       outline-offset: 4px;
     }
 
+    .block-card.is-inner-drop-target {
+      outline: 4px solid rgba(61,220,151,0.95);
+      outline-offset: 7px;
+      box-shadow:
+        0 0 0 9px rgba(61,220,151,0.16),
+        0 18px 44px rgba(0,0,0,0.58),
+        inset 0 1px 0 rgba(255,255,255,0.12);
+      z-index: 6;
+    }
+
+    .block-card.is-inner-drop-target::before {
+      content: "";
+      position: absolute;
+      inset: -8px;
+      border: 1px dashed rgba(61,220,151,0.92);
+      border-radius: 14px;
+      background: rgba(61,220,151,0.11);
+      pointer-events: none;
+    }
+
+    .block-card.is-inner-drop-target::after {
+      content: attr(data-drop-label);
+      position: absolute;
+      left: 50%;
+      top: -36px;
+      z-index: 8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 104px;
+      min-height: 28px;
+      padding: 0 12px;
+      border: 1px solid rgba(61,220,151,0.95);
+      border-radius: 999px;
+      color: var(--accent-ink);
+      background: var(--accent);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.38);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
     .selection-box {
       position: absolute;
       z-index: 4;
@@ -5870,12 +5915,16 @@
         var target = getBlockFromPoint(clientX, clientY, sourceIds);
         if (target && target.dataset.blockId) {
           target.classList.add("is-drop-target");
+          target.classList.add("is-inner-drop-target");
+          target.dataset.dropLabel = sourceIds.length > 1 ? sourceIds.length + "개 내부로 넣기" : "내부로 넣기";
         }
       }
 
       function clearDropTargets() {
         els.blocksLayer.querySelectorAll(".is-drop-target").forEach(function (node) {
           node.classList.remove("is-drop-target");
+          node.classList.remove("is-inner-drop-target");
+          delete node.dataset.dropLabel;
         });
         els.connectionGroup.querySelectorAll(".connection-label-box.is-drop-target").forEach(function (node) {
           node.classList.remove("is-drop-target");
