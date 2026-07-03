@@ -1127,6 +1127,10 @@
       height: min(90vh, 780px);
     }
 
+    .inner-block-edit-panel {
+      width: min(92vw, 520px);
+    }
+
     .inner-diagram-body {
       grid-template-rows: auto minmax(0, 1fr);
       min-height: 0;
@@ -1138,6 +1142,10 @@
       flex-wrap: wrap;
       gap: 8px;
       align-items: center;
+    }
+
+    .inner-color-field {
+      grid-template-columns: minmax(0, 1fr) auto;
     }
 
     .inner-diagram-stage {
@@ -1618,6 +1626,7 @@
       <div class="modal-body inner-diagram-body">
         <div class="inner-diagram-toolbar">
           <button class="modal-button primary" id="addInnerBlockButton" type="button">+ 내부 블록</button>
+          <button class="modal-button" id="editInnerSelectionButton" type="button">편집</button>
           <button class="modal-button" id="connectInnerBlocksButton" type="button">연결</button>
           <button class="modal-button danger" id="deleteInnerSelectionButton" type="button">삭제</button>
         </div>
@@ -1633,6 +1642,34 @@
       <footer class="modal-footer">
         <button class="modal-button" id="cancelInnerDiagramButton" type="button">취소</button>
         <button class="modal-button primary" id="saveInnerDiagramButton" type="button">저장</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="innerBlockEditModal" role="dialog" aria-modal="true" aria-labelledby="innerBlockEditTitle">
+    <section class="modal-panel inner-block-edit-panel">
+      <header class="modal-header">
+        <h2 id="innerBlockEditTitle">내부 블록 편집</h2>
+        <button class="modal-button" id="cancelInnerBlockEditTopButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body">
+        <div class="field">
+          <label for="innerBlockTitleInput">제목</label>
+          <input class="text-input" id="innerBlockTitleInput" type="text">
+        </div>
+        <div class="field">
+          <label for="innerBlockColorInput">블록 컬러</label>
+          <div class="color-field inner-color-field">
+            <input id="innerBlockColorInput" type="hidden" value="#888780">
+            <div class="color-chips" id="innerBlockColorChips" role="listbox" aria-label="내부 블록 컬러 선택"></div>
+            <span class="color-value" id="innerBlockColorValue">#888780</span>
+          </div>
+        </div>
+      </div>
+      <footer class="modal-footer">
+        <button class="modal-button danger" id="deleteInnerBlockEditButton" type="button">삭제</button>
+        <button class="modal-button" id="cancelInnerBlockEditButton" type="button">취소</button>
+        <button class="modal-button primary" id="saveInnerBlockEditButton" type="button">저장</button>
       </footer>
     </section>
   </div>
@@ -1720,7 +1757,8 @@
           blockId: null,
           data: createEmptyInnerDiagram(),
           selectedIds: [],
-          drag: null
+          drag: null,
+          editBlockId: null
         },
         selectedBlockId: null,
         selectedBlockIds: [],
@@ -1817,6 +1855,7 @@
         els.innerDiagramTitle = document.getElementById("innerDiagramTitle");
         els.closeInnerDiagramTopButton = document.getElementById("closeInnerDiagramTopButton");
         els.addInnerBlockButton = document.getElementById("addInnerBlockButton");
+        els.editInnerSelectionButton = document.getElementById("editInnerSelectionButton");
         els.connectInnerBlocksButton = document.getElementById("connectInnerBlocksButton");
         els.deleteInnerSelectionButton = document.getElementById("deleteInnerSelectionButton");
         els.innerDiagramStage = document.getElementById("innerDiagramStage");
@@ -1825,6 +1864,15 @@
         els.innerBlocksLayer = document.getElementById("innerBlocksLayer");
         els.cancelInnerDiagramButton = document.getElementById("cancelInnerDiagramButton");
         els.saveInnerDiagramButton = document.getElementById("saveInnerDiagramButton");
+        els.innerBlockEditModal = document.getElementById("innerBlockEditModal");
+        els.innerBlockTitleInput = document.getElementById("innerBlockTitleInput");
+        els.innerBlockColorInput = document.getElementById("innerBlockColorInput");
+        els.innerBlockColorChips = document.getElementById("innerBlockColorChips");
+        els.innerBlockColorValue = document.getElementById("innerBlockColorValue");
+        els.cancelInnerBlockEditTopButton = document.getElementById("cancelInnerBlockEditTopButton");
+        els.deleteInnerBlockEditButton = document.getElementById("deleteInnerBlockEditButton");
+        els.cancelInnerBlockEditButton = document.getElementById("cancelInnerBlockEditButton");
+        els.saveInnerBlockEditButton = document.getElementById("saveInnerBlockEditButton");
         els.connectionEditModal = document.getElementById("connectionEditModal");
         els.connectionLabelText = document.getElementById("connectionLabelText");
         els.connectionIoType = document.getElementById("connectionIoType");
@@ -1888,8 +1936,14 @@
         els.cancelInnerDiagramButton.addEventListener("click", closeInnerDiagramModal);
         els.saveInnerDiagramButton.addEventListener("click", saveInnerDiagramModal);
         els.addInnerBlockButton.addEventListener("click", addInnerBlock);
+        els.editInnerSelectionButton.addEventListener("click", editInnerSelection);
         els.connectInnerBlocksButton.addEventListener("click", connectInnerSelection);
         els.deleteInnerSelectionButton.addEventListener("click", deleteInnerSelection);
+        els.innerBlockColorChips.addEventListener("click", handleInnerColorChipClick);
+        els.cancelInnerBlockEditTopButton.addEventListener("click", closeInnerBlockEditModal);
+        els.deleteInnerBlockEditButton.addEventListener("click", deleteInnerEditedBlock);
+        els.cancelInnerBlockEditButton.addEventListener("click", closeInnerBlockEditModal);
+        els.saveInnerBlockEditButton.addEventListener("click", saveInnerBlockEditModal);
         els.connectionIoToggle.addEventListener("click", handleConnectionIoButtonClick);
         els.cancelConnectionEditButton.addEventListener("click", closeConnectionEditModal);
         els.cancelConnectionEditTopButton.addEventListener("click", closeConnectionEditModal);
@@ -1900,6 +1954,7 @@
         els.linkModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.imagePreviewModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.innerDiagramModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.innerBlockEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.connectionEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.viewport.addEventListener("pointerdown", startCanvasInteraction);
         els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
@@ -3144,7 +3199,8 @@
           blockId: blockId,
           data: cloneInnerDiagram(block.innerDiagram),
           selectedIds: [],
-          drag: null
+          drag: null,
+          editBlockId: null
         };
         els.innerDiagramTitle.textContent = "내부 다이어그램 - " + (block.title || "제목 없음");
         renderInnerDiagram();
@@ -3152,11 +3208,13 @@
       }
 
       function closeInnerDiagramModal() {
+        closeInnerBlockEditModal();
         store.innerDiagram = {
           blockId: null,
           data: createEmptyInnerDiagram(),
           selectedIds: [],
-          drag: null
+          drag: null,
+          editBlockId: null
         };
         if (els.innerDiagramModal) {
           els.innerDiagramModal.classList.remove("is-open");
@@ -3225,6 +3283,9 @@
         store.innerDiagram.data.connections = store.innerDiagram.data.connections.filter(function (connection) {
           return !removeIds.has(connection.from) && !removeIds.has(connection.to);
         });
+        if (removeIds.has(store.innerDiagram.editBlockId)) {
+          closeInnerBlockEditModal();
+        }
         store.innerDiagram.selectedIds = [];
         renderInnerDiagram();
       }
@@ -3253,7 +3314,7 @@
           node.addEventListener("dblclick", function (event) {
             event.preventDefault();
             event.stopPropagation();
-            renameInnerBlock(block.id);
+            openInnerBlockEditModal(block.id);
           });
           els.innerBlocksLayer.append(node);
         });
@@ -3354,17 +3415,114 @@
         renderInnerDiagram();
       }
 
-      function renameInnerBlock(blockId) {
+      function editInnerSelection() {
+        var selectedId = store.innerDiagram.selectedIds[0];
+        if (!selectedId) {
+          showToast("편집할 내부 블록을 선택해주세요.");
+          return;
+        }
+        openInnerBlockEditModal(selectedId);
+      }
+
+      function openInnerBlockEditModal(blockId) {
         var block = getInnerBlock(blockId);
         if (!block) {
           return;
         }
-        var nextTitle = window.prompt("내부 블록 제목", block.title || "");
-        if (nextTitle === null) {
+        store.innerDiagram.editBlockId = blockId;
+        if (store.innerDiagram.selectedIds.indexOf(blockId) === -1) {
+          store.innerDiagram.selectedIds = [blockId];
+          renderInnerDiagram();
+        }
+        els.innerBlockTitleInput.value = block.title || "";
+        renderInnerColorChips(block.color);
+        setInnerBlockEditColorValue(block.color);
+        els.innerBlockEditModal.classList.add("is-open");
+        window.setTimeout(function () {
+          els.innerBlockTitleInput.focus();
+          els.innerBlockTitleInput.select();
+        }, 0);
+      }
+
+      function closeInnerBlockEditModal() {
+        store.innerDiagram.editBlockId = null;
+        if (els.innerBlockEditModal) {
+          els.innerBlockEditModal.classList.remove("is-open");
+        }
+      }
+
+      function saveInnerBlockEditModal() {
+        var block = getInnerBlock(store.innerDiagram.editBlockId);
+        if (!block) {
+          closeInnerBlockEditModal();
           return;
         }
-        block.title = normalizeInlineTitle(nextTitle) || "내부 블록";
+        block.title = normalizeInlineTitle(els.innerBlockTitleInput.value) || "내부 블록";
+        block.color = validColor(els.innerBlockColorInput.value) ? els.innerBlockColorInput.value.toUpperCase() : FALLBACK_COLOR;
         renderInnerDiagram();
+        closeInnerBlockEditModal();
+      }
+
+      function deleteInnerEditedBlock() {
+        var blockId = store.innerDiagram.editBlockId;
+        if (!blockId || !getInnerBlock(blockId)) {
+          closeInnerBlockEditModal();
+          return;
+        }
+        store.innerDiagram.selectedIds = [blockId];
+        deleteInnerSelection();
+      }
+
+      function handleInnerColorChipClick(event) {
+        var chip = event.target.closest(".color-chip");
+        if (!chip) {
+          return;
+        }
+        setInnerBlockEditColorValue(chip.dataset.color);
+      }
+
+      function renderInnerColorChips(currentColor) {
+        els.innerBlockColorChips.replaceChildren();
+        getInnerColorChipOptions(currentColor).forEach(function (color) {
+          var chip = document.createElement("button");
+          chip.className = "color-chip";
+          chip.type = "button";
+          chip.dataset.color = color;
+          chip.style.setProperty("--chip-color", color);
+          chip.title = color.toUpperCase();
+          chip.setAttribute("role", "option");
+          chip.setAttribute("aria-label", color.toUpperCase() + " 선택");
+          chip.setAttribute("aria-selected", "false");
+          els.innerBlockColorChips.append(chip);
+        });
+        updateInnerColorChipSelection(currentColor);
+      }
+
+      function getInnerColorChipOptions(currentColor) {
+        var colors = getColorChipOptions(currentColor).slice();
+        store.innerDiagram.data.blocks.forEach(function (block) {
+          var color = validColor(block.color) ? block.color.toUpperCase() : "";
+          if (color && colors.indexOf(color) === -1) {
+            colors.push(color);
+          }
+        });
+        return colors;
+      }
+
+      function setInnerBlockEditColorValue(color) {
+        var safeColor = validColor(color) ? color.toUpperCase() : FALLBACK_COLOR;
+        els.innerBlockColorInput.value = safeColor;
+        els.innerBlockColorValue.textContent = safeColor;
+        updateInnerColorChipSelection(safeColor);
+      }
+
+      function updateInnerColorChipSelection(color) {
+        var safeColor = validColor(color) ? color.toUpperCase() : FALLBACK_COLOR;
+        els.innerBlockColorChips.querySelectorAll(".color-chip").forEach(function (chip) {
+          var isSelected = chip.dataset.color.toUpperCase() === safeColor;
+          chip.classList.toggle("is-selected", isSelected);
+          chip.setAttribute("aria-selected", isSelected ? "true" : "false");
+        });
       }
 
       function removeEditImage(imageId) {
@@ -3417,6 +3575,9 @@
         if (event.target === els.innerDiagramModal) {
           closeInnerDiagramModal();
         }
+        if (event.target === els.innerBlockEditModal) {
+          closeInnerBlockEditModal();
+        }
         if (event.target === els.connectionEditModal) {
           closeConnectionEditModal();
         }
@@ -3463,6 +3624,11 @@
           return;
         }
         var modalWasOpen = false;
+        if (els.innerBlockEditModal.classList.contains("is-open")) {
+          closeInnerBlockEditModal();
+          event.preventDefault();
+          return;
+        }
         if (els.jsonModal.classList.contains("is-open")) {
           closeJsonModal();
           modalWasOpen = true;
@@ -6523,6 +6689,10 @@
         return Boolean(els.innerDiagramModal && els.innerDiagramModal.classList.contains("is-open"));
       }
 
+      function isInnerBlockEditModalOpen() {
+        return Boolean(els.innerBlockEditModal && els.innerBlockEditModal.classList.contains("is-open"));
+      }
+
       function getExportData() {
         return {
           title: String(store.data.title || ""),
@@ -6742,6 +6912,7 @@
           els.linkModal.classList.contains("is-open") ||
           els.imagePreviewModal.classList.contains("is-open") ||
           els.innerDiagramModal.classList.contains("is-open") ||
+          els.innerBlockEditModal.classList.contains("is-open") ||
           els.connectionEditModal.classList.contains("is-open");
       }
 
@@ -6764,7 +6935,7 @@
       }
 
       function canDeleteInnerSelection(target) {
-        if (isTypingTarget(target) || !isInnerDiagramModalOpen()) {
+        if (isTypingTarget(target) || !isInnerDiagramModalOpen() || isInnerBlockEditModalOpen()) {
           return false;
         }
         return store.innerDiagram.selectedIds.length > 0;
