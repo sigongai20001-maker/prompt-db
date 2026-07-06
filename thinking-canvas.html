@@ -4701,9 +4701,19 @@
         }
 
         title.addEventListener("pointerdown", function (event) {
-          if (isActiveBlock) {
+          if (event.button === 0) {
             event.stopPropagation();
           }
+        });
+        title.addEventListener("click", function (event) {
+          if (event.detail > 1) {
+            return;
+          }
+          event.stopPropagation();
+          if (title.contentEditable !== "false" && document.activeElement === title) {
+            return;
+          }
+          activateBlockTitleEditing(block.id);
         });
         title.addEventListener("dblclick", function (event) {
           event.preventDefault();
@@ -4752,7 +4762,7 @@
             return;
           }
           event.stopPropagation();
-          focusBlockTitle(block.id);
+          selectBlock(block.id, event.shiftKey || event.ctrlKey || event.metaKey);
         });
         card.addEventListener("dblclick", function (event) {
           if (isControlTarget(event.target)) {
@@ -4989,10 +4999,8 @@
         if (!title || title.contentEditable === "false") {
           return;
         }
-        window.setTimeout(function () {
-          title.focus();
-          selectNodeText(title);
-        }, 0);
+        title.focus();
+        selectNodeText(title);
       }
 
       function selectNodeText(node) {
@@ -6442,15 +6450,33 @@
       }
 
       function selectBlock(blockId, additive) {
+        blurActiveTitleEditor();
         if (additive) {
           toggleBlockSelection(blockId);
           renderBlocks();
           return;
         }
         store.createMenuBlockId = null;
-        store.focusTitleBlockId = blockId;
+        store.focusTitleBlockId = null;
         setSelection([blockId]);
         renderBlocks();
+      }
+
+      function activateBlockTitleEditing(blockId) {
+        if (!getBlock(blockId)) {
+          return;
+        }
+        store.createMenuBlockId = null;
+        setSelection([blockId]);
+        store.focusTitleBlockId = blockId;
+        renderBlocks();
+      }
+
+      function blurActiveTitleEditor() {
+        var active = document.activeElement;
+        if (active && active.matches && active.matches("[data-title-editor]")) {
+          active.blur();
+        }
       }
 
       function toggleBlockSelection(blockId) {
@@ -6542,6 +6568,7 @@
         if (!block) {
           return;
         }
+        blurActiveTitleEditor();
         if (!isBlockSelected(blockId) && !(event.shiftKey || event.ctrlKey || event.metaKey)) {
           setSelection([blockId]);
         }
@@ -6635,6 +6662,7 @@
         if (!getBlock(blockId)) {
           return;
         }
+        blurActiveTitleEditor();
         setSelection([blockId]);
         store.focusTitleBlockId = null;
         store.createMenuBlockId = blockId;
