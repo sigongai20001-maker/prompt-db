@@ -2506,6 +2506,7 @@
         els.innerBlockEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.connectionEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.viewport.addEventListener("pointerdown", startCanvasInteraction);
+        els.viewport.addEventListener("dblclick", handleCanvasDoubleClick);
         els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
         document.addEventListener("pointermove", handlePointerMove);
         document.addEventListener("pointerup", handlePointerUp);
@@ -5563,6 +5564,10 @@
       function addBlockAtViewportCenter() {
         var rect = els.viewport.getBoundingClientRect();
         var center = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        addBlockAtWorldPoint(center.x, center.y);
+      }
+
+      function addBlockAtWorldPoint(centerX, centerY, options) {
         var category = Object.keys(store.data.categories || {})[0] || "";
         var block = {
           id: createUniqueBlockId(),
@@ -5585,13 +5590,21 @@
           x: 0,
           y: 0
         };
-        block.x = Math.round(center.x - getBlockWidth(block) / 2);
-        block.y = Math.round(center.y - getBlockHeight(block) / 2);
+        options = options || {};
+        block.x = Math.round(centerX - getBlockWidth(block) / 2);
+        block.y = Math.round(centerY - getBlockHeight(block) / 2);
         pushUndoSnapshot(createUndoSnapshot());
         store.data.blocks.push(block);
+        if (options.select) {
+          setSelection([block.id]);
+        }
+        if (options.focusTitle) {
+          store.focusTitleBlockId = block.id;
+        }
         renderAll();
         saveLocalState();
         showToast("새 블록을 추가했습니다.");
+        return block;
       }
 
       function autoArrangeBlocks() {
@@ -6654,6 +6667,20 @@
         if (event.button === 0) {
           startMarqueeSelection(event);
         }
+      }
+
+      function handleCanvasDoubleClick(event) {
+        var worldPoint;
+        if (event.button !== 0 || store.drag || store.connect || store.pan || store.marquee || isModalOpen() || isCanvasControl(event.target)) {
+          return;
+        }
+        worldPoint = screenToWorld(event.clientX, event.clientY);
+        addBlockAtWorldPoint(worldPoint.x, worldPoint.y, {
+          select: true,
+          focusTitle: true
+        });
+        event.preventDefault();
+        event.stopPropagation();
       }
 
       function startMarqueeSelection(event) {
