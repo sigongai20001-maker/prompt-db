@@ -236,13 +236,6 @@
       opacity: 1;
     }
 
-    .connection-endpoint {
-      stroke: var(--panel);
-      stroke-width: 3;
-      filter: drop-shadow(0 2px 7px rgba(0,0,0,0.42));
-      pointer-events: none;
-    }
-
     .connection-label-box {
       overflow: visible;
       cursor: pointer;
@@ -942,10 +935,18 @@
       background: var(--category-color, var(--fallback));
       box-shadow: 0 2px 7px rgba(0,0,0,0.42);
       cursor: crosshair;
+      opacity: 0;
       transform: translateY(-50%);
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .block-card:hover .connect-handle,
+    .connect-handle:focus-visible {
+      opacity: 0.9;
     }
 
     .connect-handle:hover {
+      opacity: 1;
       transform: translateY(-50%) scale(1.12);
     }
 
@@ -5011,13 +5012,10 @@
             return;
           }
 
-          var endpointPoints = getConnectionEndpointPoints(fromEndpoint, toEndpoint);
-          var pathData = getConnectionPathFromPoints(endpointPoints.start, endpointPoints.end, store.data.connectionStyle);
+          var pathData = getConnectionPath(fromEndpoint, toEndpoint);
           var group = createSvgElement("g");
           var hit = createSvgElement("path");
           var visible = createSvgElement("path");
-          var sourceHandle = createConnectionEndpointCircle(endpointPoints.start, getConnectionEndpointColor(fromEndpoint));
-          var targetHandle = createConnectionEndpointCircle(endpointPoints.end, getConnectionEndpointColor(toEndpoint));
           var label = createConnectionLabelElement(connection, fromEndpoint, toEndpoint, key);
 
           hit.setAttribute("d", pathData);
@@ -5047,7 +5045,7 @@
 
           visible.setAttribute("d", pathData);
           visible.setAttribute("class", isConnectionSelected(key) ? "connection-visible is-selected" : "connection-visible");
-          group.append(hit, visible, sourceHandle, targetHandle);
+          group.append(hit, visible);
           if (label) {
             group.append(label);
           }
@@ -6974,30 +6972,6 @@
         var start = edgePoint(fromBlock, toBlock);
         var end = edgePoint(toBlock, fromBlock);
         return getConnectionPathFromPoints(start, end, style || store.data.connectionStyle);
-      }
-
-      function getConnectionEndpointPoints(fromBlock, toBlock) {
-        return {
-          start: edgePoint(fromBlock, toBlock),
-          end: edgePoint(toBlock, fromBlock)
-        };
-      }
-
-      function createConnectionEndpointCircle(point, color) {
-        var circle = createSvgElement("circle");
-        circle.setAttribute("class", "connection-endpoint");
-        circle.setAttribute("cx", point.x);
-        circle.setAttribute("cy", point.y);
-        circle.setAttribute("r", "8");
-        circle.setAttribute("fill", validColor(color) ? color : FALLBACK_COLOR);
-        return circle;
-      }
-
-      function getConnectionEndpointColor(endpoint) {
-        if (!endpoint || endpoint.endpointType === "connection-label") {
-          return FALLBACK_COLOR;
-        }
-        return getBlockColor(endpoint);
       }
 
       function getConnectionPathFromPoints(start, end, style) {
