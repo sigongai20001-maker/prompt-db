@@ -378,7 +378,7 @@
       min-width: 160px;
       width: var(--card-width, 200px);
       max-width: none;
-      height: 62px;
+      height: var(--card-height, 62px);
       border: 1px solid rgba(255,255,255,0.16);
       border-left: 8px solid var(--block-color, var(--fallback));
       border-radius: 8px;
@@ -393,14 +393,14 @@
     }
 
     .block-card.is-main {
-      height: 86px;
+      height: var(--card-height, 86px);
       border: 1px solid rgba(255,255,255,0.18);
       border-left-width: 1px;
       background: var(--block-color, var(--fallback));
     }
 
     .block-card.is-middle {
-      height: 74px;
+      height: var(--card-height, 74px);
       border: 3px solid var(--block-color, var(--fallback));
       border-left-width: 9px;
       background:
@@ -647,6 +647,35 @@
 
     .block-card.has-link.has-inner .block-top {
       padding-right: 76px;
+    }
+
+    .block-card.has-tool .block-top {
+      padding-bottom: 28px;
+    }
+
+    .block-tool-badge {
+      position: absolute;
+      left: 10px;
+      bottom: 7px;
+      z-index: 2;
+      max-width: calc(100% - 20px);
+      overflow: hidden;
+      padding: 3px 8px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      color: rgba(255,255,255,0.82);
+      background: rgba(15,17,21,0.66);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .block-card.has-tool.has-due .block-tool-badge {
+      max-width: calc(100% - 82px);
     }
 
     .block-done-toggle {
@@ -1102,6 +1131,39 @@
       width: 16px;
       height: 16px;
       accent-color: var(--accent);
+    }
+
+    .tool-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      padding: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px;
+      background: rgba(255,255,255,0.035);
+    }
+
+    .tool-chip-button {
+      min-height: 30px;
+      padding: 0 11px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 999px;
+      color: var(--ink);
+      background: rgba(15,17,21,0.72);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tool-chip-button:hover {
+      border-color: rgba(61,220,151,0.72);
+      background: rgba(61,220,151,0.12);
+    }
+
+    .tool-chip-button.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
     }
 
     .subtitle-field {
@@ -1982,6 +2044,11 @@
           <label for="editLink">통합 링크 (웹페이지·문서·이미지·영상)</label>
           <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
         </div>
+        <div class="field tool-field">
+          <label for="editTool">TOOL (사용 AI 플랫폼)</label>
+          <div class="tool-chip-row" id="editToolChips" role="group" aria-label="TOOL 빠른 선택"></div>
+          <input class="text-input" id="editTool" type="text" placeholder="Claude, GPT, CODEX...">
+        </div>
         <div class="field">
           <label for="editImageFile">이미지 첨부</label>
           <div class="image-drop-zone" id="editImageDropZone" tabindex="0">
@@ -2189,6 +2256,7 @@
       var INNER_BLOCK_WIDTH = 170;
       var INNER_BLOCK_HEIGHT = 56;
       var SUBTITLE_TAG_LIMIT = 80;
+      var TOOL_PRESETS = ["Claude", "GPT", "GPT Image 2", "HeyGen", "Sono AI", "CODEX", "Gemini"];
       var COLOR_CHIP_PRESETS = [
         "#7F77DD", "#1D9E75", "#E24B4A", "#F4A11A",
         "#2F8EDC", "#2AA36B", "#E0B93C", "#B85AD8",
@@ -2299,6 +2367,8 @@
         els.editImageFile = document.getElementById("editImageFile");
         els.editImageList = document.getElementById("editImageList");
         els.editLink = document.getElementById("editLink");
+        els.editToolChips = document.getElementById("editToolChips");
+        els.editTool = document.getElementById("editTool");
         els.editStartDate = document.getElementById("editStartDate");
         els.editDueDate = document.getElementById("editDueDate");
         els.editStatus = document.getElementById("editStatus");
@@ -2400,6 +2470,8 @@
         els.editImageDropZone.addEventListener("dragleave", handleEditImageDragLeave);
         els.editImageDropZone.addEventListener("drop", handleEditImageDrop);
         els.editModal.addEventListener("paste", handleEditImagePaste);
+        els.editToolChips.addEventListener("click", handleToolChipClick);
+        els.editTool.addEventListener("input", handleToolInput);
         els.openInnerDiagramButton.addEventListener("click", openInnerDiagramFromEdit);
         els.deleteEditButton.addEventListener("click", deleteEditedBlock);
         els.saveEditButton.addEventListener("click", saveEditedBlock);
@@ -3155,6 +3227,7 @@
             subtitle: block.subtitle,
             detail: block.detail,
             link: block.link,
+            tool: block.tool,
             images: getBlockImages(block),
             category: block.category,
             type: block.type,
@@ -3231,10 +3304,12 @@
           var color = validColor(block.color) ? block.color : (category && validColor(category.color) ? category.color : FALLBACK_COLOR);
           var summary = getBlockSubtitle(block);
           var link = isValidLink(block.link) ? String(block.link).trim() : "";
-          return '<article class="card" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+          var tool = getBlockToolLabel(block);
+          return '<article class="card' + (tool ? ' has-tool' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
             '          <strong>' + escapeHtml(block.title || "제목 없음") + '</strong>\n' +
             (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
             (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
+            (tool ? '          <em class="tool-badge">🛠 ' + escapeHtml(tool) + '</em>\n' : "") +
             '        </article>';
         }).join("\n        ");
 
@@ -3271,10 +3346,12 @@
           '    path{fill:none;stroke:#5b6472;stroke-width:2.2;stroke-linecap:round;opacity:.85;}\n' +
           '    .conn-label{box-sizing:border-box;max-width:none;display:inline-flex;align-items:center;gap:6px;overflow:hidden;padding:4px 8px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(28,33,41,0.92);color:#e8ebf0;font-size:12px;font-weight:700;line-height:1.25;text-align:center;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,0.28);}.conn-label.is-input{border-color:rgba(255,83,96,.72);background:rgba(92,26,35,.94);color:#ffe5e8;}.conn-label.is-output{border-color:rgba(58,134,255,.72);background:rgba(20,45,92,.94);color:#e6f0ff;}.conn-type{flex:0 0 auto;padding:2px 5px;border-radius:999px;color:#fff;font-size:9px;font-weight:900;line-height:1;letter-spacing:.02em;}.conn-label.is-input .conn-type{background:#ff5360;}.conn-label.is-output .conn-type{background:#3a86ff;}.conn-text{min-width:0;overflow:visible;text-overflow:clip;white-space:nowrap;}\n' +
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
+          '    .card.has-tool{padding-bottom:28px;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
           '    .card strong{font-size:13px;line-height:1.3;} .card span{margin-top:4px;color:rgba(255,255,255,0.58);font-size:12px;line-height:1.25;}\n' +
           '    .card a{position:absolute;right:8px;top:8px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.16);border-radius:7px;background:rgba(15,17,21,0.72);text-decoration:none;font-size:13px;line-height:1;}\n' +
+          '    .tool-badge{position:absolute;left:10px;bottom:7px;max-width:calc(100% - 20px);overflow:hidden;padding:3px 8px;border:1px solid rgba(255,255,255,0.14);border-radius:999px;color:rgba(255,255,255,0.82);background:rgba(15,17,21,0.66);font-size:11px;font-weight:800;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;font-style:normal;}\n' +
           '    .memos{margin-top:22px;display:grid;gap:10px;max-width:900px;} .memo-item{border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#1c2129;padding:12px 14px;}\n' +
           '    .memo-item h2{margin:0 0 6px;color:#e8ebf0;font-size:15px;} .memo-item p{margin:0 0 8px;color:rgba(255,255,255,0.5);font-size:13px;} .memo-item pre{margin:0;white-space:pre-wrap;color:#c8cdd6;font-family:inherit;font-size:13px;line-height:1.5;}\n' +
           '    .memo-images{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px;} .memo-images figure{margin:0;border:1px solid rgba(255,255,255,0.10);border-radius:8px;overflow:hidden;background:#0f1115;} .memo-images img{display:block;width:100%;height:140px;object-fit:cover;} .memo-images figcaption{padding:7px 8px;color:rgba(255,255,255,0.58);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -3328,6 +3405,8 @@
         store.editImages = getBlockImages(block);
         renderEditImages();
         els.editLink.value = block.link || "";
+        els.editTool.value = normalizeTool(block.tool);
+        renderToolChips(els.editTool.value);
         els.editStartDate.value = block.startDate || "";
         els.editDueDate.value = block.dueDate || "";
         els.editStatus.value = normalizeScheduleStatus(block.status) || "";
@@ -3370,6 +3449,7 @@
         block.detail = els.editDetail.value;
         block.images = cloneBlockImages(store.editImages);
         block.link = String(els.editLink.value || "").trim();
+        block.tool = normalizeTool(els.editTool.value);
         block.startDate = normalizeDateString(els.editStartDate.value);
         block.dueDate = normalizeDateString(els.editDueDate.value);
         block.status = normalizeScheduleStatus(els.editStatus.value);
@@ -3382,6 +3462,52 @@
         saveLocalState();
         closeEditModal();
         showToast("블록을 수정했습니다.");
+      }
+
+      function renderToolChips(selectedTool) {
+        if (!els.editToolChips) {
+          return;
+        }
+        els.editToolChips.replaceChildren();
+        TOOL_PRESETS.forEach(function (tool) {
+          var button = document.createElement("button");
+          button.className = "tool-chip-button";
+          button.type = "button";
+          button.dataset.tool = tool;
+          button.textContent = tool;
+          els.editToolChips.append(button);
+        });
+        updateToolChipSelection(selectedTool);
+      }
+
+      function handleToolChipClick(event) {
+        var button = event.target.closest(".tool-chip-button");
+        if (!button) {
+          return;
+        }
+        event.preventDefault();
+        var tool = normalizeTool(button.dataset.tool || button.textContent || "");
+        els.editTool.value = tool;
+        updateToolChipSelection(tool);
+        previewEditedBlockVisual();
+        els.editTool.focus();
+      }
+
+      function handleToolInput() {
+        updateToolChipSelection();
+        previewEditedBlockVisual();
+      }
+
+      function updateToolChipSelection(value) {
+        if (!els.editToolChips) {
+          return;
+        }
+        var selectedKey = normalizeToolKey(value !== undefined ? value : els.editTool.value);
+        els.editToolChips.querySelectorAll(".tool-chip-button").forEach(function (button) {
+          var isActive = normalizeToolKey(button.dataset.tool || button.textContent || "") === selectedKey && selectedKey !== "";
+          button.classList.toggle("is-active", isActive);
+          button.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
       }
 
       function renderSubtitleTags() {
@@ -3635,15 +3761,19 @@
       function previewEditedBlockVisual() {
         var block = getBlock(store.editBlockId);
         var card = getBlockElement(store.editBlockId);
+        var previewBlock;
         if (!block || !card) {
           return;
         }
-        applyBlockVisual(card, {
+        previewBlock = {
           type: normalizeBlockType(els.editBlockType.value),
           color: validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category),
           inheritColor: els.editColorInherited.value === "true",
-          category: block.category
-        });
+          category: block.category,
+          tool: normalizeTool(els.editTool.value)
+        };
+        applyBlockVisual(card, previewBlock);
+        card.style.setProperty("--card-height", getBlockHeight(previewBlock) + "px");
         els.editBlockColorValue.textContent = validColor(els.editBlockColor.value) ? els.editBlockColor.value.toUpperCase() : getCategoryColor(block.category).toUpperCase();
       }
 
@@ -4327,6 +4457,7 @@
         var deleteButton = document.createElement("button");
         var doneToggle = document.createElement("button");
         var dueBadge = createDdayBadge(block);
+        var toolBadge = createToolBadge(block);
         var highlightStar = null;
         var handle = document.createElement("button");
         var linkButton = null;
@@ -4349,11 +4480,18 @@
         if (isValidLink(block.link)) {
           card.classList.add("has-link");
         }
+        if (dueBadge) {
+          card.classList.add("has-due");
+        }
+        if (toolBadge) {
+          card.classList.add("has-tool");
+        }
         if (hasInnerDiagram(block)) {
           card.classList.add("has-inner");
         }
         card.dataset.blockId = block.id;
         card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+        card.style.setProperty("--card-height", getBlockHeight(block) + "px");
         applyBlockVisual(card, block);
         card.title = block.title || "제목 없음";
         setBlockPosition(card, block);
@@ -4533,6 +4671,9 @@
         if (dueBadge) {
           card.append(dueBadge);
         }
+        if (toolBadge) {
+          card.append(toolBadge);
+        }
         if (highlightStar) {
           card.append(highlightStar);
         }
@@ -4633,6 +4774,31 @@
       function getBlockSubtitle(block) {
         var subtitle = String(block && block.subtitle || "").trim();
         return subtitle || getDetailFirstLine(block && block.detail);
+      }
+
+      function normalizeTool(value) {
+        return String(value || "").replace(/\s+/g, " ").trim();
+      }
+
+      function normalizeToolKey(value) {
+        return normalizeTool(value).toLowerCase();
+      }
+
+      function getBlockToolLabel(block) {
+        return normalizeTool(block && block.tool);
+      }
+
+      function createToolBadge(block) {
+        var tool = getBlockToolLabel(block);
+        var badge;
+        if (!tool) {
+          return null;
+        }
+        badge = document.createElement("span");
+        badge.className = "block-tool-badge";
+        badge.textContent = "🛠 " + tool;
+        badge.title = "TOOL: " + tool;
+        return badge;
       }
 
       function createDdayBadge(block) {
@@ -5404,6 +5570,7 @@
           subtitle: "",
           detail: "",
           link: "",
+          tool: "",
           images: [],
           innerDiagram: createEmptyInnerDiagram(),
           startDate: null,
@@ -6042,6 +6209,7 @@
           subtitle: source.subtitle || "",
           detail: source.detail,
           link: String(source.link || ""),
+          tool: normalizeTool(source.tool),
           images: getBlockImages(source),
           innerDiagram: cloneInnerDiagram(source.innerDiagram),
           startDate: normalizeDateString(source.startDate),
@@ -6108,6 +6276,7 @@
             subtitle: source.subtitle || "",
             detail: source.detail,
             link: String(source.link || ""),
+            tool: normalizeTool(source.tool),
             images: cloneBlockImages(source.images),
             innerDiagram: cloneInnerDiagram(source.innerDiagram),
             startDate: normalizeDateString(source.startDate),
@@ -6148,6 +6317,7 @@
           subtitle: String(block.subtitle || ""),
           detail: String(block.detail || ""),
           link: String(block.link || ""),
+          tool: normalizeTool(block.tool),
           images: getBlockImages(block),
           innerDiagram: cloneInnerDiagram(block.innerDiagram),
           startDate: normalizeDateString(block.startDate),
@@ -6176,6 +6346,7 @@
           subtitle: "",
           detail: "",
           link: "",
+          tool: "",
           images: [],
           innerDiagram: createEmptyInnerDiagram(),
           startDate: null,
@@ -7099,14 +7270,17 @@
         var isMiddle = blockType === "middle";
         var title = String(block && block.title || "제목 없음");
         var summary = getBlockSubtitle(block);
+        var tool = getBlockToolLabel(block);
         var titleFontSize = isMain ? 26 : (isMiddle ? 18 : 14);
         var summaryFontSize = 12;
+        var toolFontSize = 11;
         var linkSpace = isValidLink(block && block.link) ? 34 : 0;
         var innerSpace = hasInnerDiagram(block) ? 34 : 0;
         var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace + innerSpace;
         var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
-        return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth);
+        var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, toolFontSize) + padding) : 0;
+        return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth, toolWidth);
       }
 
       function estimateTextWidth(text, fontSize) {
@@ -7129,10 +7303,11 @@
 
       function getBlockHeight(block) {
         var type = normalizeBlockType(block && block.type);
+        var toolExtra = getBlockToolLabel(block) ? 22 : 0;
         if (type === "main") {
-          return MAIN_CARD_HEIGHT;
+          return MAIN_CARD_HEIGHT + toolExtra;
         }
-        return type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT;
+        return (type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT) + toolExtra;
       }
 
       function screenToWorld(clientX, clientY) {
@@ -7692,6 +7867,7 @@
               subtitle: String(block.subtitle || ""),
               detail: String(block.detail || ""),
               link: String(block.link || ""),
+              tool: normalizeTool(block.tool),
               images: getBlockImages(block),
               innerDiagram: cloneInnerDiagram(block.innerDiagram),
               startDate: normalizeDateString(block.startDate),
@@ -7766,6 +7942,7 @@
               subtitle: typeof raw.subtitle === "string" ? raw.subtitle : String(raw.subtitle || ""),
               detail: typeof raw.detail === "string" ? raw.detail : String(raw.detail || ""),
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
+              tool: typeof raw.tool === "string" ? normalizeTool(raw.tool) : normalizeTool(raw.tool || ""),
               images: cloneBlockImages(raw.images),
               innerDiagram: cloneInnerDiagram(raw.innerDiagram),
               startDate: normalizeDateString(raw.startDate),
