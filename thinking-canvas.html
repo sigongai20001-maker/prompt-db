@@ -427,6 +427,30 @@
       z-index: 3;
     }
 
+    .block-card.is-done {
+      opacity: 0.55;
+    }
+
+    .block-card.is-done .block-title,
+    .block-card.is-done .block-summary {
+      text-decoration: line-through;
+    }
+
+    .block-card.is-highlighted {
+      outline: 2.5px solid #fbbf24;
+      outline-offset: 4px;
+      box-shadow:
+        0 0 0 4px rgba(251,191,36,0.13),
+        0 0 28px rgba(251,191,36,0.22),
+        0 8px 24px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+      z-index: 3;
+    }
+
+    .block-card.is-highlight-filtered {
+      opacity: 0.15;
+    }
+
     .block-card.is-drop-target {
       outline: 3px solid rgba(61,220,151,0.6);
       outline-offset: 4px;
@@ -630,6 +654,82 @@
 
     .block-card.has-link.has-inner .block-top {
       padding-right: 76px;
+    }
+
+    .block-done-toggle {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      z-index: 2;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.32);
+      border-radius: 6px;
+      color: var(--accent-ink);
+      background: rgba(15,17,21,0.72);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
+    .block-done-toggle.is-checked {
+      border-color: transparent;
+      background: var(--accent);
+    }
+
+    .block-card .block-done-toggle + .block-top {
+      padding-left: 36px;
+    }
+
+    .block-card.is-main .block-done-toggle + .block-top {
+      padding-left: 16px;
+    }
+
+    .block-due-badge {
+      position: absolute;
+      right: 8px;
+      bottom: 6px;
+      z-index: 2;
+      min-width: 46px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: #3b82f6;
+      box-shadow: 0 5px 14px rgba(0,0,0,0.28);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .block-due-badge.is-overdue {
+      background: #ef4444;
+    }
+
+    .block-due-badge.is-soon {
+      background: #f59e0b;
+      color: #1f1300;
+    }
+
+    .block-due-badge.is-done {
+      background: #6b7280;
+    }
+
+    .block-highlight-star {
+      position: absolute;
+      right: -10px;
+      top: -14px;
+      z-index: 3;
+      color: #fbbf24;
+      font-size: 22px;
+      line-height: 1;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.48);
+      pointer-events: none;
     }
 
     .block-quick-actions {
@@ -933,6 +1033,43 @@
       font-weight: 700;
     }
 
+    .schedule-edit-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .schedule-edit-grid label {
+      display: grid;
+      gap: 5px;
+    }
+
+    .flag-edit-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .check-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      background: #13161c;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .check-row input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
     .subtitle-field {
       min-height: max-content;
       height: max-content;
@@ -1059,6 +1196,128 @@
     .text-input {
       min-height: 38px;
       padding: 8px 10px;
+    }
+
+    .timeline-panel {
+      position: fixed;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      z-index: 9;
+      max-height: 280px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      background: rgba(28,33,41,0.96);
+      box-shadow: var(--shadow);
+      transform: translateY(calc(100% + 24px));
+      transition: transform 160ms ease;
+      pointer-events: none;
+    }
+
+    .timeline-panel.is-open {
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .timeline-header strong {
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .timeline-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .timeline-filter-button {
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 999px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .timeline-filter-button.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .timeline-list {
+      display: grid;
+      gap: 8px;
+      overflow: auto;
+      padding: 10px 14px 14px;
+    }
+
+    .timeline-empty {
+      padding: 18px;
+      border: 1px dashed rgba(255,255,255,0.14);
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-left: 5px solid var(--row-color, #3b82f6);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(15,17,21,0.58);
+      text-align: left;
+    }
+
+    .timeline-row:hover {
+      border-color: rgba(61,220,151,0.45);
+      background: rgba(61,220,151,0.08);
+    }
+
+    .timeline-row-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .timeline-row-meta {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .timeline-row-badge {
+      min-width: 54px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--row-color, #3b82f6);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      text-align: center;
     }
 
     .text-area {
@@ -1506,6 +1765,8 @@
       <button class="toolbar-button" id="importButton" type="button">JSON 불러오기</button>
       <button class="toolbar-button" id="exportButton" type="button">JSON 내보내기</button>
       <button class="toolbar-button primary" id="addBlockButton" type="button">+ 새 블록</button>
+      <button class="toolbar-button" id="timelineButton" type="button" aria-pressed="false">일정</button>
+      <button class="toolbar-button" id="highlightOnlyButton" type="button" aria-pressed="false">강조만</button>
       <button class="toolbar-button icon-button" id="arrangeButton" type="button" title="자동정렬" aria-label="자동정렬">
         <svg class="align-icon" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="4" y="4" width="6" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
@@ -1592,6 +1853,20 @@
     </main>
   </div>
 
+  <aside class="timeline-panel" id="timelinePanel" aria-label="일정 패널">
+    <header class="timeline-header">
+      <strong>일정</strong>
+      <div class="timeline-filters" id="timelineFilters" role="group" aria-label="일정 필터">
+        <button class="timeline-filter-button is-active" type="button" data-filter="all">전체</button>
+        <button class="timeline-filter-button" type="button" data-filter="overdue">지연</button>
+        <button class="timeline-filter-button" type="button" data-filter="soon">임박</button>
+        <button class="timeline-filter-button" type="button" data-filter="progress">진행</button>
+        <button class="timeline-filter-button" type="button" data-filter="done">완료</button>
+      </div>
+    </header>
+    <div class="timeline-list" id="timelineList"></div>
+  </aside>
+
   <div class="modal-backdrop" id="jsonModal" role="dialog" aria-modal="true" aria-labelledby="jsonModalTitle">
     <section class="modal-panel">
       <header class="modal-header">
@@ -1664,6 +1939,41 @@
         <div class="field">
           <label for="editLink">통합 링크 (웹페이지·문서·이미지·영상)</label>
           <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
+        </div>
+        <div class="field">
+          <label>일정</label>
+          <div class="schedule-edit-grid">
+            <label>
+              시작일
+              <input class="text-input" id="editStartDate" type="date">
+            </label>
+            <label>
+              마감일
+              <input class="text-input" id="editDueDate" type="date">
+            </label>
+            <label>
+              상태
+              <select class="text-input" id="editStatus">
+                <option value="">미정</option>
+                <option value="todo">할일</option>
+                <option value="progress">진행</option>
+                <option value="done">완료</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="field">
+          <label>표시</label>
+          <div class="flag-edit-row">
+            <label class="check-row">
+              <input id="editDone" type="checkbox">
+              완료 표시
+            </label>
+            <label class="check-row">
+              <input id="editHighlight" type="checkbox">
+              강조 표시
+            </label>
+          </div>
         </div>
         <div class="field">
           <label>내부 다이어그램</label>
@@ -1864,6 +2174,9 @@
         createMenuBlockId: null,
         subtitleTags: [],
         subtitleHiddenTagKeys: [],
+        timelineOpen: false,
+        timelineFilter: "all",
+        highlightOnly: false,
         isSpaceDown: false,
         jsonMode: "import",
         undoStack: [],
@@ -1896,6 +2209,8 @@
         els.importButton = document.getElementById("importButton");
         els.exportButton = document.getElementById("exportButton");
         els.addBlockButton = document.getElementById("addBlockButton");
+        els.timelineButton = document.getElementById("timelineButton");
+        els.highlightOnlyButton = document.getElementById("highlightOnlyButton");
         els.arrangeButton = document.getElementById("arrangeButton");
         els.alignLeftButton = document.getElementById("alignLeftButton");
         els.alignCenterButton = document.getElementById("alignCenterButton");
@@ -1932,6 +2247,11 @@
         els.editImageFile = document.getElementById("editImageFile");
         els.editImageList = document.getElementById("editImageList");
         els.editLink = document.getElementById("editLink");
+        els.editStartDate = document.getElementById("editStartDate");
+        els.editDueDate = document.getElementById("editDueDate");
+        els.editStatus = document.getElementById("editStatus");
+        els.editDone = document.getElementById("editDone");
+        els.editHighlight = document.getElementById("editHighlight");
         els.openInnerDiagramButton = document.getElementById("openInnerDiagramButton");
         els.innerDiagramSummary = document.getElementById("innerDiagramSummary");
         els.deleteEditButton = document.getElementById("deleteEditButton");
@@ -1978,6 +2298,9 @@
         els.cancelConnectionEditButton = document.getElementById("cancelConnectionEditButton");
         els.cancelConnectionEditTopButton = document.getElementById("cancelConnectionEditTopButton");
         els.saveConnectionEditButton = document.getElementById("saveConnectionEditButton");
+        els.timelinePanel = document.getElementById("timelinePanel");
+        els.timelineFilters = document.getElementById("timelineFilters");
+        els.timelineList = document.getElementById("timelineList");
         els.toast = document.getElementById("toast");
       }
 
@@ -1989,6 +2312,8 @@
           exportJsonFile();
         });
         els.addBlockButton.addEventListener("click", addBlockAtViewportCenter);
+        els.timelineButton.addEventListener("click", toggleTimelinePanel);
+        els.highlightOnlyButton.addEventListener("click", toggleHighlightOnly);
         els.arrangeButton.addEventListener("click", autoArrangeBlocks);
         els.alignLeftButton.addEventListener("click", alignSelectedBlocksLeft);
         els.alignCenterButton.addEventListener("click", alignSelectedBlocksCenter);
@@ -2046,6 +2371,8 @@
         els.cancelConnectionEditButton.addEventListener("click", closeConnectionEditModal);
         els.cancelConnectionEditTopButton.addEventListener("click", closeConnectionEditModal);
         els.saveConnectionEditButton.addEventListener("click", saveConnectionEditModal);
+        els.timelineFilters.addEventListener("click", handleTimelineFilterClick);
+        els.timelineList.addEventListener("click", handleTimelineRowClick);
         els.innerDiagramStage.addEventListener("pointerdown", handleInnerStagePointerDown);
         els.jsonModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.editModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
@@ -2949,6 +3276,11 @@
         store.editImages = getBlockImages(block);
         renderEditImages();
         els.editLink.value = block.link || "";
+        els.editStartDate.value = block.startDate || "";
+        els.editDueDate.value = block.dueDate || "";
+        els.editStatus.value = normalizeScheduleStatus(block.status) || "";
+        els.editDone.checked = Boolean(block.done);
+        els.editHighlight.checked = Boolean(block.highlight);
         updateInnerDiagramSummary(block);
         els.editModal.classList.add("is-open");
         setTimeout(function () {
@@ -2986,6 +3318,11 @@
         block.detail = els.editDetail.value;
         block.images = cloneBlockImages(store.editImages);
         block.link = String(els.editLink.value || "").trim();
+        block.startDate = normalizeDateString(els.editStartDate.value);
+        block.dueDate = normalizeDateString(els.editDueDate.value);
+        block.status = normalizeScheduleStatus(els.editStatus.value);
+        block.done = Boolean(els.editDone.checked);
+        block.highlight = Boolean(els.editHighlight.checked);
         if (!diagramDataEquals(undoSnapshot.data, getExportData())) {
           pushUndoSnapshot(undoSnapshot);
         }
@@ -3901,8 +4238,10 @@
       function renderAll() {
         renderHeader();
         updateConnectionStyleControls();
+        updateScheduleControls();
         renderBlocks();
         renderConnections();
+        renderTimelinePanel();
       }
 
       function renderHeader() {
@@ -3931,8 +4270,12 @@
         var quickActions = document.createElement("div");
         var editButton = document.createElement("button");
         var copyButton = document.createElement("button");
+        var highlightButton = document.createElement("button");
         var innerActionButton = document.createElement("button");
         var deleteButton = document.createElement("button");
+        var doneToggle = document.createElement("button");
+        var dueBadge = createDdayBadge(block);
+        var highlightStar = null;
         var handle = document.createElement("button");
         var linkButton = null;
         var innerButton = null;
@@ -3948,6 +4291,9 @@
         if (isBlockSelected(block.id)) {
           card.classList.add("is-selected");
         }
+        card.classList.toggle("is-done", Boolean(block.done));
+        card.classList.toggle("is-highlighted", Boolean(block.highlight));
+        card.classList.toggle("is-highlight-filtered", store.highlightOnly && !block.highlight);
         if (isValidLink(block.link)) {
           card.classList.add("has-link");
         }
@@ -3972,6 +4318,28 @@
         }
         summary.className = "block-summary";
         summary.textContent = summaryText;
+
+        doneToggle.className = "block-done-toggle" + (block.done ? " is-checked" : "");
+        doneToggle.type = "button";
+        doneToggle.title = block.done ? "완료 해제" : "완료 표시";
+        doneToggle.textContent = block.done ? "✓" : "";
+        doneToggle.setAttribute("aria-pressed", block.done ? "true" : "false");
+        doneToggle.addEventListener("pointerdown", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        doneToggle.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleBlockDone(block.id);
+        });
+
+        if (block.highlight) {
+          highlightStar = document.createElement("span");
+          highlightStar.className = "block-highlight-star";
+          highlightStar.textContent = "★";
+          highlightStar.setAttribute("aria-hidden", "true");
+        }
 
         handle.className = "connect-handle";
         handle.type = "button";
@@ -4056,6 +4424,16 @@
           duplicateBlock(block.id);
         });
 
+        highlightButton.className = "block-action-button";
+        highlightButton.type = "button";
+        highlightButton.textContent = block.highlight ? "핀 해제" : "핀";
+        highlightButton.title = block.highlight ? "강조 표시 해제" : "강조 표시";
+        highlightButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleBlockHighlight(block.id);
+        });
+
         innerActionButton.className = "block-action-button";
         innerActionButton.type = "button";
         innerActionButton.textContent = "내부";
@@ -4090,7 +4468,7 @@
           removeBlock(block.id);
         });
 
-        quickActions.append(editButton, copyButton, innerActionButton);
+        quickActions.append(editButton, copyButton, highlightButton, innerActionButton);
         if (selectedCount > 1) {
           quickActions.append(connectSelectedButton);
         }
@@ -4099,7 +4477,13 @@
         if (summaryText) {
           top.append(summary);
         }
-        card.append(top, handle);
+        card.append(doneToggle, top, handle);
+        if (dueBadge) {
+          card.append(dueBadge);
+        }
+        if (highlightStar) {
+          card.append(highlightStar);
+        }
         if (innerButton) {
           card.append(innerButton);
         }
@@ -4175,6 +4559,14 @@
           event.stopPropagation();
           openEditModal(block.id);
         });
+        card.addEventListener("contextmenu", function (event) {
+          if (isControlTarget(event.target)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          toggleBlockHighlight(block.id);
+        });
         handle.addEventListener("pointerdown", function (event) {
           startHandlePress(event, block.id);
         });
@@ -4189,6 +4581,140 @@
       function getBlockSubtitle(block) {
         var subtitle = String(block && block.subtitle || "").trim();
         return subtitle || getDetailFirstLine(block && block.detail);
+      }
+
+      function createDdayBadge(block) {
+        var info = getDdayInfo(block);
+        if (!info) {
+          return null;
+        }
+        var badge = document.createElement("span");
+        badge.className = "block-due-badge is-" + info.tone;
+        badge.textContent = info.label;
+        badge.title = "마감일 " + info.dueDate;
+        return badge;
+      }
+
+      function toggleBlockDone(blockId) {
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        block.done = !Boolean(block.done);
+        renderAll();
+        saveLocalState();
+        showToast(block.done ? "완료 표시했습니다." : "완료 표시를 해제했습니다.");
+      }
+
+      function toggleBlockHighlight(blockId) {
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        pushUndoSnapshot(createUndoSnapshot());
+        block.highlight = !Boolean(block.highlight);
+        renderAll();
+        saveLocalState();
+        showToast(block.highlight ? "강조 표시했습니다." : "강조 표시를 해제했습니다.");
+      }
+
+      function getDdayInfo(block) {
+        var dueDate = normalizeDateString(block && block.dueDate);
+        if (!dueDate) {
+          return null;
+        }
+        var diff = Math.round((getLocalDateTime(dueDate) - getTodayTime()) / 86400000);
+        var label = diff === 0 ? "D-DAY" : (diff > 0 ? "D-" + diff : "D+" + Math.abs(diff));
+        var tone = block && block.done ? "done" : (diff < 0 ? "overdue" : (diff <= 3 ? "soon" : "normal"));
+        return {
+          dueDate: dueDate,
+          diff: diff,
+          label: label,
+          tone: tone,
+          color: getDdayToneColor(tone)
+        };
+      }
+
+      function getDdayToneColor(tone) {
+        if (tone === "done") {
+          return "#6b7280";
+        }
+        if (tone === "overdue") {
+          return "#ef4444";
+        }
+        if (tone === "soon") {
+          return "#f59e0b";
+        }
+        return "#3b82f6";
+      }
+
+      function normalizeDateString(value) {
+        if (value === null || value === undefined || value === "") {
+          return null;
+        }
+        var text = String(value).trim();
+        var match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (!match) {
+          return null;
+        }
+        var year = Number(match[1]);
+        var month = Number(match[2]);
+        var day = Number(match[3]);
+        var date = new Date(year, month - 1, day);
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+          return null;
+        }
+        return match[1] + "-" + match[2] + "-" + match[3];
+      }
+
+      function normalizeScheduleStatus(value) {
+        if (value === null || value === undefined || value === "") {
+          return null;
+        }
+        var status = String(value).trim().toLowerCase();
+        if (status === "todo" || status === "to-do" || status === "pending" || status === "할일") {
+          return "todo";
+        }
+        if (status === "progress" || status === "in-progress" || status === "doing" || status === "진행") {
+          return "progress";
+        }
+        if (status === "done" || status === "complete" || status === "completed" || status === "완료") {
+          return "done";
+        }
+        return null;
+      }
+
+      function normalizeBoolean(value) {
+        if (typeof value === "string") {
+          return value.trim().toLowerCase() === "true";
+        }
+        return value === true;
+      }
+
+      function getScheduleStatusLabel(status) {
+        var safeStatus = normalizeScheduleStatus(status);
+        if (safeStatus === "todo") {
+          return "할일";
+        }
+        if (safeStatus === "progress") {
+          return "진행";
+        }
+        if (safeStatus === "done") {
+          return "완료";
+        }
+        return "미정";
+      }
+
+      function getLocalDateTime(dateString) {
+        var parts = String(dateString || "").split("-").map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+      }
+
+      function getTodayTime() {
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return today.getTime();
       }
 
       function updateInlineBlockTitle(blockId, titleElement) {
@@ -4831,6 +5357,11 @@
           link: "",
           images: [],
           innerDiagram: createEmptyInnerDiagram(),
+          startDate: null,
+          dueDate: null,
+          status: null,
+          done: false,
+          highlight: false,
           category: category,
           type: "main",
           inheritColor: false,
@@ -4886,6 +5417,156 @@
         els.connectionStraightButton.setAttribute("aria-pressed", style === "straight" ? "true" : "false");
         els.connectionCurveButton.classList.toggle("is-active", style === "curve");
         els.connectionCurveButton.setAttribute("aria-pressed", style === "curve" ? "true" : "false");
+      }
+
+      function updateScheduleControls() {
+        if (els.timelineButton) {
+          els.timelineButton.classList.toggle("is-active", store.timelineOpen);
+          els.timelineButton.setAttribute("aria-pressed", store.timelineOpen ? "true" : "false");
+        }
+        if (els.highlightOnlyButton) {
+          els.highlightOnlyButton.classList.toggle("is-active", store.highlightOnly);
+          els.highlightOnlyButton.setAttribute("aria-pressed", store.highlightOnly ? "true" : "false");
+        }
+      }
+
+      function toggleTimelinePanel() {
+        store.timelineOpen = !store.timelineOpen;
+        updateScheduleControls();
+        renderTimelinePanel();
+      }
+
+      function toggleHighlightOnly() {
+        store.highlightOnly = !store.highlightOnly;
+        renderAll();
+      }
+
+      function handleTimelineFilterClick(event) {
+        var button = event.target.closest(".timeline-filter-button");
+        if (!button) {
+          return;
+        }
+        store.timelineFilter = button.dataset.filter || "all";
+        renderTimelinePanel();
+      }
+
+      function handleTimelineRowClick(event) {
+        var row = event.target.closest(".timeline-row");
+        if (!row) {
+          return;
+        }
+        focusBlockFromTimeline(row.dataset.blockId);
+      }
+
+      function renderTimelinePanel() {
+        if (!els.timelinePanel || !els.timelineList) {
+          return;
+        }
+        els.timelinePanel.classList.toggle("is-open", store.timelineOpen);
+        if (els.timelineFilters) {
+          els.timelineFilters.querySelectorAll(".timeline-filter-button").forEach(function (button) {
+            var isActive = button.dataset.filter === store.timelineFilter;
+            button.classList.toggle("is-active", isActive);
+          });
+        }
+        els.timelineList.replaceChildren();
+        var blocks = getTimelineBlocks();
+        if (!blocks.length) {
+          var empty = document.createElement("div");
+          empty.className = "timeline-empty";
+          empty.textContent = "마감일이 있는 블록이 없습니다.";
+          els.timelineList.append(empty);
+          return;
+        }
+        blocks.forEach(function (block) {
+          els.timelineList.append(createTimelineRow(block));
+        });
+      }
+
+      function getTimelineBlocks() {
+        var filter = store.timelineFilter || "all";
+        return (store.data.blocks || []).filter(function (block) {
+          return Boolean(normalizeDateString(block.dueDate));
+        }).filter(function (block) {
+          return timelineFilterMatches(block, filter);
+        }).sort(function (a, b) {
+          return getLocalDateTime(a.dueDate) - getLocalDateTime(b.dueDate);
+        });
+      }
+
+      function timelineFilterMatches(block, filter) {
+        if (filter === "all") {
+          return true;
+        }
+        var info = getDdayInfo(block);
+        if (!info) {
+          return false;
+        }
+        if (filter === "done") {
+          return Boolean(block.done) || normalizeScheduleStatus(block.status) === "done";
+        }
+        if (filter === "progress") {
+          return !block.done && normalizeScheduleStatus(block.status) === "progress";
+        }
+        if (filter === "overdue") {
+          return !block.done && info.diff < 0;
+        }
+        if (filter === "soon") {
+          return !block.done && info.diff >= 0 && info.diff <= 3;
+        }
+        return true;
+      }
+
+      function createTimelineRow(block) {
+        var info = getDdayInfo(block);
+        var row = document.createElement("button");
+        var content = document.createElement("div");
+        var title = document.createElement("div");
+        var meta = document.createElement("div");
+        var badge = document.createElement("div");
+        row.className = "timeline-row";
+        row.type = "button";
+        row.dataset.blockId = block.id;
+        row.style.setProperty("--row-color", info.color);
+        title.className = "timeline-row-title";
+        title.textContent = block.title || "제목 없음";
+        meta.className = "timeline-row-meta";
+        meta.textContent = buildTimelineMeta(block);
+        badge.className = "timeline-row-badge";
+        badge.textContent = info.label;
+        content.append(title, meta);
+        row.append(content, badge);
+        return row;
+      }
+
+      function buildTimelineMeta(block) {
+        var parts = [];
+        if (block.startDate) {
+          parts.push("시작 " + block.startDate);
+        }
+        if (block.dueDate) {
+          parts.push("마감 " + block.dueDate);
+        }
+        parts.push(getScheduleStatusLabel(block.status));
+        if (block.done) {
+          parts.push("완료 표시");
+        }
+        return parts.join(" · ");
+      }
+
+      function focusBlockFromTimeline(blockId) {
+        var block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        var rect = els.viewport.getBoundingClientRect();
+        var centerX = Number(block.x) + getBlockWidth(block) / 2;
+        var centerY = Number(block.y) + getBlockHeight(block) / 2;
+        store.view.panX = rect.width / 2 - centerX * store.view.scale;
+        store.view.panY = rect.height / 2 - centerY * store.view.scale;
+        setSelection([block.id]);
+        updateTransform();
+        renderAll();
       }
 
       function alignSelectedBlocksLeft() {
@@ -5314,6 +5995,11 @@
           link: String(source.link || ""),
           images: getBlockImages(source),
           innerDiagram: cloneInnerDiagram(source.innerDiagram),
+          startDate: normalizeDateString(source.startDate),
+          dueDate: normalizeDateString(source.dueDate),
+          status: normalizeScheduleStatus(source.status),
+          done: Boolean(source.done),
+          highlight: Boolean(source.highlight),
           category: source.category,
           type: normalizeBlockType(source.type),
           inheritColor: normalizeBlockColorInheritance(source),
@@ -5375,6 +6061,11 @@
             link: String(source.link || ""),
             images: cloneBlockImages(source.images),
             innerDiagram: cloneInnerDiagram(source.innerDiagram),
+            startDate: normalizeDateString(source.startDate),
+            dueDate: normalizeDateString(source.dueDate),
+            status: normalizeScheduleStatus(source.status),
+            done: Boolean(source.done),
+            highlight: Boolean(source.highlight),
             category: source.category,
             type: normalizeBlockType(source.type),
             inheritColor: normalizeBlockColorInheritance(source),
@@ -5410,6 +6101,11 @@
           link: String(block.link || ""),
           images: getBlockImages(block),
           innerDiagram: cloneInnerDiagram(block.innerDiagram),
+          startDate: normalizeDateString(block.startDate),
+          dueDate: normalizeDateString(block.dueDate),
+          status: normalizeScheduleStatus(block.status),
+          done: Boolean(block.done),
+          highlight: Boolean(block.highlight),
           category: String(block.category || ""),
           type: normalizeBlockType(block.type),
           inheritColor: normalizeBlockColorInheritance(block),
@@ -5433,6 +6129,11 @@
           link: "",
           images: [],
           innerDiagram: createEmptyInnerDiagram(),
+          startDate: null,
+          dueDate: null,
+          status: null,
+          done: false,
+          highlight: false,
           category: source.category,
           type: blockType,
           inheritColor: blockType !== "main",
@@ -6968,6 +7669,11 @@
               link: String(block.link || ""),
               images: getBlockImages(block),
               innerDiagram: cloneInnerDiagram(block.innerDiagram),
+              startDate: normalizeDateString(block.startDate),
+              dueDate: normalizeDateString(block.dueDate),
+              status: normalizeScheduleStatus(block.status),
+              done: Boolean(block.done),
+              highlight: Boolean(block.highlight),
               category: String(block.category || ""),
               type: normalizeBlockType(block.type),
               inheritColor: normalizeBlockColorInheritance(block),
@@ -7037,6 +7743,11 @@
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
               images: cloneBlockImages(raw.images),
               innerDiagram: cloneInnerDiagram(raw.innerDiagram),
+              startDate: normalizeDateString(raw.startDate),
+              dueDate: normalizeDateString(raw.dueDate),
+              status: normalizeScheduleStatus(raw.status),
+              done: normalizeBoolean(raw.done),
+              highlight: normalizeBoolean(raw.highlight),
               category: category,
               type: normalizeBlockType(raw.type || raw.blockType),
               inheritColor: raw.inheritColor === false ? false : normalizeBlockType(raw.type || raw.blockType) !== "main",
