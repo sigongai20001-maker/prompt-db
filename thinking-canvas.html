@@ -1077,6 +1077,12 @@
       font-weight: 700;
     }
 
+    .field-hint {
+      color: rgba(255,255,255,0.62);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
     .schedule-edit-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2015,7 +2021,8 @@
         <div class="field subtitle-field">
           <label for="editSubtitle">서브타이틀</label>
           <input class="text-input" id="editSubtitle" type="text">
-          <div class="subtitle-tags" id="subtitleTagButtons" aria-label="서브타이틀 태그"></div>
+          <span class="field-hint">담당자 태그</span>
+          <div class="subtitle-tags" id="subtitleTagButtons" aria-label="담당자 태그"></div>
         </div>
         <div class="field">
           <label for="editBlockType">블록 종류</label>
@@ -2256,6 +2263,7 @@
       var INNER_BLOCK_WIDTH = 170;
       var INNER_BLOCK_HEIGHT = 56;
       var SUBTITLE_TAG_LIMIT = 80;
+      var PERSON_TAG_PRESETS = ["미한솔", "한나", "소영", "의근", "소희", "정민", "지영", "파멜라", "민정"];
       var TOOL_PRESETS = ["Claude", "GPT", "GPT Image 2", "HeyGen", "Sono AI", "CODEX", "Gemini"];
       var COLOR_CHIP_PRESETS = [
         "#7F77DD", "#1D9E75", "#E24B4A", "#F4A11A",
@@ -3623,6 +3631,7 @@
           seen.add(key);
           result.push(safeTag);
         }
+        PERSON_TAG_PRESETS.forEach(add);
         store.subtitleTags.forEach(add);
         store.data.blocks.forEach(function (block) {
           parseSubtitleTags(block.subtitle).forEach(add);
