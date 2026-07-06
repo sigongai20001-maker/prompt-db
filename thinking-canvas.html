@@ -1594,7 +1594,7 @@
       <div class="modal-body">
         <div class="json-file-row" id="jsonFileRow">
           <label class="json-file-label" for="jsonFile">JSON 파일 선택</label>
-          <input class="json-file-input" id="jsonFile" type="file" accept=".json,.txt,application/json,text/plain">
+          <input class="json-file-input" id="jsonFile" type="file" accept=".json,.txt,.html,.htm,application/json,text/plain,text/html">
         </div>
         <textarea class="text-area" id="jsonText" spellcheck="false"></textarea>
         <div class="modal-message" id="jsonMessage" aria-live="polite"></div>
@@ -2297,10 +2297,52 @@
         els.jsonModal.classList.remove("is-open");
       }
 
+      function extractDiagramJsonFromText(text) {
+        var source = String(text || "").trim();
+        var parsed;
+        var match;
+
+        try {
+          return JSON.parse(source);
+        } catch (error) {
+          // Continue with HTML-embedded JSON fallbacks.
+        }
+
+        match = source.match(/<script[^>]*id=["']thinking-canvas-saved-state["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (match) {
+          try {
+            parsed = JSON.parse(match[1].trim());
+            if (isPlainObject(parsed) && Object.prototype.hasOwnProperty.call(parsed, "data") &&
+              (Object.prototype.hasOwnProperty.call(parsed, "savedAt") || Object.prototype.hasOwnProperty.call(parsed, "saved At"))) {
+              return parsed.data;
+            }
+            return parsed;
+          } catch (error) {
+            // Continue with static snapshot fallback.
+          }
+        }
+
+        match = source.match(/<script[^>]*id=["']thinking-canvas-json["'][^>]*>([\s\S]*?)<\/script>/i);
+        if (match) {
+          try {
+            return JSON.parse(match[1].trim());
+          } catch (error) {
+            return null;
+          }
+        }
+
+        return null;
+      }
+
       function applyJsonFromModal() {
         var parsed;
         try {
-          parsed = JSON.parse(els.jsonText.value);
+          parsed = extractDiagramJsonFromText(els.jsonText.value);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            els.jsonMessage.classList.remove("is-success");
+            els.jsonMessage.textContent = "JSON 형식을 확인해주세요.";
+            return;
+          }
         } catch (error) {
           els.jsonMessage.classList.remove("is-success");
           els.jsonMessage.textContent = "JSON 형식을 확인해주세요.";
@@ -2362,6 +2404,14 @@
 
       function loadJsonFileToTextArea(file) {
         readTextFile(file).then(function (text) {
+          var extracted = extractDiagramJsonFromText(text);
+          if (extracted) {
+            els.jsonText.value = JSON.stringify(extracted, null, 2);
+            els.jsonMessage.classList.add("is-success");
+            els.jsonMessage.textContent = file.name + " 불러왔습니다.";
+            els.jsonText.focus();
+            return;
+          }
           els.jsonText.value = text;
           els.jsonMessage.classList.add("is-success");
           els.jsonMessage.textContent = file.name + " 파일을 불러왔습니다.";
