@@ -762,6 +762,36 @@
       background: rgba(61,220,151,0.16);
     }
 
+    .block-resize-handle {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      z-index: 7;
+      display: none;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 7px 0 7px 0;
+      appearance: none;
+      background:
+        linear-gradient(135deg, transparent 0 43%, rgba(255,255,255,0.72) 44% 50%, transparent 51% 100%),
+        linear-gradient(135deg, transparent 0 58%, rgba(255,255,255,0.58) 59% 65%, transparent 66% 100%),
+        rgba(15,17,21,0.82);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.34);
+      cursor: nwse-resize;
+      pointer-events: auto;
+    }
+
+    .block-card:hover .block-resize-handle,
+    .block-card.is-selected .block-resize-handle {
+      display: block;
+    }
+
+    .block-card.is-resizing {
+      user-select: none;
+    }
+
     .block-card.has-link .block-top {
       padding-right: 44px;
     }
@@ -2422,6 +2452,8 @@
       var GROUP_CARD_PADDING = 26;
       var GROUP_CARD_HEADER_HEIGHT = 78;
       var GROUP_CHILD_GAP = 12;
+      var BLOCK_RESIZE_MIN_WIDTH = 160;
+      var BLOCK_RESIZE_MIN_HEIGHT = 48;
       var INNER_WORLD_WIDTH = 1800;
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
@@ -2444,6 +2476,7 @@
           scale: 1
         },
         drag: null,
+        resize: null,
         pan: null,
         connect: null,
         marquee: null,
@@ -3425,7 +3458,9 @@
             parentId: block.parentId || "",
             color: getDiagramBlockColor(data, block),
             x: Math.round((Number(block.x) || 0) - minX + padding),
-            y: Math.round((Number(block.y) || 0) - minY + padding)
+            y: Math.round((Number(block.y) || 0) - minY + padding),
+            width: getBlockWidth(block),
+            height: getBlockHeight(block)
           });
         });
 
@@ -4835,6 +4870,7 @@
         var createSubButton = document.createElement("button");
         var createGroupButton = document.createElement("button");
         var connectSelectedButton = document.createElement("button");
+        var resizeHandle = document.createElement("button");
         var isActiveBlock = store.selectedBlockId === block.id;
         var selectedCount = getSelectedBlockIds().length;
         var blockType = normalizeBlockType(block.type);
@@ -4868,8 +4904,7 @@
           card.classList.add("has-children");
         }
         card.dataset.blockId = block.id;
-        card.style.setProperty("--card-width", getBlockWidth(block) + "px");
-        card.style.setProperty("--card-height", getBlockHeight(block) + "px");
+        applyBlockSize(card, block);
         applyBlockVisual(card, block);
         card.title = block.title || "제목 없음";
         setBlockPosition(card, block);
@@ -4923,6 +4958,11 @@
         handle.type = "button";
         handle.title = "연결";
         handle.setAttribute("aria-label", "연결 만들기");
+
+        resizeHandle.className = "block-resize-handle";
+        resizeHandle.type = "button";
+        resizeHandle.title = "블록 크기 조절";
+        resizeHandle.setAttribute("aria-label", "블록 크기 조절");
 
         if (isValidLink(block.link)) {
           linkButton = document.createElement("button");
@@ -5065,7 +5105,7 @@
         if (summaryText) {
           top.append(summary);
         }
-        card.append(doneToggle, top, handle);
+        card.append(doneToggle, top, handle, resizeHandle);
         if (dueBadge) {
           card.append(dueBadge);
         }
@@ -5201,6 +5241,9 @@
         });
         handle.addEventListener("pointerdown", function (event) {
           startHandlePress(event, block.id);
+        });
+        resizeHandle.addEventListener("pointerdown", function (event) {
+          startBlockResize(event, block.id);
         });
 
         return card;
@@ -6806,6 +6849,8 @@
           }) : [],
           inheritColor: normalizeBlockColorInheritance(source),
           color: getBlockColor(source),
+          width: finiteNumber(source.width) ? Number(source.width) : undefined,
+          height: finiteNumber(source.height) ? Number(source.height) : undefined,
           x: Math.round((Number(source.x) || 0) + 48),
           y: Math.round((Number(source.y) || 0) + 48)
         };
@@ -6875,6 +6920,8 @@
             children: normalizeBlockType(source.type) === "group" ? [] : [],
             inheritColor: normalizeBlockColorInheritance(source),
             color: validColor(source.color) ? source.color : getCategoryColor(source.category),
+            width: finiteNumber(source.width) ? Number(source.width) : undefined,
+            height: finiteNumber(source.height) ? Number(source.height) : undefined,
             x: Math.round((Number(source.x) || 0) + offset),
             y: Math.round((Number(source.y) || 0) + offset)
           };
@@ -6928,6 +6975,8 @@
           }) : [],
           inheritColor: normalizeBlockColorInheritance(block),
           color: getBlockColor(block),
+          width: finiteNumber(block.width) ? Number(block.width) : undefined,
+          height: finiteNumber(block.height) ? Number(block.height) : undefined,
           x: Number(block.x) || 0,
           y: Number(block.y) || 0
         };
@@ -7129,6 +7178,90 @@
 
       function isConnectionSelected(key) {
         return store.selectedConnectionKeys.indexOf(key) !== -1;
+      }
+
+      function startBlockResize(event, blockId) {
+        var block;
+        var card;
+        var worldPoint;
+        var minimum;
+        if (event.button !== 0 || store.drag || store.connect || store.handlePress) {
+          return;
+        }
+        block = getBlock(blockId);
+        if (!block) {
+          return;
+        }
+        blurActiveTitleEditor();
+        if (!isBlockSelected(blockId)) {
+          setSelection([blockId]);
+          renderBlocks();
+        }
+        block = getBlock(blockId);
+        card = getBlockElement(blockId);
+        worldPoint = screenToWorld(event.clientX, event.clientY);
+        minimum = getBlockResizeMinimum(block);
+        store.resize = {
+          blockId: blockId,
+          pointerId: event.pointerId,
+          startWorldX: worldPoint.x,
+          startWorldY: worldPoint.y,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startWidth: getBlockWidth(block),
+          startHeight: getBlockHeight(block),
+          minWidth: minimum.width,
+          minHeight: minimum.height,
+          undoSnapshot: createUndoSnapshot(),
+          moved: false
+        };
+        if (card) {
+          card.classList.add("is-resizing");
+          card.setPointerCapture(event.pointerId);
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function moveResizedBlock(event) {
+        var resize = store.resize;
+        var block = resize && getBlock(resize.blockId);
+        var card = block && getBlockElement(block.id);
+        var worldPoint;
+        var nextWidth;
+        var nextHeight;
+        if (!resize || !block || !card) {
+          return;
+        }
+        if (Math.abs(event.clientX - resize.startClientX) > 3 || Math.abs(event.clientY - resize.startClientY) > 3) {
+          resize.moved = true;
+        }
+        worldPoint = screenToWorld(event.clientX, event.clientY);
+        nextWidth = Math.round(clamp(resize.startWidth + worldPoint.x - resize.startWorldX, resize.minWidth, WORLD_WIDTH - (Number(block.x) || 0)));
+        nextHeight = Math.round(clamp(resize.startHeight + worldPoint.y - resize.startWorldY, resize.minHeight, WORLD_HEIGHT - (Number(block.y) || 0)));
+        block.width = nextWidth;
+        block.height = nextHeight;
+        applyBlockSize(card, block);
+        renderConnections();
+        event.preventDefault();
+      }
+
+      function finishBlockResize(event) {
+        var resize = store.resize;
+        var block = resize && getBlock(resize.blockId);
+        var card = block && getBlockElement(block.id);
+        if (card) {
+          card.classList.remove("is-resizing");
+          safelyReleasePointer(card, event.pointerId);
+        }
+        store.resize = null;
+        if (resize && resize.moved) {
+          pushUndoSnapshot(resize.undoSnapshot);
+          renderAll();
+          saveLocalState();
+        }
+        event.preventDefault();
+        event.stopPropagation();
       }
 
       function startBlockDrag(event, blockId) {
@@ -7339,6 +7472,10 @@
           moveInnerDraggedBlock(event);
           return;
         }
+        if (store.resize && event.pointerId === store.resize.pointerId) {
+          moveResizedBlock(event);
+          return;
+        }
         if (store.handlePress && event.pointerId === store.handlePress.pointerId) {
           var movedX = Math.abs(event.clientX - store.handlePress.startClientX);
           var movedY = Math.abs(event.clientY - store.handlePress.startClientY);
@@ -7370,6 +7507,10 @@
       function handlePointerUp(event) {
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
           finishInnerBlockDrag(event);
+          return;
+        }
+        if (store.resize && event.pointerId === store.resize.pointerId) {
+          finishBlockResize(event);
           return;
         }
         if (store.handlePress && event.pointerId === store.handlePress.pointerId) {
@@ -7923,6 +8064,11 @@
         card.style.transform = "translate(" + block.x + "px, " + block.y + "px)";
       }
 
+      function applyBlockSize(card, block) {
+        card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+        card.style.setProperty("--card-height", getBlockHeight(block) + "px");
+      }
+
       function getConnectionPath(fromBlock, toBlock, style) {
         var start = edgePoint(fromBlock, toBlock);
         var end = edgePoint(toBlock, fromBlock);
@@ -7990,19 +8136,27 @@
       }
 
       function getEndpointWidth(endpoint) {
-        return finiteNumber(endpoint && endpoint.width) ? Number(endpoint.width) : getBlockWidth(endpoint);
+        if (endpoint && endpoint.endpointType === "connection-label" && finiteNumber(endpoint.width)) {
+          return Number(endpoint.width);
+        }
+        return getBlockWidth(endpoint);
       }
 
       function getEndpointHeight(endpoint) {
-        return finiteNumber(endpoint && endpoint.height) ? Number(endpoint.height) : getBlockHeight(endpoint);
+        if (endpoint && endpoint.endpointType === "connection-label" && finiteNumber(endpoint.height)) {
+          return Number(endpoint.height);
+        }
+        return getBlockHeight(endpoint);
       }
 
       function getBlockWidth(block) {
-        var blockType = normalizeBlockType(block && block.type);
-        if (blockType === "group") {
-          return getGroupBlockWidth(block);
-        }
-        return getStandardBlockWidth(block);
+        var naturalWidth = getNaturalBlockWidth(block);
+        var minimum = getBlockResizeMinimum(block).width;
+        return Math.max(minimum, finiteNumber(block && block.width) ? Number(block.width) : naturalWidth);
+      }
+
+      function getNaturalBlockWidth(block) {
+        return normalizeBlockType(block && block.type) === "group" ? getGroupBlockWidth(block) : getStandardBlockWidth(block);
       }
 
       function getStandardBlockWidth(block) {
@@ -8029,7 +8183,7 @@
         var titleWidth = Math.ceil(estimateTextWidth(title, 22) + GROUP_CARD_PADDING * 2 + 40);
         var contentWidth = 0;
         getGroupChildBlocks(block && block.id).forEach(function (child) {
-          contentWidth = Math.max(contentWidth, getStandardBlockWidth(child) + GROUP_CARD_PADDING * 2);
+          contentWidth = Math.max(contentWidth, getBlockWidth(child) + GROUP_CARD_PADDING * 2);
         });
         return Math.max(GROUP_CARD_MIN_WIDTH, titleWidth, contentWidth);
       }
@@ -8053,6 +8207,12 @@
       }
 
       function getBlockHeight(block) {
+        var naturalHeight = getNaturalBlockHeight(block);
+        var minimum = getBlockResizeMinimum(block).height;
+        return Math.max(minimum, finiteNumber(block && block.height) ? Number(block.height) : naturalHeight);
+      }
+
+      function getNaturalBlockHeight(block) {
         var type = normalizeBlockType(block && block.type);
         var toolExtra = getBlockToolLabel(block) ? 22 : 0;
         if (type === "group") {
@@ -8062,6 +8222,27 @@
           return MAIN_CARD_HEIGHT + toolExtra;
         }
         return (type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT) + toolExtra;
+      }
+
+      function getBlockResizeMinimum(block) {
+        var type = normalizeBlockType(block && block.type);
+        var toolExtra = getBlockToolLabel(block) ? 22 : 0;
+        if (type === "group") {
+          return {
+            width: getGroupBlockWidth(block),
+            height: getGroupBlockHeight(block)
+          };
+        }
+        if (type === "main") {
+          return {
+            width: BLOCK_RESIZE_MIN_WIDTH,
+            height: MAIN_CARD_HEIGHT + toolExtra
+          };
+        }
+        return {
+          width: BLOCK_RESIZE_MIN_WIDTH,
+          height: (type === "middle" ? MIDDLE_CARD_HEIGHT : Math.max(BLOCK_RESIZE_MIN_HEIGHT, CARD_HEIGHT)) + toolExtra
+        };
       }
 
       function getGroupBlockHeight(block) {
@@ -8837,6 +9018,8 @@
               }) : [],
               inheritColor: normalizeBlockColorInheritance(block),
               color: getBlockColor(block),
+              width: getBlockWidth(block),
+              height: getBlockHeight(block),
               x: Number(block.x),
               y: Number(block.y)
             };
@@ -8916,6 +9099,8 @@
               }).filter(Boolean) : [],
               inheritColor: raw.inheritColor === false ? false : (normalizeBlockType(raw.type || raw.blockType) !== "main" && normalizeBlockType(raw.type || raw.blockType) !== "group"),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
+              width: finiteNumber(raw.width) && raw.width > 0 ? Number(raw.width) : undefined,
+              height: finiteNumber(raw.height) && raw.height > 0 ? Number(raw.height) : undefined,
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
               y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
             });
