@@ -1149,27 +1149,52 @@
       background: rgba(255,255,255,0.035);
     }
 
-    .tool-chip-button {
-      min-height: 30px;
-      padding: 0 11px;
-      border: 1px solid rgba(255,255,255,0.15);
+    .tool-chip-pill {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.16);
       border-radius: 999px;
       color: var(--ink);
       background: rgba(15,17,21,0.72);
+    }
+
+    .tool-chip-pill.is-active {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .tool-chip-button {
+      min-height: 30px;
+      padding: 0 11px;
+      border: 0;
+      color: inherit;
+      background: transparent;
       font-size: 13px;
       font-weight: 800;
       cursor: pointer;
     }
 
     .tool-chip-button:hover {
-      border-color: rgba(61,220,151,0.72);
       background: rgba(61,220,151,0.12);
     }
 
-    .tool-chip-button.is-active {
-      border-color: transparent;
-      color: var(--accent-ink);
-      background: var(--accent);
+    .tool-chip-delete-button {
+      align-self: stretch;
+      min-width: 28px;
+      border: 0;
+      border-left: 1px solid rgba(255,255,255,0.12);
+      color: inherit;
+      background: rgba(255,255,255,0.05);
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .tool-chip-delete-button:hover {
+      background: rgba(239,83,80,0.22);
     }
 
     .subtitle-field {
@@ -2246,6 +2271,8 @@
       var JSON_DIRECTORY_PICKER_ID = "thinking-canvas-json-folder";
       var JSON_DIRECTORY_HANDLE_KEY = "json-directory:thinking-canvas";
       var SUBTITLE_TAG_HIDDEN_STORAGE_KEY = "thinkingCanvasSubtitleHiddenTags.v1";
+      var TOOL_TAG_STORAGE_KEY = "thinkingCanvasToolTags.v1";
+      var TOOL_TAG_HIDDEN_STORAGE_KEY = "thinkingCanvasToolHiddenTags.v1";
       var AUTO_SAVE_DELAY = 250;
       var UNDO_LIMIT = 80;
       var CONNECTION_STYLE_DEFAULT = "curve";
@@ -2302,6 +2329,8 @@
         createMenuBlockId: null,
         subtitleTags: [],
         subtitleHiddenTagKeys: [],
+        toolTags: [],
+        toolHiddenTagKeys: [],
         timelineOpen: false,
         timelineFilter: "all",
         highlightOnly: false,
@@ -2321,6 +2350,8 @@
         loadSavedDiagram();
         store.subtitleTags = loadSubtitleTagMemory();
         store.subtitleHiddenTagKeys = loadSubtitleHiddenTagKeys();
+        store.toolTags = loadToolTagMemory();
+        store.toolHiddenTagKeys = loadToolHiddenTagKeys();
         bindEvents();
         renderAll();
         updateTransform();
@@ -3459,6 +3490,7 @@
         block.images = cloneBlockImages(store.editImages);
         block.link = String(els.editLink.value || "").trim();
         block.tool = normalizeTool(els.editTool.value);
+        rememberToolTag(block.tool);
         block.startDate = normalizeDateString(els.editStartDate.value);
         block.dueDate = normalizeDateString(els.editDueDate.value);
         block.status = normalizeScheduleStatus(els.editStatus.value);
@@ -3478,25 +3510,47 @@
           return;
         }
         els.editToolChips.replaceChildren();
-        TOOL_PRESETS.forEach(function (tool) {
+        getToolTagOptions().forEach(function (tool) {
+          var pill = document.createElement("span");
           var button = document.createElement("button");
+          var deleteButton = document.createElement("button");
+          var isActive = normalizeToolKey(tool) === normalizeToolKey(selectedTool);
+          pill.className = "tool-chip-pill" + (isActive ? " is-active" : "");
+          pill.dataset.tool = tool;
           button.className = "tool-chip-button";
           button.type = "button";
           button.dataset.tool = tool;
           button.textContent = tool;
-          els.editToolChips.append(button);
+          button.title = tool + " 선택";
+          deleteButton.className = "tool-chip-delete-button";
+          deleteButton.type = "button";
+          deleteButton.dataset.tool = tool;
+          deleteButton.textContent = "×";
+          deleteButton.title = tool + " 삭제";
+          deleteButton.setAttribute("aria-label", tool + " TOOL 태그 삭제");
+          pill.append(button, deleteButton);
+          els.editToolChips.append(pill);
         });
         updateToolChipSelection(selectedTool);
       }
 
       function handleToolChipClick(event) {
+        var deleteButton = event.target.closest(".tool-chip-delete-button");
+        if (deleteButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          deleteToolTag(deleteButton.dataset.tool || "");
+          return;
+        }
         var button = event.target.closest(".tool-chip-button");
         if (!button) {
           return;
         }
         event.preventDefault();
+        event.stopPropagation();
         var tool = normalizeTool(button.dataset.tool || button.textContent || "");
         els.editTool.value = tool;
+        rememberToolTag(tool);
         updateToolChipSelection(tool);
         previewEditedBlockVisual();
         els.editTool.focus();
@@ -3512,11 +3566,138 @@
           return;
         }
         var selectedKey = normalizeToolKey(value !== undefined ? value : els.editTool.value);
-        els.editToolChips.querySelectorAll(".tool-chip-button").forEach(function (button) {
-          var isActive = normalizeToolKey(button.dataset.tool || button.textContent || "") === selectedKey && selectedKey !== "";
-          button.classList.toggle("is-active", isActive);
-          button.setAttribute("aria-pressed", isActive ? "true" : "false");
+        els.editToolChips.querySelectorAll(".tool-chip-pill").forEach(function (pill) {
+          var isActive = normalizeToolKey(pill.dataset.tool || "") === selectedKey && selectedKey !== "";
+          var button = pill.querySelector(".tool-chip-button");
+          pill.classList.toggle("is-active", isActive);
+          if (button) {
+            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+          }
         });
+      }
+
+      function getToolTagOptions() {
+        var result = [];
+        var seen = new Set();
+        function add(tool) {
+          var safeTool = normalizeTool(tool);
+          var key = normalizeToolKey(safeTool);
+          if (!safeTool || seen.has(key) || store.toolHiddenTagKeys.indexOf(key) !== -1) {
+            return;
+          }
+          seen.add(key);
+          result.push(safeTool);
+        }
+        TOOL_PRESETS.forEach(add);
+        store.toolTags.forEach(add);
+        store.data.blocks.forEach(function (block) {
+          add(block.tool);
+        });
+        return result.slice(0, SUBTITLE_TAG_LIMIT);
+      }
+
+      function rememberToolTag(value) {
+        var safeTool = normalizeTool(value);
+        var key = normalizeToolKey(safeTool);
+        var merged = [];
+        var seen = new Set();
+        if (!safeTool) {
+          return;
+        }
+        [safeTool].concat(store.toolTags).forEach(function (tool) {
+          var normalized = normalizeTool(tool);
+          var normalizedKey = normalizeToolKey(normalized);
+          if (!normalized || seen.has(normalizedKey)) {
+            return;
+          }
+          seen.add(normalizedKey);
+          merged.push(normalized);
+        });
+        store.toolTags = merged.slice(0, SUBTITLE_TAG_LIMIT);
+        store.toolHiddenTagKeys = store.toolHiddenTagKeys.filter(function (hiddenKey) {
+          return hiddenKey !== key;
+        });
+        saveToolTagMemory();
+        saveToolHiddenTagKeys();
+      }
+
+      function deleteToolTag(tool) {
+        var safeTool = normalizeTool(tool);
+        var key = normalizeToolKey(safeTool);
+        if (!safeTool || !key) {
+          return;
+        }
+        store.toolTags = store.toolTags.filter(function (item) {
+          return normalizeToolKey(item) !== key;
+        });
+        if (store.toolHiddenTagKeys.indexOf(key) === -1) {
+          store.toolHiddenTagKeys.push(key);
+        }
+        if (normalizeToolKey(els.editTool.value) === key) {
+          els.editTool.value = "";
+          previewEditedBlockVisual();
+        }
+        saveToolTagMemory();
+        saveToolHiddenTagKeys();
+        renderToolChips(els.editTool.value);
+        els.editTool.focus();
+      }
+
+      function loadToolTagMemory() {
+        try {
+          var raw = JSON.parse(localStorage.getItem(TOOL_TAG_STORAGE_KEY) || "[]");
+          if (!Array.isArray(raw)) {
+            return [];
+          }
+          var tools = [];
+          var seen = new Set();
+          raw.forEach(function (tool) {
+            var safeTool = normalizeTool(tool);
+            var key = normalizeToolKey(safeTool);
+            if (safeTool && !seen.has(key)) {
+              seen.add(key);
+              tools.push(safeTool);
+            }
+          });
+          return tools.slice(0, SUBTITLE_TAG_LIMIT);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveToolTagMemory() {
+        try {
+          localStorage.setItem(TOOL_TAG_STORAGE_KEY, JSON.stringify(store.toolTags.slice(0, SUBTITLE_TAG_LIMIT)));
+        } catch (error) {
+          console.warn("Tool tags could not be saved.", error);
+        }
+      }
+
+      function loadToolHiddenTagKeys() {
+        try {
+          var raw = JSON.parse(localStorage.getItem(TOOL_TAG_HIDDEN_STORAGE_KEY) || "[]");
+          if (!Array.isArray(raw)) {
+            return [];
+          }
+          var keys = [];
+          raw.forEach(function (key) {
+            var safeKey = normalizeToolKey(key);
+            if (safeKey && keys.indexOf(safeKey) === -1) {
+              keys.push(safeKey);
+            }
+          });
+          return keys.slice(0, SUBTITLE_TAG_LIMIT);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveToolHiddenTagKeys() {
+        try {
+          localStorage.setItem(TOOL_TAG_HIDDEN_STORAGE_KEY, JSON.stringify(store.toolHiddenTagKeys.slice(0, SUBTITLE_TAG_LIMIT)));
+        } catch (error) {
+          console.warn("Tool hidden tags could not be saved.", error);
+        }
       }
 
       function renderSubtitleTags() {
