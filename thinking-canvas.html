@@ -409,6 +409,59 @@
       box-shadow: 0 10px 28px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.07), 0 0 0 1px rgba(255,255,255,0.08);
     }
 
+    .block-card.is-group {
+      align-items: flex-start;
+      min-width: 360px;
+      border: 2px solid color-mix(in srgb, var(--block-color, var(--fallback)) 72%, rgba(255,255,255,0.28));
+      border-left-width: 2px;
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--block-color, var(--fallback)) 34%, transparent), rgba(37,43,53,0.58)),
+        rgba(37,43,53,0.68);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.12);
+      z-index: 0;
+    }
+
+    .block-card.is-group .block-top {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      top: 14px;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 16px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 6px;
+      background: var(--block-color, var(--fallback));
+      color: var(--block-ink, #fff);
+      text-align: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+    }
+
+    .block-card.is-group .block-title {
+      width: 100%;
+      color: var(--block-ink, #fff);
+      font-size: 22px;
+      text-align: center;
+    }
+
+    .block-card.is-group .block-summary {
+      display: none;
+    }
+
+    .block-card.is-group.is-selected {
+      z-index: 1;
+    }
+
+    .block-card.is-contained {
+      z-index: 2;
+    }
+
+    .block-card.is-contained.is-selected,
+    .block-card.is-contained.is-dragging {
+      z-index: 5;
+    }
+
     .block-card.is-dragging {
       box-shadow: 0 16px 36px rgba(0,0,0,0.55);
       z-index: 4;
@@ -825,7 +878,7 @@
 
     .block-type-toggle {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
       padding: 5px;
       border: 1px solid rgba(255,255,255,0.14);
@@ -2061,6 +2114,7 @@
             <button class="block-type-button" type="button" data-type="sub" aria-pressed="true">서브</button>
             <button class="block-type-button" type="button" data-type="middle" aria-pressed="false">중간</button>
             <button class="block-type-button" type="button" data-type="main" aria-pressed="false">메인</button>
+            <button class="block-type-button" type="button" data-type="group" aria-pressed="false">그룹</button>
           </div>
         </div>
         <div class="field">
@@ -2285,6 +2339,10 @@
       var CARD_HEIGHT = 62;
       var MIDDLE_CARD_HEIGHT = 74;
       var MAIN_CARD_HEIGHT = 86;
+      var GROUP_CARD_MIN_WIDTH = 520;
+      var GROUP_CARD_MIN_HEIGHT = 360;
+      var GROUP_CARD_PADDING = 26;
+      var GROUP_CARD_HEADER_HEIGHT = 78;
       var INNER_WORLD_WIDTH = 1800;
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
@@ -3271,6 +3329,7 @@
             images: getBlockImages(block),
             category: block.category,
             type: block.type,
+            parentId: block.parentId || "",
             color: getDiagramBlockColor(data, block),
             x: Math.round((Number(block.x) || 0) - minX + padding),
             y: Math.round((Number(block.y) || 0) - minY + padding)
@@ -3339,13 +3398,18 @@
             '<span class="conn-text">' + escapeHtml(label) + '</span></div></foreignObject>';
         }).filter(Boolean).join("\n        ");
 
-        var cards = Array.from(projected.values()).map(function (block) {
+        var cards = Array.from(projected.values()).sort(function (a, b) {
+          var aGroup = normalizeBlockType(a.type) === "group";
+          var bGroup = normalizeBlockType(b.type) === "group";
+          return aGroup === bGroup ? 0 : (aGroup ? -1 : 1);
+        }).map(function (block) {
           var category = categories[block.category] || {};
           var color = validColor(block.color) ? block.color : (category && validColor(category.color) ? category.color : FALLBACK_COLOR);
           var summary = getBlockSubtitle(block);
           var link = isValidLink(block.link) ? String(block.link).trim() : "";
           var tool = getBlockToolLabel(block);
-          return '<article class="card' + (tool ? ' has-tool' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+          var type = normalizeBlockType(block.type);
+          return '<article class="card' + (tool ? ' has-tool' : '') + (type === "group" ? ' is-group' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
             '          <strong>' + escapeHtml(block.title || "제목 없음") + '</strong>\n' +
             (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
             (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
@@ -3386,6 +3450,7 @@
           '    path{fill:none;stroke:#5b6472;stroke-width:2.2;stroke-linecap:round;opacity:.85;}\n' +
           '    .conn-label{box-sizing:border-box;max-width:none;display:inline-flex;align-items:center;gap:6px;overflow:hidden;padding:4px 8px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(28,33,41,0.92);color:#e8ebf0;font-size:12px;font-weight:700;line-height:1.25;text-align:center;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,0.28);}.conn-label.is-input{border-color:rgba(255,83,96,.72);background:rgba(92,26,35,.94);color:#ffe5e8;}.conn-label.is-output{border-color:rgba(58,134,255,.72);background:rgba(20,45,92,.94);color:#e6f0ff;}.conn-type{flex:0 0 auto;padding:2px 5px;border-radius:999px;color:#fff;font-size:9px;font-weight:900;line-height:1;letter-spacing:.02em;}.conn-label.is-input .conn-type{background:#ff5360;}.conn-label.is-output .conn-type{background:#3a86ff;}.conn-text{min-width:0;overflow:visible;text-overflow:clip;white-space:nowrap;}\n' +
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
+          '    .card.is-group{border:2px solid color-mix(in srgb,var(--color) 72%,rgba(255,255,255,.28));border-left-width:2px;background:linear-gradient(180deg,color-mix(in srgb,var(--color) 34%,transparent),rgba(37,43,53,.58)),rgba(37,43,53,.68);box-shadow:0 14px 34px rgba(0,0,0,.36);}.card.is-group strong{display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:var(--color);font-size:22px;text-align:center;}.card.is-group span{display:none;}\n' +
           '    .card.has-tool{padding-bottom:28px;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -3485,7 +3550,7 @@
         rememberSubtitleTags(block.subtitle);
         block.type = normalizeBlockType(els.editBlockType.value);
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
-        block.inheritColor = normalizeBlockType(block.type) !== "main" && els.editColorInherited.value === "true";
+        block.inheritColor = normalizeBlockType(block.type) !== "main" && normalizeBlockType(block.type) !== "group" && els.editColorInherited.value === "true";
         block.detail = els.editDetail.value;
         block.images = cloneBlockImages(store.editImages);
         block.link = String(els.editLink.value || "").trim();
@@ -3496,6 +3561,7 @@
         block.status = normalizeScheduleStatus(els.editStatus.value);
         block.done = Boolean(els.editDone.checked);
         block.highlight = Boolean(els.editHighlight.checked);
+        normalizeDiagramParentIds(store.data);
         if (!diagramDataEquals(undoSnapshot.data, getExportData())) {
           pushUndoSnapshot(undoSnapshot);
         }
@@ -4625,13 +4691,29 @@
 
       function renderBlocks() {
         els.blocksLayer.replaceChildren();
-        store.data.blocks.forEach(function (block) {
+        getBlocksInRenderOrder().forEach(function (block) {
           els.blocksLayer.append(createBlockElement(block));
         });
         if (store.focusTitleBlockId) {
           focusBlockTitle(store.focusTitleBlockId);
           store.focusTitleBlockId = null;
         }
+      }
+
+      function getBlocksInRenderOrder() {
+        return (store.data.blocks || []).slice().sort(function (a, b) {
+          var aGroup = normalizeBlockType(a && a.type) === "group";
+          var bGroup = normalizeBlockType(b && b.type) === "group";
+          if (aGroup !== bGroup) {
+            return aGroup ? -1 : 1;
+          }
+          var aContained = Boolean(a && a.parentId);
+          var bContained = Boolean(b && b.parentId);
+          if (aContained !== bContained) {
+            return aContained ? 1 : -1;
+          }
+          return 0;
+        });
       }
 
       function createBlockElement(block) {
@@ -4657,6 +4739,7 @@
         var createMainButton = document.createElement("button");
         var createMiddleButton = document.createElement("button");
         var createSubButton = document.createElement("button");
+        var createGroupButton = document.createElement("button");
         var connectSelectedButton = document.createElement("button");
         var isActiveBlock = store.selectedBlockId === block.id;
         var selectedCount = getSelectedBlockIds().length;
@@ -4664,6 +4747,9 @@
         card.className = "block-card";
         if (isBlockSelected(block.id)) {
           card.classList.add("is-selected");
+        }
+        if (isBlockInGroup(block)) {
+          card.classList.add("is-contained");
         }
         card.classList.toggle("is-done", Boolean(block.done));
         card.classList.toggle("is-highlighted", Boolean(block.highlight));
@@ -4783,7 +4869,17 @@
           event.stopPropagation();
           createConnectedBlock(block.id, "sub");
         });
-        createMenu.append(createMainButton, createMiddleButton, createSubButton);
+
+        createGroupButton.className = "block-action-button";
+        createGroupButton.type = "button";
+        createGroupButton.textContent = "그룹";
+        createGroupButton.title = "연결된 그룹블록 만들기";
+        createGroupButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          createConnectedBlock(block.id, "group");
+        });
+        createMenu.append(createMainButton, createMiddleButton, createSubButton, createGroupButton);
 
         quickActions.className = "block-quick-actions";
         editButton.className = "block-action-button";
@@ -4945,6 +5041,21 @@
           event.stopPropagation();
           selectBlock(block.id, event.shiftKey || event.ctrlKey || event.metaKey);
         });
+        if (normalizeBlockType(block.type) === "group") {
+          card.addEventListener("pointerdown", function (event) {
+            if (event.target !== card || isControlTarget(event.target)) {
+              return;
+            }
+            startBlockDrag(event, block.id);
+          });
+          card.addEventListener("click", function (event) {
+            if (event.target !== card || event.detail > 1 || isControlTarget(event.target)) {
+              return;
+            }
+            event.stopPropagation();
+            selectBlock(block.id, event.shiftKey || event.ctrlKey || event.metaKey);
+          });
+        }
         card.addEventListener("dblclick", function (event) {
           if (isControlTarget(event.target)) {
             return;
@@ -5200,11 +5311,13 @@
         var blockType = normalizeBlockType(block.type);
         var isMain = blockType === "main";
         var isMiddle = blockType === "middle";
-        var ink = isMain ? getReadableTextColor(color) : "var(--ink)";
+        var isGroup = blockType === "group";
+        var ink = (isMain || isGroup) ? getReadableTextColor(color) : "var(--ink)";
         var muted = isMain ? (ink === "#ffffff" ? "rgba(255,255,255,0.78)" : "rgba(40,39,33,0.68)") : "#777268";
 
         card.classList.toggle("is-main", isMain);
         card.classList.toggle("is-middle", isMiddle);
+        card.classList.toggle("is-group", isGroup);
         card.style.setProperty("--block-color", color);
         card.style.setProperty("--block-ink", ink);
         card.style.setProperty("--block-muted", muted);
@@ -5223,11 +5336,13 @@
       }
 
       function shouldInheritBlockColor(diagram, block) {
-        return Boolean(block && normalizeBlockType(block.type) !== "main" && normalizeBlockColorInheritance(block));
+        var type = normalizeBlockType(block && block.type);
+        return Boolean(block && type !== "main" && type !== "group" && normalizeBlockColorInheritance(block));
       }
 
       function normalizeBlockColorInheritance(block) {
-        if (!block || normalizeBlockType(block.type) === "main") {
+        var type = normalizeBlockType(block && block.type);
+        if (!block || type === "main" || type === "group") {
           return false;
         }
         return block.inheritColor !== false;
@@ -5321,7 +5436,8 @@
 
       function setEditColorInheritedValue(value) {
         var block = getBlock(store.editBlockId);
-        var canInherit = Boolean(block && normalizeBlockType(els.editBlockType.value) !== "main" && getLinkedMainBlockColor(store.data, block));
+        var editType = normalizeBlockType(els.editBlockType.value);
+        var canInherit = Boolean(block && editType !== "main" && editType !== "group" && getLinkedMainBlockColor(store.data, block));
         var isInherited = Boolean(value && canInherit);
         els.editColorInherited.value = isInherited ? "true" : "false";
         els.inheritBlockColorButton.classList.toggle("is-active", isInherited);
@@ -5333,7 +5449,7 @@
         var safeType = normalizeBlockType(type);
         els.editBlockType.value = safeType;
         updateBlockTypeSelection(safeType);
-        if (safeType === "main") {
+        if (safeType === "main" || safeType === "group") {
           setEditColorInheritedValue(false);
         }
       }
@@ -5392,10 +5508,19 @@
       }
 
       function normalizeBlockType(value) {
-        if (value === "main" || value === "middle") {
+        if (value === "main" || value === "middle" || value === "group") {
           return value;
         }
         return "sub";
+      }
+
+      function normalizeParentId(parentId, blockId) {
+        var safeParentId = String(parentId || "");
+        var parent = safeParentId ? getBlock(safeParentId) : null;
+        if (!safeParentId || safeParentId === blockId || !parent || !isGroupBlock(parent)) {
+          return "";
+        }
+        return safeParentId;
       }
 
       function getReadableTextColor(color) {
@@ -5783,6 +5908,7 @@
           highlight: false,
           category: category,
           type: "main",
+          parentId: "",
           inheritColor: false,
           color: getCategoryColor(category),
           x: 0,
@@ -6325,10 +6451,13 @@
 
       function getLayoutTypeRank(block) {
         var type = normalizeBlockType(block && block.type);
-        if (type === "main") {
+        if (type === "group") {
           return 0;
         }
-        return type === "middle" ? 1 : 2;
+        if (type === "main") {
+          return 1;
+        }
+        return type === "middle" ? 2 : 3;
       }
 
       function removeBlock(blockId) {
@@ -6349,6 +6478,7 @@
           return block.id !== blockId;
         });
         var removeIds = new Set([blockId]);
+        clearParentIdsForRemovedGroups(removeIds);
         store.data.connections = store.data.connections.filter(function (connection) {
           return !connectionTouchesBlockIds(connection, removeIds);
         });
@@ -6370,6 +6500,7 @@
           store.data.blocks = store.data.blocks.filter(function (block) {
             return !removeIds.has(block.id);
           });
+          clearParentIdsForRemovedGroups(removeIds);
           store.data.connections = store.data.connections.filter(function (connection) {
             return !connectionTouchesBlockIds(connection, removeIds);
           });
@@ -6397,6 +6528,7 @@
         store.data.blocks = store.data.blocks.filter(function (block) {
           return !removeIds.has(block.id);
         });
+        clearParentIdsForRemovedGroups(removeIds);
         store.data.connections = store.data.connections.filter(function (connection) {
           return !connectionTouchesBlockIds(connection, removeIds);
         });
@@ -6407,6 +6539,14 @@
         renderAll();
         saveLocalState();
         showToast(blockIds.length > 1 ? blockIds.length + "개 블록을 삭제했습니다." : "블록을 삭제했습니다.");
+      }
+
+      function clearParentIdsForRemovedGroups(removeIds) {
+        store.data.blocks.forEach(function (block) {
+          if (block.parentId && removeIds.has(block.parentId)) {
+            block.parentId = "";
+          }
+        });
       }
 
       function duplicateBlock(blockId) {
@@ -6430,6 +6570,7 @@
           highlight: Boolean(source.highlight),
           category: source.category,
           type: normalizeBlockType(source.type),
+          parentId: normalizeParentId(source.parentId, source.id),
           inheritColor: normalizeBlockColorInheritance(source),
           color: getBlockColor(source),
           x: Math.round((Number(source.x) || 0) + 48),
@@ -6497,6 +6638,7 @@
             highlight: Boolean(source.highlight),
             category: source.category,
             type: normalizeBlockType(source.type),
+            parentId: "",
             inheritColor: normalizeBlockColorInheritance(source),
             color: validColor(source.color) ? source.color : getCategoryColor(source.category),
             x: Math.round((Number(source.x) || 0) + offset),
@@ -6505,6 +6647,14 @@
           idMap.set(source.id, block.id);
           pastedIds.push(block.id);
           store.data.blocks.push(block);
+        });
+        store.clipboard.blocks.forEach(function (source) {
+          var pastedId = idMap.get(source.id);
+          var pastedBlock = getBlock(pastedId);
+          var pastedParentId = idMap.get(source.parentId);
+          if (pastedBlock && pastedParentId && isGroupBlock(getBlock(pastedParentId))) {
+            pastedBlock.parentId = pastedParentId;
+          }
         });
         store.clipboard.connections.forEach(function (connection) {
           var from = idMap.get(connection.from);
@@ -6538,6 +6688,7 @@
           highlight: Boolean(block.highlight),
           category: String(block.category || ""),
           type: normalizeBlockType(block.type),
+          parentId: String(block.parentId || ""),
           inheritColor: normalizeBlockColorInheritance(block),
           color: getBlockColor(block),
           x: Number(block.x) || 0,
@@ -6567,7 +6718,8 @@
           highlight: false,
           category: source.category,
           type: blockType,
-          inheritColor: blockType !== "main",
+          parentId: source.parentId || "",
+          inheritColor: blockType !== "main" && blockType !== "group",
           color: getBlockColor(source),
           x: 0,
           y: 0
@@ -6755,7 +6907,7 @@
         }
         var worldPoint = screenToWorld(event.clientX, event.clientY);
         var card = getBlockElement(blockId);
-        var selectedIds = isBlockSelected(blockId) ? store.selectedBlockIds.slice() : [blockId];
+        var selectedIds = expandBlockIdsWithGroupChildren(isBlockSelected(blockId) ? store.selectedBlockIds.slice() : [blockId]);
         store.drag = {
           blockId: blockId,
           pointerId: event.pointerId,
@@ -6769,10 +6921,13 @@
           undoSnapshot: createUndoSnapshot(),
           blocks: selectedIds.map(function (id) {
             var selectedBlock = getBlock(id);
+            var parentBlock = selectedBlock && selectedBlock.parentId ? getBlock(selectedBlock.parentId) : null;
             return selectedBlock ? {
               id: id,
               x: Number(selectedBlock.x) || 0,
-              y: Number(selectedBlock.y) || 0
+              y: Number(selectedBlock.y) || 0,
+              parentId: selectedBlock.parentId || "",
+              parentBounds: parentBlock ? getBlockBounds(parentBlock) : null
             } : null;
           }).filter(Boolean)
         };
@@ -7031,6 +7186,7 @@
         var draggedIds = drag.blocks.map(function (block) {
           return block.id;
         });
+        var targetGroupCard = didMove ? getGroupBlockFromPoint(event.clientX, event.clientY, draggedIds) : null;
         var targetCard = didMove ? getBlockFromPoint(event.clientX, event.clientY, draggedIds) : null;
         var card = getBlockElement(drag.blockId);
         if (card) {
@@ -7041,6 +7197,15 @@
         clearDropTargets();
         if (!didMove) {
           selectBlock(blockId, event.shiftKey || event.ctrlKey || event.metaKey);
+        } else if (targetGroupCard && moveBlocksToGroup(targetGroupCard.dataset.blockId, draggedIds, undoSnapshot)) {
+          return;
+        } else if (targetGroupCard) {
+          pushUndoSnapshot(undoSnapshot);
+          renderAll();
+          saveLocalState();
+          return;
+        } else if (releaseDraggedBlocksFromGroups(drag, undoSnapshot)) {
+          return;
         } else if (targetCard && moveBlocksIntoInnerDiagram(targetCard.dataset.blockId, draggedIds, undoSnapshot)) {
           return;
         } else {
@@ -7266,11 +7431,13 @@
 
       function markInnerDiagramDropTarget(clientX, clientY, sourceIds) {
         clearDropTargets();
-        var target = getBlockFromPoint(clientX, clientY, sourceIds);
+        var target = getGroupBlockFromPoint(clientX, clientY, sourceIds) || getBlockFromPoint(clientX, clientY, sourceIds);
         if (target && target.dataset.blockId) {
           target.classList.add("is-drop-target");
           target.classList.add("is-inner-drop-target");
-          target.dataset.dropLabel = sourceIds.length > 1 ? sourceIds.length + "개 내부로 넣기" : "내부로 넣기";
+          target.dataset.dropLabel = normalizeBlockType(getBlock(target.dataset.blockId).type) === "group"
+            ? (sourceIds.length > 1 ? sourceIds.length + "개 그룹에 넣기" : "그룹에 넣기")
+            : (sourceIds.length > 1 ? sourceIds.length + "개 내부로 넣기" : "내부로 넣기");
         }
       }
 
@@ -7283,6 +7450,73 @@
         els.connectionGroup.querySelectorAll(".connection-label-box.is-drop-target").forEach(function (node) {
           node.classList.remove("is-drop-target");
         });
+      }
+
+      function moveBlocksToGroup(targetId, blockIds, undoSnapshot) {
+        var targetBlock = getBlock(targetId);
+        var sourceIds = blockIds.filter(function (id, index) {
+          return id && id !== targetId && blockIds.indexOf(id) === index;
+        });
+        var movingSet = new Set(sourceIds);
+        sourceIds = sourceIds.filter(function (id) {
+          var block = getBlock(id);
+          return block && !movingSet.has(block.parentId);
+        });
+        var changed = false;
+        if (!targetBlock || !isGroupBlock(targetBlock) || !sourceIds.length) {
+          return false;
+        }
+        sourceIds.forEach(function (sourceId) {
+          var block = getBlock(sourceId);
+          if (!block || block.id === targetId || isDescendantOf(targetId, block.id)) {
+            return;
+          }
+          if (block.parentId !== targetId) {
+            block.parentId = targetId;
+            changed = true;
+          }
+        });
+        if (!changed) {
+          return false;
+        }
+        pushUndoSnapshot(undoSnapshot);
+        setSelection(sourceIds);
+        renderAll();
+        saveLocalState();
+        showToast(sourceIds.length > 1 ? sourceIds.length + "개 블록을 그룹에 넣었습니다." : "블록을 그룹에 넣었습니다.");
+        return true;
+      }
+
+      function releaseDraggedBlocksFromGroups(drag, undoSnapshot) {
+        var changed = false;
+        var movingIds = new Set((drag.blocks || []).map(function (item) {
+          return item.id;
+        }));
+        (drag.blocks || []).forEach(function (item) {
+          var block = getBlock(item.id);
+          if (!block || !item.parentId || movingIds.has(item.parentId)) {
+            return;
+          }
+          var center = getBlockCenterPoint(block);
+          var bounds = item.parentBounds;
+          if (bounds && !pointInRect(center, bounds)) {
+            block.parentId = "";
+            changed = true;
+          }
+        });
+        if (!changed) {
+          return false;
+        }
+        pushUndoSnapshot(undoSnapshot);
+        setSelection((drag.blocks || []).map(function (item) {
+          return item.id;
+        }).filter(function (id) {
+          return getBlock(id);
+        }));
+        renderAll();
+        saveLocalState();
+        showToast("블록을 그룹 밖으로 꺼냈습니다.");
+        return true;
       }
 
       function moveBlocksIntoInnerDiagram(targetId, blockIds, undoSnapshot) {
@@ -7511,6 +7745,14 @@
 
       function getBlockWidth(block) {
         var blockType = normalizeBlockType(block && block.type);
+        if (blockType === "group") {
+          return getGroupBlockWidth(block);
+        }
+        return getStandardBlockWidth(block);
+      }
+
+      function getStandardBlockWidth(block) {
+        var blockType = normalizeBlockType(block && block.type);
         var isMain = blockType === "main";
         var isMiddle = blockType === "middle";
         var title = String(block && block.title || "제목 없음");
@@ -7526,6 +7768,16 @@
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
         var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, toolFontSize) + padding) : 0;
         return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth, toolWidth);
+      }
+
+      function getGroupBlockWidth(block) {
+        var title = String(block && block.title || "그룹블록");
+        var titleWidth = Math.ceil(estimateTextWidth(title, 22) + GROUP_CARD_PADDING * 2 + 40);
+        var contentRight = 0;
+        getGroupChildBlocks(block && block.id).forEach(function (child) {
+          contentRight = Math.max(contentRight, (Number(child.x) || 0) + getStandardBlockWidth(child) - (Number(block.x) || 0) + GROUP_CARD_PADDING);
+        });
+        return Math.max(GROUP_CARD_MIN_WIDTH, titleWidth, contentRight);
       }
 
       function estimateTextWidth(text, fontSize) {
@@ -7549,10 +7801,21 @@
       function getBlockHeight(block) {
         var type = normalizeBlockType(block && block.type);
         var toolExtra = getBlockToolLabel(block) ? 22 : 0;
+        if (type === "group") {
+          return getGroupBlockHeight(block);
+        }
         if (type === "main") {
           return MAIN_CARD_HEIGHT + toolExtra;
         }
         return (type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT) + toolExtra;
+      }
+
+      function getGroupBlockHeight(block) {
+        var contentBottom = 0;
+        getGroupChildBlocks(block && block.id).forEach(function (child) {
+          contentBottom = Math.max(contentBottom, (Number(child.y) || 0) + getBlockHeight(child) - (Number(block.y) || 0) + GROUP_CARD_PADDING);
+        });
+        return Math.max(GROUP_CARD_MIN_HEIGHT, GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING, contentBottom);
       }
 
       function screenToWorld(clientX, clientY) {
@@ -7707,6 +7970,27 @@
         return null;
       }
 
+      function getGroupBlockFromPoint(clientX, clientY, excludedIds) {
+        var excluded = new Set(excludedIds || []);
+        var nodes = document.elementsFromPoint ? document.elementsFromPoint(clientX, clientY) : [document.elementFromPoint(clientX, clientY)];
+        var seen = new Set();
+        for (var index = 0; index < nodes.length; index += 1) {
+          var node = nodes[index];
+          var block = node && node.closest ? node.closest(".block-card") : null;
+          if (!block || seen.has(block)) {
+            continue;
+          }
+          seen.add(block);
+          if (excluded.has(block.dataset.blockId)) {
+            continue;
+          }
+          if (isGroupBlock(getBlock(block.dataset.blockId))) {
+            return block;
+          }
+        }
+        return null;
+      }
+
       function getConnectionLabelFromPoint(clientX, clientY, excludedIds) {
         var excluded = new Set(excludedIds || []);
         var nodes = document.elementsFromPoint ? document.elementsFromPoint(clientX, clientY) : [document.elementFromPoint(clientX, clientY)];
@@ -7734,6 +8018,84 @@
         return store.data.blocks.find(function (block) {
           return block.id === blockId;
         });
+      }
+
+      function isGroupBlock(block) {
+        return normalizeBlockType(block && block.type) === "group";
+      }
+
+      function isBlockInGroup(block) {
+        return Boolean(block && block.parentId && getBlock(block.parentId) && isGroupBlock(getBlock(block.parentId)));
+      }
+
+      function getGroupChildBlocks(groupId) {
+        if (!groupId) {
+          return [];
+        }
+        return (store.data.blocks || []).filter(function (block) {
+          return block && block.parentId === groupId;
+        });
+      }
+
+      function getBlockBounds(block) {
+        return {
+          left: Number(block && block.x) || 0,
+          top: Number(block && block.y) || 0,
+          right: (Number(block && block.x) || 0) + getBlockWidth(block),
+          bottom: (Number(block && block.y) || 0) + getBlockHeight(block)
+        };
+      }
+
+      function getBlockCenterPoint(block) {
+        return {
+          x: (Number(block && block.x) || 0) + getBlockWidth(block) / 2,
+          y: (Number(block && block.y) || 0) + getBlockHeight(block) / 2
+        };
+      }
+
+      function getDescendantBlockIds(blockId) {
+        var result = [];
+        function collect(parentId) {
+          getGroupChildBlocks(parentId).forEach(function (child) {
+            if (result.indexOf(child.id) !== -1) {
+              return;
+            }
+            result.push(child.id);
+            if (isGroupBlock(child)) {
+              collect(child.id);
+            }
+          });
+        }
+        collect(blockId);
+        return result;
+      }
+
+      function expandBlockIdsWithGroupChildren(blockIds) {
+        var expanded = [];
+        function add(id) {
+          if (!id || expanded.indexOf(id) !== -1 || !getBlock(id)) {
+            return;
+          }
+          expanded.push(id);
+          if (isGroupBlock(getBlock(id))) {
+            getDescendantBlockIds(id).forEach(add);
+          }
+        }
+        (blockIds || []).forEach(add);
+        return expanded;
+      }
+
+      function isDescendantOf(blockId, possibleAncestorId) {
+        var current = getBlock(blockId);
+        var guard = 0;
+        while (current && current.parentId && guard < 100) {
+          if (current.parentId === possibleAncestorId) {
+            return true;
+          }
+          current = getBlock(current.parentId);
+          guard += 1;
+        }
+        return false;
       }
 
       function isValidLink(url) {
@@ -8122,6 +8484,7 @@
               highlight: Boolean(block.highlight),
               category: String(block.category || ""),
               type: normalizeBlockType(block.type),
+              parentId: String(block.parentId || ""),
               inheritColor: normalizeBlockColorInheritance(block),
               color: getBlockColor(block),
               x: Number(block.x),
@@ -8197,12 +8560,14 @@
               highlight: normalizeBoolean(raw.highlight),
               category: category,
               type: normalizeBlockType(raw.type || raw.blockType),
-              inheritColor: raw.inheritColor === false ? false : normalizeBlockType(raw.type || raw.blockType) !== "main",
+              parentId: typeof raw.parentId === "string" ? raw.parentId : String(raw.parentId || ""),
+              inheritColor: raw.inheritColor === false ? false : (normalizeBlockType(raw.type || raw.blockType) !== "main" && normalizeBlockType(raw.type || raw.blockType) !== "group"),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
               y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
             });
           });
+          normalizeDiagramParentIds(result);
         }
 
         if (Array.isArray(source.connections)) {
@@ -8259,6 +8624,31 @@
         }
 
         return result;
+      }
+
+      function normalizeDiagramParentIds(diagram) {
+        var blockMap = new Map((diagram.blocks || []).map(function (block) {
+          return [block.id, block];
+        }));
+        (diagram.blocks || []).forEach(function (block) {
+          var parentId = String(block.parentId || "");
+          var parent = parentId ? blockMap.get(parentId) : null;
+          var guard = 0;
+          var current = parent;
+          if (!parent || parent.id === block.id || normalizeBlockType(parent.type) !== "group") {
+            block.parentId = "";
+            return;
+          }
+          while (current && current.parentId && guard < 100) {
+            if (current.parentId === block.id) {
+              block.parentId = "";
+              return;
+            }
+            current = blockMap.get(current.parentId);
+            guard += 1;
+          }
+          block.parentId = parentId;
+        });
       }
 
       function createUniqueBlockId() {
