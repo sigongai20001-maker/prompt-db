@@ -597,6 +597,42 @@
       display: block;
     }
 
+    .bulk-color-bar {
+      position: fixed;
+      left: 50%;
+      top: 72px;
+      z-index: 35;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      max-width: min(760px, calc(100vw - 32px));
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      background: rgba(28,33,41,0.96);
+      box-shadow: 0 14px 36px rgba(0,0,0,0.46);
+      transform: translateX(-50%);
+    }
+
+    .bulk-color-bar.is-visible {
+      display: flex;
+    }
+
+    .bulk-color-label {
+      flex: 0 0 auto;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .bulk-color-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      min-width: 0;
+    }
+
     .block-top {
       display: flex;
       flex-direction: column;
@@ -2075,6 +2111,11 @@
       <button class="toolbar-button danger" id="clearButton" type="button">전체 삭제</button>
     </header>
 
+    <div class="bulk-color-bar" id="bulkColorBar" hidden>
+      <span class="bulk-color-label" id="bulkColorLabel">선택 0개 컬러</span>
+      <div class="bulk-color-chips" id="bulkColorChips" aria-label="선택 블록 일괄 컬러"></div>
+    </div>
+
     <main class="canvas-viewport" id="canvasViewport" aria-label="생각블록 작업 캔버스">
       <div class="world" id="world">
         <svg class="connections-layer" id="connectionsLayer" viewBox="0 0 6000 4000" aria-hidden="true">
@@ -2458,6 +2499,9 @@
         els.viewport = document.getElementById("canvasViewport");
         els.world = document.getElementById("world");
         els.selectionBox = document.getElementById("selectionBox");
+        els.bulkColorBar = document.getElementById("bulkColorBar");
+        els.bulkColorLabel = document.getElementById("bulkColorLabel");
+        els.bulkColorChips = document.getElementById("bulkColorChips");
         els.blocksLayer = document.getElementById("blocksLayer");
         els.connectionGroup = document.getElementById("connectionGroup");
         els.draftConnection = document.getElementById("draftConnection");
@@ -2588,6 +2632,10 @@
         });
         els.saveButton.addEventListener("click", saveDiagram);
         els.clearButton.addEventListener("click", clearCanvas);
+        els.bulkColorBar.addEventListener("pointerdown", function (event) {
+          event.stopPropagation();
+        });
+        els.bulkColorChips.addEventListener("click", handleBulkColorChipClick);
         els.closeJsonButton.addEventListener("click", closeJsonModal);
         els.applyJsonButton.addEventListener("click", applyJsonFromModal);
         els.jsonFile.addEventListener("change", handleJsonFileSelect);
@@ -4743,6 +4791,7 @@
           focusBlockTitle(store.focusTitleBlockId);
           store.focusTitleBlockId = null;
         }
+        renderBulkColorBar();
       }
 
       function getBlocksInRenderOrder() {
@@ -5049,6 +5098,12 @@
         });
         title.addEventListener("click", function (event) {
           if (event.detail > 1) {
+            return;
+          }
+          if (event.shiftKey || event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            event.stopPropagation();
+            selectBlock(block.id, true);
             return;
           }
           event.stopPropagation();
@@ -5497,6 +5552,90 @@
           }
         }
         return null;
+      }
+
+      function renderBulkColorBar() {
+        var selectedBlocks = getSelectedBlockIds().map(getBlock).filter(Boolean);
+        var commonColor;
+        if (selectedBlocks.length < 2) {
+          els.bulkColorBar.hidden = true;
+          els.bulkColorBar.classList.remove("is-visible");
+          els.bulkColorChips.replaceChildren();
+          return;
+        }
+
+        commonColor = getCommonBlockColor(selectedBlocks);
+        els.bulkColorBar.hidden = false;
+        els.bulkColorBar.classList.add("is-visible");
+        els.bulkColorLabel.textContent = selectedBlocks.length + "개 선택 컬러";
+        els.bulkColorChips.replaceChildren();
+        getColorChipOptions(commonColor).forEach(function (color) {
+          var chip = document.createElement("button");
+          var isSelected = commonColor && color.toUpperCase() === commonColor;
+          chip.className = "color-chip" + (isSelected ? " is-selected" : "");
+          chip.type = "button";
+          chip.dataset.color = color;
+          chip.style.setProperty("--chip-color", color);
+          chip.title = color.toUpperCase();
+          chip.setAttribute("aria-label", color.toUpperCase() + " 일괄 적용");
+          chip.setAttribute("aria-pressed", isSelected ? "true" : "false");
+          els.bulkColorChips.append(chip);
+        });
+      }
+
+      function getCommonBlockColor(blocks) {
+        var firstColor = "";
+        var isSame = true;
+        blocks.forEach(function (block, index) {
+          var color = getBlockColor(block).toUpperCase();
+          if (index === 0) {
+            firstColor = color;
+            return;
+          }
+          if (color !== firstColor) {
+            isSame = false;
+          }
+        });
+        return isSame ? firstColor : "";
+      }
+
+      function handleBulkColorChipClick(event) {
+        var chip = event.target.closest(".color-chip");
+        if (!chip || !els.bulkColorChips.contains(chip)) {
+          return;
+        }
+        applyBulkBlockColor(chip.dataset.color);
+      }
+
+      function applyBulkBlockColor(color) {
+        var safeColor = validColor(color) ? color.toUpperCase() : "";
+        var selectedBlocks = getSelectedBlockIds().map(getBlock).filter(Boolean);
+        var undoSnapshot;
+        var changed = false;
+        if (!safeColor || selectedBlocks.length < 2) {
+          return;
+        }
+
+        undoSnapshot = createUndoSnapshot();
+        selectedBlocks.forEach(function (block) {
+          var type = normalizeBlockType(block.type);
+          if (block.color !== safeColor) {
+            block.color = safeColor;
+            changed = true;
+          }
+          if (type !== "main" && type !== "group" && block.inheritColor !== false) {
+            block.inheritColor = false;
+            changed = true;
+          }
+        });
+        if (!changed) {
+          renderBulkColorBar();
+          return;
+        }
+        pushUndoSnapshot(undoSnapshot);
+        renderAll();
+        saveLocalState();
+        showToast(selectedBlocks.length + "개 블록 컬러를 변경했습니다.");
       }
 
       function setEditColorValue(color) {
@@ -9011,6 +9150,7 @@
         return Boolean(
           target.closest(".block-card") ||
           target.closest(".block-create-menu") ||
+          target.closest(".bulk-color-bar") ||
           target.closest(".connection-hit") ||
           target.closest("button, select, input, textarea")
         );
