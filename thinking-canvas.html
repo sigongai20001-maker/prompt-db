@@ -412,11 +412,12 @@
     .block-card.is-group {
       align-items: flex-start;
       min-width: 360px;
+      padding: 0;
       border: 2px solid color-mix(in srgb, var(--block-color, var(--fallback)) 72%, rgba(255,255,255,0.28));
       border-left-width: 2px;
       background:
-        linear-gradient(180deg, color-mix(in srgb, var(--block-color, var(--fallback)) 34%, transparent), rgba(37,43,53,0.58)),
-        rgba(37,43,53,0.68);
+        linear-gradient(180deg, color-mix(in srgb, var(--block-color, var(--fallback)) 28%, transparent), rgba(37,43,53,0.72)),
+        rgba(37,43,53,0.76);
       box-shadow: 0 14px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.12);
       z-index: 0;
     }
@@ -429,7 +430,7 @@
       min-height: 50px;
       align-items: center;
       justify-content: center;
-      padding: 9px 16px;
+      padding: 0 16px;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 6px;
       background: var(--block-color, var(--fallback));
@@ -447,6 +448,41 @@
 
     .block-card.is-group .block-summary {
       display: none;
+    }
+
+    .group-drop-zone {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 86px;
+      bottom: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(255,255,255,0.22);
+      border-radius: 8px;
+      color: rgba(255,255,255,0.42);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)),
+        rgba(15,17,21,0.12);
+      font-size: 13px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+
+    .block-card.is-group.has-children .group-drop-zone {
+      border-color: rgba(255,255,255,0.10);
+      background: rgba(15,17,21,0.06);
+    }
+
+    .block-card.is-group.has-children .group-placeholder {
+      display: none;
+    }
+
+    .block-card.is-group.is-inner-drop-target .group-drop-zone {
+      border-color: rgba(61,220,151,0.92);
+      background: rgba(61,220,151,0.12);
+      box-shadow: inset 0 0 0 1px rgba(61,220,151,0.28);
     }
 
     .block-card.is-group.is-selected {
@@ -1962,6 +1998,7 @@
       <button class="toolbar-button" id="importButton" type="button">JSON 불러오기</button>
       <button class="toolbar-button" id="exportButton" type="button">JSON 내보내기</button>
       <button class="toolbar-button primary" id="addBlockButton" type="button">+ 새 블록</button>
+      <button class="toolbar-button" id="addGroupBlockButton" type="button">+ 그룹블록</button>
       <button class="toolbar-button" id="timelineButton" type="button" aria-pressed="false">일정</button>
       <button class="toolbar-button" id="highlightOnlyButton" type="button" aria-pressed="false">강조만</button>
       <button class="toolbar-button icon-button" id="arrangeButton" type="button" title="자동정렬" aria-label="자동정렬">
@@ -2343,6 +2380,7 @@
       var GROUP_CARD_MIN_HEIGHT = 360;
       var GROUP_CARD_PADDING = 26;
       var GROUP_CARD_HEADER_HEIGHT = 78;
+      var GROUP_CHILD_GAP = 12;
       var INNER_WORLD_WIDTH = 1800;
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
@@ -2426,6 +2464,7 @@
         els.importButton = document.getElementById("importButton");
         els.exportButton = document.getElementById("exportButton");
         els.addBlockButton = document.getElementById("addBlockButton");
+        els.addGroupBlockButton = document.getElementById("addGroupBlockButton");
         els.timelineButton = document.getElementById("timelineButton");
         els.highlightOnlyButton = document.getElementById("highlightOnlyButton");
         els.arrangeButton = document.getElementById("arrangeButton");
@@ -2531,6 +2570,7 @@
           exportJsonFile();
         });
         els.addBlockButton.addEventListener("click", addBlockAtViewportCenter);
+        els.addGroupBlockButton.addEventListener("click", addGroupBlockAtViewportCenter);
         els.timelineButton.addEventListener("click", toggleTimelinePanel);
         els.highlightOnlyButton.addEventListener("click", toggleHighlightOnly);
         els.arrangeButton.addEventListener("click", autoArrangeBlocks);
@@ -2627,6 +2667,7 @@
         var embedded = readEmbeddedDiagramRecord();
         if (embedded && (!scopedSaved || embedded.savedAt >= scopedSaved.savedAt)) {
           store.data = embedded.data;
+          arrangeAllGroupChildren();
           saveLocalState(embedded.data, embedded.savedAt);
           showToast("저장된 상태를 복원했습니다.");
           return;
@@ -2634,6 +2675,7 @@
 
         if (scopedSaved) {
           store.data = scopedSaved.data;
+          arrangeAllGroupChildren();
           showToast("저장된 상태를 복원했습니다.");
           return;
         }
@@ -2641,6 +2683,7 @@
         var legacySaved = readLocalDiagramRecord(STORAGE_KEY);
         if (legacySaved) {
           store.data = legacySaved.data;
+          arrangeAllGroupChildren();
           saveLocalState(legacySaved.data, legacySaved.savedAt);
           showToast("저장된 상태를 복원했습니다.");
         }
@@ -2736,6 +2779,7 @@
           return;
         }
         store.data = normalizeDiagram(snapshot.data);
+        arrangeAllGroupChildren();
         store.view.panX = finiteNumber(snapshot.view && snapshot.view.panX) ? snapshot.view.panX : 72;
         store.view.panY = finiteNumber(snapshot.view && snapshot.view.panY) ? snapshot.view.panY : 64;
         store.view.scale = finiteNumber(snapshot.view && snapshot.view.scale) ? snapshot.view.scale : 1;
@@ -2906,6 +2950,7 @@
         }
         pushUndoSnapshot(createUndoSnapshot());
         store.data = normalizeDiagram(parsed);
+        arrangeAllGroupChildren();
         clearSelectionState();
         resetView();
         renderAll();
@@ -4743,6 +4788,10 @@
         var connectSelectedButton = document.createElement("button");
         var isActiveBlock = store.selectedBlockId === block.id;
         var selectedCount = getSelectedBlockIds().length;
+        var blockType = normalizeBlockType(block.type);
+        var groupChildren = blockType === "group" ? getGroupChildBlocks(block.id) : [];
+        var groupDropZone = null;
+        var groupPlaceholder = null;
 
         card.className = "block-card";
         if (isBlockSelected(block.id)) {
@@ -4766,6 +4815,9 @@
         if (hasInnerDiagram(block)) {
           card.classList.add("has-inner");
         }
+        if (blockType === "group" && groupChildren.length) {
+          card.classList.add("has-children");
+        }
         card.dataset.blockId = block.id;
         card.style.setProperty("--card-width", getBlockWidth(block) + "px");
         card.style.setProperty("--card-height", getBlockHeight(block) + "px");
@@ -4785,6 +4837,16 @@
         }
         summary.className = "block-summary";
         summary.textContent = summaryText;
+
+        if (blockType === "group") {
+          groupDropZone = document.createElement("div");
+          groupDropZone.className = "group-drop-zone";
+          groupDropZone.setAttribute("aria-hidden", "true");
+          groupPlaceholder = document.createElement("span");
+          groupPlaceholder.className = "group-placeholder";
+          groupPlaceholder.textContent = "여기로 블록을 드래그";
+          groupDropZone.append(groupPlaceholder);
+        }
 
         doneToggle.className = "block-done-toggle" + (block.done ? " is-checked" : "");
         doneToggle.type = "button";
@@ -4976,6 +5038,9 @@
         if (store.createMenuBlockId === block.id) {
           card.append(createMenu);
         }
+        if (groupDropZone) {
+          card.append(groupDropZone);
+        }
 
         title.addEventListener("pointerdown", function (event) {
           if (event.button === 0) {
@@ -5054,6 +5119,13 @@
             }
             event.stopPropagation();
             selectBlock(block.id, event.shiftKey || event.ctrlKey || event.metaKey);
+          });
+        } else {
+          card.addEventListener("pointerdown", function (event) {
+            if (event.target !== card || isControlTarget(event.target)) {
+              return;
+            }
+            startBlockDrag(event, block.id);
           });
         }
         card.addEventListener("dblclick", function (event) {
@@ -5508,6 +5580,9 @@
       }
 
       function normalizeBlockType(value) {
+        if (value === "normal") {
+          return "sub";
+        }
         if (value === "main" || value === "middle" || value === "group") {
           return value;
         }
@@ -5890,11 +5965,24 @@
         addBlockAtWorldPoint(center.x, center.y);
       }
 
+      function addGroupBlockAtViewportCenter() {
+        var rect = els.viewport.getBoundingClientRect();
+        var center = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        addBlockAtWorldPoint(center.x, center.y, {
+          type: "group",
+          title: "그룹블록",
+          select: true,
+          focusTitle: true
+        });
+      }
+
       function addBlockAtWorldPoint(centerX, centerY, options) {
         var category = Object.keys(store.data.categories || {})[0] || "";
+        options = options || {};
+        var blockType = normalizeBlockType(options.type || "main");
         var block = {
           id: createUniqueBlockId(),
-          title: "새 블록",
+          title: options.title || "새 블록",
           subtitle: "",
           detail: "",
           link: "",
@@ -5907,14 +5995,14 @@
           done: false,
           highlight: false,
           category: category,
-          type: "main",
+          type: blockType,
           parentId: "",
-          inheritColor: false,
+          children: blockType === "group" ? [] : undefined,
+          inheritColor: blockType !== "main" && blockType !== "group",
           color: getCategoryColor(category),
           x: 0,
           y: 0
         };
-        options = options || {};
         block.x = Math.round(centerX - getBlockWidth(block) / 2);
         block.y = Math.round(centerY - getBlockHeight(block) / 2);
         pushUndoSnapshot(createUndoSnapshot());
@@ -6478,6 +6566,7 @@
           return block.id !== blockId;
         });
         var removeIds = new Set([blockId]);
+        removeIdsFromAllGroupChildren(removeIds);
         clearParentIdsForRemovedGroups(removeIds);
         store.data.connections = store.data.connections.filter(function (connection) {
           return !connectionTouchesBlockIds(connection, removeIds);
@@ -6500,6 +6589,7 @@
           store.data.blocks = store.data.blocks.filter(function (block) {
             return !removeIds.has(block.id);
           });
+          removeIdsFromAllGroupChildren(removeIds);
           clearParentIdsForRemovedGroups(removeIds);
           store.data.connections = store.data.connections.filter(function (connection) {
             return !connectionTouchesBlockIds(connection, removeIds);
@@ -6528,6 +6618,7 @@
         store.data.blocks = store.data.blocks.filter(function (block) {
           return !removeIds.has(block.id);
         });
+        removeIdsFromAllGroupChildren(removeIds);
         clearParentIdsForRemovedGroups(removeIds);
         store.data.connections = store.data.connections.filter(function (connection) {
           return !connectionTouchesBlockIds(connection, removeIds);
@@ -6571,6 +6662,9 @@
           category: source.category,
           type: normalizeBlockType(source.type),
           parentId: normalizeParentId(source.parentId, source.id),
+          children: isGroupBlock(source) ? getGroupChildBlocks(source.id).map(function (child) {
+            return child.id;
+          }) : [],
           inheritColor: normalizeBlockColorInheritance(source),
           color: getBlockColor(source),
           x: Math.round((Number(source.x) || 0) + 48),
@@ -6639,6 +6733,7 @@
             category: source.category,
             type: normalizeBlockType(source.type),
             parentId: "",
+            children: normalizeBlockType(source.type) === "group" ? [] : [],
             inheritColor: normalizeBlockColorInheritance(source),
             color: validColor(source.color) ? source.color : getCategoryColor(source.category),
             x: Math.round((Number(source.x) || 0) + offset),
@@ -6689,6 +6784,9 @@
           category: String(block.category || ""),
           type: normalizeBlockType(block.type),
           parentId: String(block.parentId || ""),
+          children: isGroupBlock(block) ? getGroupChildBlocks(block.id).map(function (child) {
+            return child.id;
+          }) : [],
           inheritColor: normalizeBlockColorInheritance(block),
           color: getBlockColor(block),
           x: Number(block.x) || 0,
@@ -6704,7 +6802,7 @@
         var blockType = normalizeBlockType(type);
         var block = {
           id: createUniqueBlockId(),
-          title: "새 블록",
+          title: blockType === "group" ? "그룹블록" : "새 블록",
           subtitle: "",
           detail: "",
           link: "",
@@ -6719,6 +6817,7 @@
           category: source.category,
           type: blockType,
           parentId: source.parentId || "",
+          children: blockType === "group" ? [] : [],
           inheritColor: blockType !== "main" && blockType !== "group",
           color: getBlockColor(source),
           x: 0,
@@ -7197,12 +7296,7 @@
         clearDropTargets();
         if (!didMove) {
           selectBlock(blockId, event.shiftKey || event.ctrlKey || event.metaKey);
-        } else if (targetGroupCard && moveBlocksToGroup(targetGroupCard.dataset.blockId, draggedIds, undoSnapshot)) {
-          return;
-        } else if (targetGroupCard) {
-          pushUndoSnapshot(undoSnapshot);
-          renderAll();
-          saveLocalState();
+        } else if (targetGroupCard && moveBlocksToGroup(targetGroupCard.dataset.blockId, draggedIds, undoSnapshot, event.clientY)) {
           return;
         } else if (releaseDraggedBlocksFromGroups(drag, undoSnapshot)) {
           return;
@@ -7452,34 +7546,49 @@
         });
       }
 
-      function moveBlocksToGroup(targetId, blockIds, undoSnapshot) {
+      function moveBlocksToGroup(targetId, blockIds, undoSnapshot, clientY) {
         var targetBlock = getBlock(targetId);
         var sourceIds = blockIds.filter(function (id, index) {
           return id && id !== targetId && blockIds.indexOf(id) === index;
         });
         var movingSet = new Set(sourceIds);
+        var currentChildren;
+        var nextChildren;
+        var insertIndex;
         sourceIds = sourceIds.filter(function (id) {
           var block = getBlock(id);
           return block && !movingSet.has(block.parentId);
         });
-        var changed = false;
         if (!targetBlock || !isGroupBlock(targetBlock) || !sourceIds.length) {
           return false;
         }
-        sourceIds.forEach(function (sourceId) {
+        sourceIds = sourceIds.filter(function (sourceId) {
           var block = getBlock(sourceId);
           if (!block || block.id === targetId || isDescendantOf(targetId, block.id)) {
-            return;
+            return false;
           }
-          if (block.parentId !== targetId) {
-            block.parentId = targetId;
-            changed = true;
-          }
+          return true;
         });
-        if (!changed) {
+        if (!sourceIds.length) {
           return false;
         }
+        currentChildren = getGroupChildBlocks(targetId).map(function (block) {
+          return block.id;
+        }).filter(function (id) {
+          return sourceIds.indexOf(id) === -1;
+        });
+        insertIndex = clamp(getGroupInsertionIndex(targetBlock, clientY, sourceIds), 0, currentChildren.length);
+        nextChildren = currentChildren.slice(0, insertIndex).concat(sourceIds, currentChildren.slice(insertIndex));
         pushUndoSnapshot(undoSnapshot);
+        removeIdsFromAllGroupChildren(new Set(sourceIds));
+        sourceIds.forEach(function (sourceId) {
+          var block = getBlock(sourceId);
+          if (block) {
+            block.parentId = targetId;
+          }
+        });
+        setGroupChildren(targetId, nextChildren);
+        arrangeGroupChildren(targetId);
         setSelection(sourceIds);
         renderAll();
         saveLocalState();
@@ -7492,6 +7601,8 @@
         var movingIds = new Set((drag.blocks || []).map(function (item) {
           return item.id;
         }));
+        var releasedIds = new Set();
+        var affectedGroupIds = new Set();
         (drag.blocks || []).forEach(function (item) {
           var block = getBlock(item.id);
           if (!block || !item.parentId || movingIds.has(item.parentId)) {
@@ -7501,6 +7612,8 @@
           var bounds = item.parentBounds;
           if (bounds && !pointInRect(center, bounds)) {
             block.parentId = "";
+            releasedIds.add(block.id);
+            affectedGroupIds.add(item.parentId);
             changed = true;
           }
         });
@@ -7508,6 +7621,8 @@
           return false;
         }
         pushUndoSnapshot(undoSnapshot);
+        removeIdsFromAllGroupChildren(releasedIds);
+        affectedGroupIds.forEach(arrangeGroupChildren);
         setSelection((drag.blocks || []).map(function (item) {
           return item.id;
         }).filter(function (id) {
@@ -7773,11 +7888,11 @@
       function getGroupBlockWidth(block) {
         var title = String(block && block.title || "그룹블록");
         var titleWidth = Math.ceil(estimateTextWidth(title, 22) + GROUP_CARD_PADDING * 2 + 40);
-        var contentRight = 0;
+        var contentWidth = 0;
         getGroupChildBlocks(block && block.id).forEach(function (child) {
-          contentRight = Math.max(contentRight, (Number(child.x) || 0) + getStandardBlockWidth(child) - (Number(block.x) || 0) + GROUP_CARD_PADDING);
+          contentWidth = Math.max(contentWidth, getStandardBlockWidth(child) + GROUP_CARD_PADDING * 2);
         });
-        return Math.max(GROUP_CARD_MIN_WIDTH, titleWidth, contentRight);
+        return Math.max(GROUP_CARD_MIN_WIDTH, titleWidth, contentWidth);
       }
 
       function estimateTextWidth(text, fontSize) {
@@ -7811,11 +7926,50 @@
       }
 
       function getGroupBlockHeight(block) {
-        var contentBottom = 0;
-        getGroupChildBlocks(block && block.id).forEach(function (child) {
-          contentBottom = Math.max(contentBottom, (Number(child.y) || 0) + getBlockHeight(child) - (Number(block.y) || 0) + GROUP_CARD_PADDING);
+        var children = getGroupChildBlocks(block && block.id);
+        var contentHeight = children.reduce(function (total, child, index) {
+          return total + getBlockHeight(child) + (index > 0 ? GROUP_CHILD_GAP : 0);
+        }, 0);
+        if (!children.length) {
+          return GROUP_CARD_MIN_HEIGHT;
+        }
+        return Math.max(GROUP_CARD_MIN_HEIGHT, GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING * 2 + contentHeight);
+      }
+
+      function arrangeGroupChildren(groupId) {
+        var group = getBlock(groupId);
+        var cursorY;
+        if (!group || !isGroupBlock(group)) {
+          return;
+        }
+        cursorY = Math.round((Number(group.y) || 0) + GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING);
+        getGroupChildBlocks(group.id).forEach(function (child) {
+          child.x = Math.round((Number(group.x) || 0) + GROUP_CARD_PADDING);
+          child.y = cursorY;
+          cursorY += getBlockHeight(child) + GROUP_CHILD_GAP;
         });
-        return Math.max(GROUP_CARD_MIN_HEIGHT, GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING, contentBottom);
+      }
+
+      function arrangeAllGroupChildren() {
+        (store.data.blocks || []).forEach(function (block) {
+          if (isGroupBlock(block)) {
+            arrangeGroupChildren(block.id);
+          }
+        });
+      }
+
+      function getGroupInsertionIndex(group, clientY, movingIds) {
+        var worldPoint = screenToWorld(0, clientY);
+        var moving = new Set(movingIds || []);
+        var children = getGroupChildBlocks(group && group.id).filter(function (child) {
+          return !moving.has(child.id);
+        });
+        for (var index = 0; index < children.length; index += 1) {
+          if (worldPoint.y < (Number(children[index].y) || 0) + getBlockHeight(children[index]) / 2) {
+            return index;
+          }
+        }
+        return children.length;
       }
 
       function screenToWorld(clientX, clientY) {
@@ -8029,11 +8183,65 @@
       }
 
       function getGroupChildBlocks(groupId) {
+        var group = getBlock(groupId);
+        var ordered = [];
+        var seen = new Set();
         if (!groupId) {
           return [];
         }
-        return (store.data.blocks || []).filter(function (block) {
-          return block && block.parentId === groupId;
+        if (group && !Array.isArray(group.children)) {
+          group.children = [];
+        }
+        (Array.isArray(group && group.children) ? group.children : []).forEach(function (childId) {
+          var child = getBlock(childId);
+          if (child && child.parentId === groupId && !seen.has(child.id)) {
+            seen.add(child.id);
+            ordered.push(child);
+          }
+        });
+        (store.data.blocks || []).filter(function (block) {
+          return block && block.parentId === groupId && !seen.has(block.id);
+        }).sort(function (a, b) {
+          var yDiff = (Number(a.y) || 0) - (Number(b.y) || 0);
+          if (Math.abs(yDiff) > 2) {
+            return yDiff;
+          }
+          return (Number(a.x) || 0) - (Number(b.x) || 0);
+        }).forEach(function (block) {
+          seen.add(block.id);
+          ordered.push(block);
+        });
+        if (group) {
+          group.children = ordered.map(function (block) {
+            return block.id;
+          });
+        }
+        return ordered;
+      }
+
+      function setGroupChildren(groupId, childIds) {
+        var group = getBlock(groupId);
+        var seen = new Set();
+        if (!group || !isGroupBlock(group)) {
+          return;
+        }
+        group.children = (childIds || []).filter(function (id) {
+          if (!id || id === groupId || seen.has(id) || !getBlock(id)) {
+            return false;
+          }
+          seen.add(id);
+          return true;
+        });
+      }
+
+      function removeIdsFromAllGroupChildren(removeIds) {
+        (store.data.blocks || []).forEach(function (block) {
+          if (!isGroupBlock(block) || !Array.isArray(block.children)) {
+            return;
+          }
+          block.children = block.children.filter(function (id) {
+            return !removeIds.has(id);
+          });
         });
       }
 
@@ -8485,6 +8693,9 @@
               category: String(block.category || ""),
               type: normalizeBlockType(block.type),
               parentId: String(block.parentId || ""),
+              children: isGroupBlock(block) ? getGroupChildBlocks(block.id).map(function (child) {
+                return child.id;
+              }) : [],
               inheritColor: normalizeBlockColorInheritance(block),
               color: getBlockColor(block),
               x: Number(block.x),
@@ -8561,6 +8772,9 @@
               category: category,
               type: normalizeBlockType(raw.type || raw.blockType),
               parentId: typeof raw.parentId === "string" ? raw.parentId : String(raw.parentId || ""),
+              children: Array.isArray(raw.children) ? raw.children.map(function (childId) {
+                return String(childId || "");
+              }).filter(Boolean) : [],
               inheritColor: raw.inheritColor === false ? false : (normalizeBlockType(raw.type || raw.blockType) !== "main" && normalizeBlockType(raw.type || raw.blockType) !== "group"),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
@@ -8631,6 +8845,20 @@
           return [block.id, block];
         }));
         (diagram.blocks || []).forEach(function (block) {
+          if (!isGroupBlock(block)) {
+            block.children = [];
+            return;
+          }
+          block.children = Array.isArray(block.children) ? block.children.filter(function (childId, index, list) {
+            var child = blockMap.get(childId);
+            if (!child || child.id === block.id || list.indexOf(childId) !== index) {
+              return false;
+            }
+            child.parentId = block.id;
+            return true;
+          }) : [];
+        });
+        (diagram.blocks || []).forEach(function (block) {
           var parentId = String(block.parentId || "");
           var parent = parentId ? blockMap.get(parentId) : null;
           var guard = 0;
@@ -8648,6 +8876,32 @@
             guard += 1;
           }
           block.parentId = parentId;
+        });
+        (diagram.blocks || []).forEach(function (block) {
+          var ordered;
+          var seen;
+          if (!isGroupBlock(block)) {
+            block.children = [];
+            return;
+          }
+          ordered = Array.isArray(block.children) ? block.children.slice() : [];
+          seen = new Set(ordered);
+          (diagram.blocks || []).filter(function (child) {
+            return child.parentId === block.id && !seen.has(child.id);
+          }).sort(function (a, b) {
+            var yDiff = (Number(a.y) || 0) - (Number(b.y) || 0);
+            if (Math.abs(yDiff) > 2) {
+              return yDiff;
+            }
+            return (Number(a.x) || 0) - (Number(b.x) || 0);
+          }).forEach(function (child) {
+            ordered.push(child.id);
+            seen.add(child.id);
+          });
+          block.children = ordered.filter(function (id) {
+            var child = blockMap.get(id);
+            return Boolean(child && child.parentId === block.id);
+          });
         });
       }
 
