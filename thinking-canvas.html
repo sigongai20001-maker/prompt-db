@@ -2461,6 +2461,7 @@
               <path class="inner-draft-connection" id="innerDraftConnection"></path>
             </svg>
             <div id="innerBlocksLayer"></div>
+            <div class="selection-box inner-selection-box" id="innerSelectionBox" aria-hidden="true"></div>
           </div>
         </div>
       </div>
@@ -2598,6 +2599,7 @@
           drag: null,
           connect: null,
           handlePress: null,
+          marquee: null,
           editBlockId: null
         },
         selectedBlockId: null,
@@ -2727,6 +2729,7 @@
         els.innerConnectionGroup = document.getElementById("innerConnectionGroup");
         els.innerDraftConnection = document.getElementById("innerDraftConnection");
         els.innerBlocksLayer = document.getElementById("innerBlocksLayer");
+        els.innerSelectionBox = document.getElementById("innerSelectionBox");
         els.cancelInnerDiagramButton = document.getElementById("cancelInnerDiagramButton");
         els.saveInnerDiagramButton = document.getElementById("saveInnerDiagramButton");
         els.innerBlockEditModal = document.getElementById("innerBlockEditModal");
@@ -3026,6 +3029,7 @@
           els.innerDraftConnection.classList.remove("is-active");
           els.innerDraftConnection.setAttribute("d", "");
         }
+        hideInnerSelectionBox();
         if (els.viewport) {
           els.viewport.classList.remove("is-panning", "is-selecting");
         }
@@ -4643,6 +4647,7 @@
           drag: null,
           connect: null,
           handlePress: null,
+          marquee: null,
           editBlockId: null
         };
         els.innerDiagramTitle.textContent = "내부 다이어그램 - " + (block.title || "제목 없음");
@@ -4653,6 +4658,7 @@
       function closeInnerDiagramModal() {
         closeInnerBlockEditModal();
         clearInnerDraftConnection();
+        hideInnerSelectionBox();
         store.innerDiagram = {
           blockId: null,
           data: createEmptyInnerDiagram(),
@@ -4660,6 +4666,7 @@
           drag: null,
           connect: null,
           handlePress: null,
+          marquee: null,
           editBlockId: null
         };
         if (els.innerDiagramModal) {
@@ -4911,9 +4918,7 @@
         var fromId = connect && connect.from;
         var target = getInnerBlockFromPoint(event.clientX, event.clientY, [fromId]);
         if (target && target.dataset.innerId && target.dataset.innerId !== fromId) {
-          addInnerConnection(fromId, target.dataset.innerId);
-          store.innerDiagram.selectedIds = [fromId, target.dataset.innerId];
-          renderInnerDiagram();
+          addInnerConnectionsToTarget(getInnerConnectionSourceIds(fromId, target.dataset.innerId), target.dataset.innerId);
         }
         if (connect && connect.handle) {
           safelyReleasePointer(connect.handle, event.pointerId);
@@ -4925,8 +4930,87 @@
         if (event.target !== els.innerDiagramStage && event.target !== els.innerDiagramWorld) {
           return;
         }
+        if (event.button === 0 && event.shiftKey) {
+          startInnerMarqueeSelection(event);
+          return;
+        }
         store.innerDiagram.selectedIds = [];
         renderInnerDiagram();
+      }
+
+      function startInnerMarqueeSelection(event) {
+        var worldPoint = screenToInnerWorld(event.clientX, event.clientY);
+        store.innerDiagram.marquee = {
+          pointerId: event.pointerId,
+          additive: event.shiftKey || event.ctrlKey || event.metaKey,
+          startWorldX: worldPoint.x,
+          startWorldY: worldPoint.y
+        };
+        if (!store.innerDiagram.marquee.additive) {
+          store.innerDiagram.selectedIds = [];
+          renderInnerDiagram();
+        }
+        updateInnerSelectionBox(worldPoint.x, worldPoint.y);
+        safelyCapturePointer(els.innerDiagramStage, event.pointerId);
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function moveInnerMarqueeSelection(event) {
+        var worldPoint = screenToInnerWorld(event.clientX, event.clientY);
+        updateInnerSelectionBox(worldPoint.x, worldPoint.y);
+      }
+
+      function finishInnerMarqueeSelection(event) {
+        var marquee = store.innerDiagram.marquee;
+        var endWorld = screenToInnerWorld(event.clientX, event.clientY);
+        var rect = normalizeRect(marquee.startWorldX, marquee.startWorldY, endWorld.x, endWorld.y);
+        var selectedIds = store.innerDiagram.data.blocks.filter(function (block) {
+          return rectsIntersect(rect, {
+            left: Number(block.x) || 0,
+            top: Number(block.y) || 0,
+            right: (Number(block.x) || 0) + INNER_BLOCK_WIDTH,
+            bottom: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT
+          });
+        }).map(function (block) {
+          return block.id;
+        });
+
+        if (marquee.additive) {
+          selectedIds.forEach(function (id) {
+            if (store.innerDiagram.selectedIds.indexOf(id) === -1) {
+              store.innerDiagram.selectedIds.push(id);
+            }
+          });
+        } else {
+          store.innerDiagram.selectedIds = selectedIds;
+        }
+
+        hideInnerSelectionBox();
+        safelyReleasePointer(els.innerDiagramStage, event.pointerId);
+        store.innerDiagram.marquee = null;
+        renderInnerDiagram();
+      }
+
+      function updateInnerSelectionBox(currentWorldX, currentWorldY) {
+        if (!els.innerSelectionBox || !store.innerDiagram.marquee) {
+          return;
+        }
+        var rect = normalizeRect(store.innerDiagram.marquee.startWorldX, store.innerDiagram.marquee.startWorldY, currentWorldX, currentWorldY);
+        els.innerSelectionBox.classList.add("is-visible");
+        els.innerSelectionBox.style.left = rect.left + "px";
+        els.innerSelectionBox.style.top = rect.top + "px";
+        els.innerSelectionBox.style.width = Math.max(0, rect.right - rect.left) + "px";
+        els.innerSelectionBox.style.height = Math.max(0, rect.bottom - rect.top) + "px";
+      }
+
+      function hideInnerSelectionBox() {
+        if (!els.innerSelectionBox) {
+          return;
+        }
+        els.innerSelectionBox.classList.remove("is-visible");
+        els.innerSelectionBox.style.width = "0px";
+        els.innerSelectionBox.style.height = "0px";
       }
 
       function selectInnerBlock(blockId, additive) {
@@ -7880,6 +7964,10 @@
           moveInnerDraftConnection(event);
           return;
         }
+        if (store.innerDiagram.marquee && event.pointerId === store.innerDiagram.marquee.pointerId) {
+          moveInnerMarqueeSelection(event);
+          return;
+        }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
           moveInnerDraggedBlock(event);
           return;
@@ -7923,6 +8011,10 @@
         }
         if (store.innerDiagram.connect && event.pointerId === store.innerDiagram.connect.pointerId) {
           finishInnerConnection(event);
+          return;
+        }
+        if (store.innerDiagram.marquee && event.pointerId === store.innerDiagram.marquee.pointerId) {
+          finishInnerMarqueeSelection(event);
           return;
         }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
@@ -9401,13 +9493,42 @@
 
       function addInnerConnection(from, to) {
         if (!from || !to || from === to || !getInnerBlock(from) || !getInnerBlock(to)) {
-          return;
+          return false;
         }
         var exists = store.innerDiagram.data.connections.some(function (connection) {
           return connection.from === from && connection.to === to;
         });
         if (!exists) {
           store.innerDiagram.data.connections.push({ from: from, to: to });
+          return true;
+        }
+        return false;
+      }
+
+      function getInnerConnectionSourceIds(fromId, targetId) {
+        var selectedIds = store.innerDiagram.selectedIds.slice();
+        var useSelectedBlocks = selectedIds.length > 1 && selectedIds.indexOf(fromId) !== -1;
+        var sourceIds = useSelectedBlocks ? selectedIds : [fromId];
+        var seen = new Set();
+        return sourceIds.filter(function (sourceId) {
+          if (!sourceId || sourceId === targetId || seen.has(sourceId) || !getInnerBlock(sourceId)) {
+            return false;
+          }
+          seen.add(sourceId);
+          return true;
+        });
+      }
+
+      function addInnerConnectionsToTarget(sourceIds, targetId) {
+        var added = [];
+        sourceIds.forEach(function (sourceId) {
+          if (addInnerConnection(sourceId, targetId)) {
+            added.push(sourceId);
+          }
+        });
+        if (added.length) {
+          store.innerDiagram.selectedIds = Array.from(new Set(added.concat([targetId])));
+          renderInnerDiagram();
         }
       }
 
