@@ -413,37 +413,39 @@
       align-items: flex-start;
       min-width: 360px;
       padding: 0;
-      border: 2px solid color-mix(in srgb, var(--block-color, var(--fallback)) 72%, rgba(255,255,255,0.28));
-      border-left-width: 2px;
+      border: 1px solid color-mix(in srgb, var(--block-color, var(--fallback)) 58%, rgba(255,255,255,0.22));
+      border-left-width: 1px;
       background:
-        linear-gradient(180deg, color-mix(in srgb, var(--block-color, var(--fallback)) 28%, transparent), rgba(37,43,53,0.72)),
+        linear-gradient(180deg, color-mix(in srgb, var(--block-color, var(--fallback)) 18%, transparent), rgba(37,43,53,0.68)),
         rgba(37,43,53,0.76);
-      box-shadow: 0 14px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.12);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.08);
       z-index: 0;
     }
 
     .block-card.is-group .block-top {
       position: absolute;
-      left: 14px;
-      right: 14px;
-      top: 14px;
-      min-height: 50px;
-      align-items: center;
+      left: 12px;
+      right: 12px;
+      top: 12px;
+      width: auto;
+      height: auto;
+      min-height: 46px;
+      align-items: flex-start;
       justify-content: center;
-      padding: 0 16px;
+      padding: 0 148px 0 14px;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 6px;
       background: var(--block-color, var(--fallback));
       color: var(--block-ink, #fff);
-      text-align: center;
+      text-align: left;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
     }
 
     .block-card.is-group .block-title {
       width: 100%;
       color: var(--block-ink, #fff);
-      font-size: 22px;
-      text-align: center;
+      font-size: 18px;
+      text-align: left;
     }
 
     .block-card.is-group .block-summary {
@@ -452,10 +454,10 @@
 
     .group-drop-zone {
       position: absolute;
-      left: 18px;
-      right: 18px;
-      top: 86px;
-      bottom: 18px;
+      left: 14px;
+      right: 14px;
+      top: 70px;
+      bottom: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -465,14 +467,13 @@
       background:
         linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)),
         rgba(15,17,21,0.12);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       pointer-events: none;
     }
 
     .block-card.is-group.has-children .group-drop-zone {
-      border-color: rgba(255,255,255,0.10);
-      background: rgba(15,17,21,0.06);
+      display: none;
     }
 
     .block-card.is-group.has-children .group-placeholder {
@@ -486,6 +487,12 @@
     }
 
     .block-card.is-group.is-selected {
+      outline: 0;
+      box-shadow:
+        0 0 0 2px rgba(61,220,151,0.18),
+        0 0 22px rgba(61,220,151,0.22),
+        0 12px 28px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
       z-index: 1;
     }
 
@@ -507,6 +514,30 @@
       outline: 3px solid rgba(61,220,151,0.6);
       outline-offset: 4px;
       z-index: 3;
+    }
+
+    .block-card.is-group.is-selected {
+      outline: 0;
+      outline-offset: 0;
+      box-shadow:
+        0 0 0 2px rgba(61,220,151,0.18),
+        0 0 22px rgba(61,220,151,0.22),
+        0 12px 28px rgba(0,0,0,0.34),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+    }
+
+    .block-card.is-group.is-inner-drop-target {
+      outline: 0;
+      outline-offset: 0;
+      box-shadow:
+        0 0 0 2px rgba(61,220,151,0.22),
+        0 0 26px rgba(61,220,151,0.28),
+        0 18px 44px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+    }
+
+    .block-card.is-group.is-inner-drop-target::before {
+      display: none;
     }
 
     .block-card.is-done {
@@ -581,6 +612,20 @@
       white-space: nowrap;
       transform: translateX(-50%);
       pointer-events: none;
+    }
+
+    .block-card.is-group.is-inner-drop-target {
+      outline: 0;
+      outline-offset: 0;
+      box-shadow:
+        0 0 0 2px rgba(61,220,151,0.22),
+        0 0 26px rgba(61,220,151,0.28),
+        0 18px 44px rgba(0,0,0,0.48),
+        inset 0 1px 0 rgba(255,255,255,0.10);
+    }
+
+    .block-card.is-group.is-inner-drop-target::before {
+      display: none;
     }
 
     .selection-box {
@@ -921,6 +966,26 @@
       background: rgba(28,33,41,0.96);
       box-shadow: var(--shadow);
       pointer-events: auto;
+    }
+
+    .block-card.is-group .block-quick-actions {
+      top: 18px;
+      right: 18px;
+      z-index: 8;
+      max-width: calc(100% - 36px);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 5px;
+      padding: 4px;
+      background: rgba(15,17,21,0.72);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.34);
+    }
+
+    .block-card.is-group .block-action-button {
+      min-width: 48px;
+      height: 28px;
+      padding: 0 9px;
+      font-size: 12px;
     }
 
     .block-action-button {
@@ -2449,10 +2514,10 @@
       var CARD_HEIGHT = 62;
       var MIDDLE_CARD_HEIGHT = 74;
       var MAIN_CARD_HEIGHT = 86;
-      var GROUP_CARD_MIN_WIDTH = 520;
-      var GROUP_CARD_MIN_HEIGHT = 360;
-      var GROUP_CARD_PADDING = 26;
-      var GROUP_CARD_HEADER_HEIGHT = 78;
+      var GROUP_CARD_MIN_WIDTH = 360;
+      var GROUP_CARD_MIN_HEIGHT = 180;
+      var GROUP_CARD_PADDING = 18;
+      var GROUP_CARD_HEADER_HEIGHT = 60;
       var GROUP_CHILD_GAP = 12;
       var BLOCK_RESIZE_MIN_WIDTH = 160;
       var BLOCK_RESIZE_MIN_HEIGHT = 48;
