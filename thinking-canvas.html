@@ -2062,6 +2062,7 @@
         <span id="documentTitle">새 문서</span>
       </div>
       <button class="toolbar-button" id="importButton" type="button">JSON 불러오기</button>
+      <button class="toolbar-button" id="appendJsonButton" type="button">JSON 추가</button>
       <button class="toolbar-button" id="exportButton" type="button">JSON 내보내기</button>
       <button class="toolbar-button primary" id="addBlockButton" type="button">+ 새 블록</button>
       <button class="toolbar-button" id="addGroupBlockButton" type="button">+ 그룹블록</button>
@@ -2188,6 +2189,7 @@
       </div>
       <footer class="modal-footer">
         <button class="modal-button" id="copyJsonButton" type="button">복사</button>
+        <button class="modal-button" id="cancelJsonButton" type="button">취소</button>
         <button class="modal-button primary" id="applyJsonButton" type="button">적용</button>
       </footer>
     </section>
@@ -2539,6 +2541,7 @@
         els.connectionGroup = document.getElementById("connectionGroup");
         els.draftConnection = document.getElementById("draftConnection");
         els.importButton = document.getElementById("importButton");
+        els.appendJsonButton = document.getElementById("appendJsonButton");
         els.exportButton = document.getElementById("exportButton");
         els.addBlockButton = document.getElementById("addBlockButton");
         els.addGroupBlockButton = document.getElementById("addGroupBlockButton");
@@ -2563,6 +2566,7 @@
         els.jsonMessage = document.getElementById("jsonMessage");
         els.closeJsonButton = document.getElementById("closeJsonButton");
         els.copyJsonButton = document.getElementById("copyJsonButton");
+        els.cancelJsonButton = document.getElementById("cancelJsonButton");
         els.applyJsonButton = document.getElementById("applyJsonButton");
         els.editModal = document.getElementById("editModal");
         els.editTitle = document.getElementById("editTitle");
@@ -2643,6 +2647,9 @@
         els.importButton.addEventListener("click", function () {
           openJsonModal("import");
         });
+        els.appendJsonButton.addEventListener("click", function () {
+          openJsonModal("append");
+        });
         els.exportButton.addEventListener("click", function () {
           exportJsonFile();
         });
@@ -2670,6 +2677,7 @@
         });
         els.bulkColorChips.addEventListener("click", handleBulkColorChipClick);
         els.closeJsonButton.addEventListener("click", closeJsonModal);
+        els.cancelJsonButton.addEventListener("click", closeJsonModal);
         els.applyJsonButton.addEventListener("click", applyJsonFromModal);
         els.jsonFile.addEventListener("change", handleJsonFileSelect);
         els.jsonText.addEventListener("dragenter", handleJsonDragEnter);
@@ -2955,17 +2963,21 @@
       }
 
       function openJsonModal(mode) {
+        var isExport = mode === "export";
+        var isAppend = mode === "append";
         store.jsonMode = mode;
-        els.jsonModalTitle.textContent = mode === "import" ? "JSON 불러오기" : "JSON 내보내기";
+        els.jsonModalTitle.textContent = isAppend ? "JSON 추가" : (mode === "import" ? "JSON 불러오기" : "JSON 내보내기");
         els.jsonMessage.textContent = "";
         els.jsonMessage.classList.remove("is-success");
         els.jsonText.classList.remove("is-drop-target");
         els.jsonFile.value = "";
-        els.jsonText.value = mode === "import" ? "" : JSON.stringify(getExportData(), null, 2);
-        els.jsonText.readOnly = mode === "export";
-        els.jsonFileRow.style.display = mode === "import" ? "" : "none";
-        els.applyJsonButton.style.display = mode === "import" ? "" : "none";
-        els.copyJsonButton.style.display = mode === "export" ? "" : "none";
+        els.jsonText.value = isExport ? JSON.stringify(getExportData(), null, 2) : "";
+        els.jsonText.readOnly = isExport;
+        els.jsonFileRow.style.display = isExport ? "none" : "";
+        els.applyJsonButton.style.display = isExport ? "none" : "";
+        els.applyJsonButton.textContent = isAppend ? "추가" : "적용";
+        els.cancelJsonButton.style.display = isExport ? "none" : "";
+        els.copyJsonButton.style.display = isExport ? "" : "none";
         els.jsonModal.classList.add("is-open");
         setTimeout(function () {
           els.jsonText.focus();
@@ -3020,13 +3032,23 @@
         try {
           parsed = extractDiagramJsonFromText(els.jsonText.value);
           if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            if (store.jsonMode === "append") {
+              alert("JSON 형식을 확인해주세요.");
+            }
             els.jsonMessage.classList.remove("is-success");
             els.jsonMessage.textContent = "JSON 형식을 확인해주세요.";
             return;
           }
         } catch (error) {
+          if (store.jsonMode === "append") {
+            alert("JSON 형식을 확인해주세요.");
+          }
           els.jsonMessage.classList.remove("is-success");
           els.jsonMessage.textContent = "JSON 형식을 확인해주세요.";
+          return;
+        }
+        if (store.jsonMode === "append") {
+          appendJsonToCanvas(parsed);
           return;
         }
         pushUndoSnapshot(createUndoSnapshot());
@@ -3038,6 +3060,179 @@
         saveLocalState();
         closeJsonModal();
         showToast("JSON을 캔버스에 적용했습니다.");
+      }
+
+      function appendJsonToCanvas(parsed) {
+        var incoming;
+        var undoSnapshot;
+        var result;
+        if (!isAppendableDiagramInput(parsed)) {
+          alert("JSON 스키마를 확인해주세요. categories, blocks, connections 구조가 필요합니다.");
+          els.jsonMessage.classList.remove("is-success");
+          els.jsonMessage.textContent = "JSON 스키마를 확인해주세요.";
+          return;
+        }
+        incoming = normalizeDiagram(parsed);
+        if (!Object.keys(incoming.categories || {}).length && !incoming.blocks.length && !incoming.connections.length) {
+          alert("추가할 항목이 없습니다.");
+          els.jsonMessage.classList.remove("is-success");
+          els.jsonMessage.textContent = "추가할 항목이 없습니다.";
+          return;
+        }
+
+        undoSnapshot = createUndoSnapshot();
+        result = mergeDiagramIntoCurrentData(incoming);
+        if (!result.changed) {
+          alert("추가할 항목이 없습니다.");
+          els.jsonMessage.classList.remove("is-success");
+          els.jsonMessage.textContent = "추가할 항목이 없습니다.";
+          return;
+        }
+
+        pushUndoSnapshot(undoSnapshot);
+        arrangeAllGroupChildren();
+        if (result.addedBlockIds.length) {
+          setSelection(result.addedBlockIds);
+        }
+        renderAll();
+        saveLocalState();
+        closeJsonModal();
+        showToast("JSON을 기존 캔버스에 추가했습니다.");
+      }
+
+      function isAppendableDiagramInput(value) {
+        if (!isPlainObject(value)) {
+          return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(value, "categories") && !isPlainObject(value.categories)) {
+          return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(value, "blocks") && !Array.isArray(value.blocks)) {
+          return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(value, "connections") && !Array.isArray(value.connections)) {
+          return false;
+        }
+        return Object.prototype.hasOwnProperty.call(value, "categories") ||
+          Object.prototype.hasOwnProperty.call(value, "blocks") ||
+          Object.prototype.hasOwnProperty.call(value, "connections");
+      }
+
+      function mergeDiagramIntoCurrentData(incoming) {
+        var categoryCountBefore = Object.keys(store.data.categories || {}).length;
+        var categoryMap = mergeIncomingCategories(incoming.categories);
+        var addedCategoryCount = Object.keys(store.data.categories || {}).length - categoryCountBefore;
+        var usedBlockIds = new Set(store.data.blocks.map(function (block) {
+          return block.id;
+        }));
+        var occupiedCoordinates = new Set(store.data.blocks.map(function (block) {
+          return createCoordinateKey(block.x, block.y);
+        }));
+        var idMap = new Map();
+        var addedBlocks = [];
+        var addedBlockIds = [];
+        var addedConnections = 0;
+
+        incoming.blocks.forEach(function (block) {
+          var nextBlock = Object.assign({}, block);
+          var originalId = String(block.id || "");
+          var nextId = originalId;
+          if (!nextId || usedBlockIds.has(nextId)) {
+            nextId = createUniqueBlockId();
+          }
+          while (usedBlockIds.has(nextId)) {
+            nextId = createUniqueBlockId();
+          }
+          usedBlockIds.add(nextId);
+          idMap.set(originalId, nextId);
+
+          nextBlock.id = nextId;
+          nextBlock.category = categoryMap[nextBlock.category] || nextBlock.category;
+          nextBlock.children = Array.isArray(block.children) ? block.children.slice() : [];
+          nextBlock.x = Math.round(Number(block.x) || 0);
+          nextBlock.y = Math.round(Number(block.y) || 0);
+          while (occupiedCoordinates.has(createCoordinateKey(nextBlock.x, nextBlock.y))) {
+            nextBlock.x += 40;
+            nextBlock.y += 40;
+          }
+          occupiedCoordinates.add(createCoordinateKey(nextBlock.x, nextBlock.y));
+          store.data.blocks.push(nextBlock);
+          addedBlocks.push(nextBlock);
+          addedBlockIds.push(nextId);
+        });
+
+        addedBlocks.forEach(function (block) {
+          var mappedParentId = block.parentId ? idMap.get(block.parentId) || block.parentId : "";
+          block.parentId = mappedParentId && getBlock(mappedParentId) && isGroupBlock(getBlock(mappedParentId)) ? mappedParentId : "";
+          block.children = Array.isArray(block.children) ? block.children.map(function (childId) {
+            return idMap.get(childId) || (getBlock(childId) ? childId : "");
+          }).filter(Boolean) : [];
+        });
+
+        incoming.connections.forEach(function (connection) {
+          var from = idMap.get(connection.from) || (getBlock(connection.from) ? connection.from : "");
+          var to = idMap.get(connection.to) || (getBlock(connection.to) ? connection.to : "");
+          if (!from || !to || from === to) {
+            return;
+          }
+          store.data.connections.push({
+            from: from,
+            to: to,
+            label: getConnectionLabel(connection),
+            ioType: getConnectionIoType(connection)
+          });
+          addedConnections += 1;
+        });
+
+        normalizeDiagramParentIds(store.data);
+        return {
+          addedBlockIds: addedBlockIds,
+          changed: Boolean(addedCategoryCount || addedBlocks.length || addedConnections)
+        };
+      }
+
+      function mergeIncomingCategories(categories) {
+        var categoryMap = {};
+        Object.entries(categories || {}).forEach(function (entry) {
+          var sourceKey = String(entry[0] || "");
+          var category = entry[1] || {};
+          var reusableKey = findReusableCategoryKey(sourceKey, category);
+          var nextKey = reusableKey || createUniqueCategoryKey(sourceKey);
+          categoryMap[sourceKey] = nextKey;
+          if (!store.data.categories[nextKey]) {
+            store.data.categories[nextKey] = {
+              label: String(category.label || sourceKey || nextKey),
+              color: validColor(category.color) ? category.color : FALLBACK_COLOR
+            };
+          }
+        });
+        return categoryMap;
+      }
+
+      function findReusableCategoryKey(sourceKey, category) {
+        var sourceLabel = String(category && category.label || sourceKey || "");
+        var existing = store.data.categories || {};
+        if (existing[sourceKey] && String(existing[sourceKey].label || sourceKey) === sourceLabel) {
+          return sourceKey;
+        }
+        return Object.keys(existing).find(function (key) {
+          return sourceLabel && String(existing[key].label || key) === sourceLabel;
+        }) || "";
+      }
+
+      function createUniqueCategoryKey(baseKey) {
+        var base = String(baseKey || "category").trim() || "category";
+        var key = base;
+        var index = 2;
+        while (store.data.categories[key]) {
+          key = base + "-" + index;
+          index += 1;
+        }
+        return key;
+      }
+
+      function createCoordinateKey(x, y) {
+        return Math.round(Number(x) || 0) + "|" + Math.round(Number(y) || 0);
       }
 
       function handleJsonFileSelect(event) {
@@ -3110,7 +3305,7 @@
       }
 
       function isImportMode() {
-        return store.jsonMode === "import" && els.jsonModal.classList.contains("is-open");
+        return (store.jsonMode === "import" || store.jsonMode === "append") && els.jsonModal.classList.contains("is-open");
       }
 
       function readTextFile(file) {
