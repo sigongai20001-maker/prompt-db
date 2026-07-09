@@ -3104,7 +3104,7 @@
         if (!isPlainObject(value)) {
           return false;
         }
-        if (Object.prototype.hasOwnProperty.call(value, "categories") && !isPlainObject(value.categories)) {
+        if (Object.prototype.hasOwnProperty.call(value, "categories") && !isPlainObject(value.categories) && !Array.isArray(value.categories)) {
           return false;
         }
         if (Object.prototype.hasOwnProperty.call(value, "blocks") && !Array.isArray(value.blocks)) {
@@ -9257,7 +9257,19 @@
             var key = String(entry[0]);
             var value = isPlainObject(entry[1]) ? entry[1] : {};
             result.categories[key] = {
-              label: typeof value.label === "string" ? value.label : String(value.label || key),
+              label: typeof value.label === "string" ? value.label : String(value.label || value.name || key),
+              color: validColor(value.color) ? value.color : FALLBACK_COLOR
+            };
+          });
+        } else if (Array.isArray(source.categories)) {
+          source.categories.forEach(function (category, index) {
+            var value = isPlainObject(category) ? category : {};
+            var key = String(value.id || value.key || "category-" + (index + 1));
+            if (!key) {
+              key = "category-" + (index + 1);
+            }
+            result.categories[key] = {
+              label: typeof value.label === "string" ? value.label : String(value.name || value.label || key),
               color: validColor(value.color) ? value.color : FALLBACK_COLOR
             };
           });
