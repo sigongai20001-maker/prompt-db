@@ -1900,6 +1900,20 @@
       stroke-linecap: round;
     }
 
+    .inner-draft-connection {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-dasharray: 6 6;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .inner-draft-connection.is-active {
+      opacity: 0.92;
+    }
+
     .inner-block {
       position: absolute;
       box-sizing: border-box;
@@ -1930,6 +1944,31 @@
       line-height: 1.35;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .inner-connect-handle {
+      position: absolute;
+      right: -8px;
+      top: 50%;
+      z-index: 3;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 2px solid #5b6472;
+      border-radius: 999px;
+      background: #252b35;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      cursor: crosshair;
+      pointer-events: auto;
+      transform: translateY(-50%);
+    }
+
+    .inner-connect-handle:hover,
+    .inner-connect-handle:focus-visible,
+    .inner-connect-handle.is-active {
+      border-color: var(--accent);
+      background: var(--accent);
+      outline: none;
     }
 
     #jsonText {
@@ -2419,6 +2458,7 @@
           <div class="inner-diagram-world" id="innerDiagramWorld">
             <svg class="inner-connection-layer" id="innerConnectionLayer" viewBox="0 0 1800 1000" aria-hidden="true">
               <g id="innerConnectionGroup"></g>
+              <path class="inner-draft-connection" id="innerDraftConnection"></path>
             </svg>
             <div id="innerBlocksLayer"></div>
           </div>
@@ -2556,6 +2596,8 @@
           data: createEmptyInnerDiagram(),
           selectedIds: [],
           drag: null,
+          connect: null,
+          handlePress: null,
           editBlockId: null
         },
         selectedBlockId: null,
@@ -2683,6 +2725,7 @@
         els.innerDiagramStage = document.getElementById("innerDiagramStage");
         els.innerDiagramWorld = document.getElementById("innerDiagramWorld");
         els.innerConnectionGroup = document.getElementById("innerConnectionGroup");
+        els.innerDraftConnection = document.getElementById("innerDraftConnection");
         els.innerBlocksLayer = document.getElementById("innerBlocksLayer");
         els.cancelInnerDiagramButton = document.getElementById("cancelInnerDiagramButton");
         els.saveInnerDiagramButton = document.getElementById("saveInnerDiagramButton");
@@ -2978,6 +3021,10 @@
         if (els.draftConnection) {
           els.draftConnection.classList.remove("is-active");
           els.draftConnection.setAttribute("d", "");
+        }
+        if (els.innerDraftConnection) {
+          els.innerDraftConnection.classList.remove("is-active");
+          els.innerDraftConnection.setAttribute("d", "");
         }
         if (els.viewport) {
           els.viewport.classList.remove("is-panning", "is-selecting");
@@ -4594,6 +4641,8 @@
           data: cloneInnerDiagram(block.innerDiagram),
           selectedIds: [],
           drag: null,
+          connect: null,
+          handlePress: null,
           editBlockId: null
         };
         els.innerDiagramTitle.textContent = "내부 다이어그램 - " + (block.title || "제목 없음");
@@ -4603,11 +4652,14 @@
 
       function closeInnerDiagramModal() {
         closeInnerBlockEditModal();
+        clearInnerDraftConnection();
         store.innerDiagram = {
           blockId: null,
           data: createEmptyInnerDiagram(),
           selectedIds: [],
           drag: null,
+          connect: null,
+          handlePress: null,
           editBlockId: null
         };
         if (els.innerDiagramModal) {
@@ -4693,6 +4745,7 @@
         store.innerDiagram.data.blocks.forEach(function (block) {
           var node = document.createElement("div");
           var title = document.createElement("div");
+          var handle = document.createElement("button");
           node.className = "inner-block" + (store.innerDiagram.selectedIds.indexOf(block.id) !== -1 ? " is-selected" : "");
           node.dataset.innerId = block.id;
           node.style.left = (Number(block.x) || 0) + "px";
@@ -4702,6 +4755,14 @@
           title.className = "inner-block-title";
           title.textContent = block.title || "내부 블록";
           node.append(title);
+          handle.className = "inner-connect-handle";
+          handle.type = "button";
+          handle.title = "연결";
+          handle.setAttribute("aria-label", "내부 블록 연결");
+          handle.addEventListener("pointerdown", function (event) {
+            startInnerHandlePress(event, block.id);
+          });
+          node.append(handle);
           node.addEventListener("pointerdown", function (event) {
             startInnerBlockDrag(event, block.id);
           });
@@ -4782,6 +4843,82 @@
           safelyReleasePointer(target, event.pointerId);
         }
         store.innerDiagram.drag = null;
+      }
+
+      function startInnerHandlePress(event, blockId) {
+        if (event.button !== 0) {
+          return;
+        }
+        if (!getInnerBlock(blockId)) {
+          return;
+        }
+        store.innerDiagram.handlePress = {
+          blockId: blockId,
+          pointerId: event.pointerId,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          handle: event.currentTarget
+        };
+        event.currentTarget.classList.add("is-active");
+        safelyCapturePointer(event.currentTarget, event.pointerId);
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function beginInnerConnectionFromHandlePress(event) {
+        var press = store.innerDiagram.handlePress;
+        var block = press && getInnerBlock(press.blockId);
+        if (!press || !block) {
+          clearInnerDraftConnection();
+          return;
+        }
+        var start = getInnerHandlePoint(block);
+        var current = screenToInnerWorld(event.clientX, event.clientY);
+        store.innerDiagram.connect = {
+          from: press.blockId,
+          pointerId: press.pointerId,
+          handle: press.handle,
+          startX: start.x,
+          startY: start.y,
+          endX: current.x,
+          endY: current.y
+        };
+        store.innerDiagram.handlePress = null;
+        updateInnerDraftConnection();
+      }
+
+      function finishInnerHandlePress(event) {
+        var press = store.innerDiagram.handlePress;
+        if (!press) {
+          return;
+        }
+        if (press.handle) {
+          press.handle.classList.remove("is-active");
+          safelyReleasePointer(press.handle, event.pointerId);
+        }
+        store.innerDiagram.handlePress = null;
+      }
+
+      function moveInnerDraftConnection(event) {
+        var worldPoint = screenToInnerWorld(event.clientX, event.clientY);
+        store.innerDiagram.connect.endX = worldPoint.x;
+        store.innerDiagram.connect.endY = worldPoint.y;
+        updateInnerDraftConnection();
+      }
+
+      function finishInnerConnection(event) {
+        var connect = store.innerDiagram.connect;
+        var fromId = connect && connect.from;
+        var target = getInnerBlockFromPoint(event.clientX, event.clientY, [fromId]);
+        if (target && target.dataset.innerId && target.dataset.innerId !== fromId) {
+          addInnerConnection(fromId, target.dataset.innerId);
+          store.innerDiagram.selectedIds = [fromId, target.dataset.innerId];
+          renderInnerDiagram();
+        }
+        if (connect && connect.handle) {
+          safelyReleasePointer(connect.handle, event.pointerId);
+        }
+        clearInnerDraftConnection();
       }
 
       function handleInnerStagePointerDown(event) {
@@ -7728,6 +7865,21 @@
       }
 
       function handlePointerMove(event) {
+        if (store.innerDiagram.handlePress && event.pointerId === store.innerDiagram.handlePress.pointerId) {
+          var innerMovedX = Math.abs(event.clientX - store.innerDiagram.handlePress.startClientX);
+          var innerMovedY = Math.abs(event.clientY - store.innerDiagram.handlePress.startClientY);
+          if (innerMovedX > 4 || innerMovedY > 4) {
+            beginInnerConnectionFromHandlePress(event);
+            if (store.innerDiagram.connect) {
+              moveInnerDraftConnection(event);
+            }
+          }
+          return;
+        }
+        if (store.innerDiagram.connect && event.pointerId === store.innerDiagram.connect.pointerId) {
+          moveInnerDraftConnection(event);
+          return;
+        }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
           moveInnerDraggedBlock(event);
           return;
@@ -7765,6 +7917,14 @@
       }
 
       function handlePointerUp(event) {
+        if (store.innerDiagram.handlePress && event.pointerId === store.innerDiagram.handlePress.pointerId) {
+          finishInnerHandlePress(event);
+          return;
+        }
+        if (store.innerDiagram.connect && event.pointerId === store.innerDiagram.connect.pointerId) {
+          finishInnerConnection(event);
+          return;
+        }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
           finishInnerBlockDrag(event);
           return;
@@ -9209,6 +9369,27 @@
         }) || null;
       }
 
+      function getInnerBlockFromPoint(clientX, clientY, excludedIds) {
+        var target = document.elementFromPoint(clientX, clientY);
+        var excludedSet = new Set(excludedIds || []);
+        var blockNode = target && target.closest ? target.closest(".inner-block") : null;
+        if (!blockNode || !els.innerBlocksLayer.contains(blockNode)) {
+          return null;
+        }
+        if (excludedSet.has(blockNode.dataset.innerId)) {
+          return null;
+        }
+        return blockNode;
+      }
+
+      function screenToInnerWorld(clientX, clientY) {
+        var rect = els.innerDiagramStage.getBoundingClientRect();
+        return {
+          x: clientX - rect.left + els.innerDiagramStage.scrollLeft,
+          y: clientY - rect.top + els.innerDiagramStage.scrollTop
+        };
+      }
+
       function setInnerBlockPosition(block) {
         var element = getInnerBlockElement(block.id);
         if (!element) {
@@ -9231,15 +9412,72 @@
       }
 
       function getInnerConnectionPath(fromBlock, toBlock) {
-        var start = {
-          x: (Number(fromBlock.x) || 0) + INNER_BLOCK_WIDTH / 2,
-          y: (Number(fromBlock.y) || 0) + INNER_BLOCK_HEIGHT / 2
-        };
-        var end = {
-          x: (Number(toBlock.x) || 0) + INNER_BLOCK_WIDTH / 2,
-          y: (Number(toBlock.y) || 0) + INNER_BLOCK_HEIGHT / 2
-        };
+        var start = getInnerEdgePoint(fromBlock, getInnerBlockCenter(toBlock));
+        var end = getInnerEdgePoint(toBlock, getInnerBlockCenter(fromBlock));
+        return getInnerConnectionPathFromPoints(start, end);
+      }
+
+      function getInnerConnectionPathFromPoints(start, end) {
         return "M " + start.x + " " + start.y + " L " + end.x + " " + end.y;
+      }
+
+      function getInnerBlockCenter(block) {
+        return {
+          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH / 2,
+          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+        };
+      }
+
+      function getInnerHandlePoint(block) {
+        return {
+          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH,
+          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+        };
+      }
+
+      function getInnerEdgePoint(block, targetPoint) {
+        var start = {
+          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH / 2,
+          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+        };
+        var dx = targetPoint.x - start.x;
+        var dy = targetPoint.y - start.y;
+        var halfWidth = INNER_BLOCK_WIDTH / 2;
+        var halfHeight = INNER_BLOCK_HEIGHT / 2;
+        var scale = Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight, 1);
+        return {
+          x: start.x + dx / scale,
+          y: start.y + dy / scale
+        };
+      }
+
+      function updateInnerDraftConnection() {
+        if (!store.innerDiagram.connect || !els.innerDraftConnection) {
+          return;
+        }
+        els.innerDraftConnection.setAttribute("d", getInnerConnectionPathFromPoints({
+          x: store.innerDiagram.connect.startX,
+          y: store.innerDiagram.connect.startY
+        }, {
+          x: store.innerDiagram.connect.endX,
+          y: store.innerDiagram.connect.endY
+        }));
+        els.innerDraftConnection.classList.add("is-active");
+      }
+
+      function clearInnerDraftConnection() {
+        if (store.innerDiagram.connect && store.innerDiagram.connect.handle) {
+          store.innerDiagram.connect.handle.classList.remove("is-active");
+        }
+        if (store.innerDiagram.handlePress && store.innerDiagram.handlePress.handle) {
+          store.innerDiagram.handlePress.handle.classList.remove("is-active");
+        }
+        store.innerDiagram.connect = null;
+        store.innerDiagram.handlePress = null;
+        if (els.innerDraftConnection) {
+          els.innerDraftConnection.classList.remove("is-active");
+          els.innerDraftConnection.setAttribute("d", "");
+        }
       }
 
       function isInnerDiagramModalOpen() {
