@@ -8719,8 +8719,10 @@
         var title = String(block && block.title || "그룹블록");
         var titleWidth = Math.ceil(estimateTextWidth(title, 22) + GROUP_CARD_PADDING * 2 + 40);
         var contentWidth = 0;
+        var groupX = Number(block && block.x) || 0;
         getGroupChildBlocks(block && block.id).forEach(function (child) {
-          contentWidth = Math.max(contentWidth, getBlockWidth(child) + GROUP_CARD_PADDING * 2);
+          var childRight = (Number(child.x) || 0) + getBlockWidth(child);
+          contentWidth = Math.max(contentWidth, childRight - groupX + GROUP_CARD_PADDING);
         });
         return Math.max(GROUP_CARD_MIN_WIDTH, titleWidth, contentWidth);
       }
@@ -8784,26 +8786,34 @@
 
       function getGroupBlockHeight(block) {
         var children = getGroupChildBlocks(block && block.id);
-        var contentHeight = children.reduce(function (total, child, index) {
-          return total + getBlockHeight(child) + (index > 0 ? GROUP_CHILD_GAP : 0);
+        var groupY = Number(block && block.y) || 0;
+        var contentBottom = children.reduce(function (bottom, child) {
+          return Math.max(bottom, (Number(child.y) || 0) + getBlockHeight(child) - groupY + GROUP_CARD_PADDING);
         }, 0);
         if (!children.length) {
           return GROUP_CARD_MIN_HEIGHT;
         }
-        return Math.max(GROUP_CARD_MIN_HEIGHT, GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING * 2 + contentHeight);
+        return Math.max(GROUP_CARD_MIN_HEIGHT, GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING * 2, contentBottom);
       }
 
       function arrangeGroupChildren(groupId) {
         var group = getBlock(groupId);
-        var cursorY;
+        var minX;
+        var minY;
         if (!group || !isGroupBlock(group)) {
           return;
         }
-        cursorY = Math.round((Number(group.y) || 0) + GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING);
-        getGroupChildBlocks(group.id).forEach(function (child) {
-          child.x = Math.round((Number(group.x) || 0) + GROUP_CARD_PADDING);
-          child.y = cursorY;
-          cursorY += getBlockHeight(child) + GROUP_CHILD_GAP;
+        minX = Math.round((Number(group.x) || 0) + GROUP_CARD_PADDING);
+        minY = Math.round((Number(group.y) || 0) + GROUP_CARD_HEADER_HEIGHT + GROUP_CARD_PADDING);
+        getGroupChildBlocks(group.id).forEach(function (child, index) {
+          if (!finiteNumber(child.x)) {
+            child.x = minX;
+          }
+          if (!finiteNumber(child.y)) {
+            child.y = minY + index * (getBlockHeight(child) + GROUP_CHILD_GAP);
+          }
+          child.x = Math.max(minX, Math.round(Number(child.x) || minX));
+          child.y = Math.max(minY, Math.round(Number(child.y) || minY));
         });
       }
 
