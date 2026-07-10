@@ -1977,6 +1977,15 @@
       stroke: var(--accent);
     }
 
+    .inner-connection-label-box {
+      overflow: visible;
+      pointer-events: auto;
+    }
+
+    .inner-connection-label-box .connection-label {
+      cursor: pointer;
+    }
+
     .inner-draft-connection {
       fill: none;
       stroke: var(--accent);
@@ -2619,6 +2628,7 @@
           <button class="modal-button primary" id="addInnerBlockButton" type="button">+ 내부 블록</button>
           <button class="modal-button" id="editInnerSelectionButton" type="button">편집</button>
           <button class="modal-button" id="connectInnerBlocksButton" type="button">연결</button>
+          <button class="modal-button" id="extractInnerSelectionButton" type="button">밖으로 꺼내기</button>
           <button class="modal-button danger" id="deleteInnerSelectionButton" type="button">삭제</button>
         </div>
         <div class="inner-diagram-stage" id="innerDiagramStage">
@@ -2770,6 +2780,7 @@
           connect: null,
           handlePress: null,
           marquee: null,
+          editConnectionKey: null,
           editBlockId: null
         },
         selectedBlockId: null,
@@ -2898,6 +2909,7 @@
         els.addInnerBlockButton = document.getElementById("addInnerBlockButton");
         els.editInnerSelectionButton = document.getElementById("editInnerSelectionButton");
         els.connectInnerBlocksButton = document.getElementById("connectInnerBlocksButton");
+        els.extractInnerSelectionButton = document.getElementById("extractInnerSelectionButton");
         els.deleteInnerSelectionButton = document.getElementById("deleteInnerSelectionButton");
         els.innerDiagramStage = document.getElementById("innerDiagramStage");
         els.innerDiagramWorld = document.getElementById("innerDiagramWorld");
@@ -3002,6 +3014,7 @@
         els.addInnerBlockButton.addEventListener("click", addInnerBlock);
         els.editInnerSelectionButton.addEventListener("click", editInnerSelection);
         els.connectInnerBlocksButton.addEventListener("click", connectInnerSelection);
+        els.extractInnerSelectionButton.addEventListener("click", extractInnerSelectionToCanvas);
         els.deleteInnerSelectionButton.addEventListener("click", deleteInnerSelection);
         els.innerBlockColorChips.addEventListener("click", handleInnerColorChipClick);
         els.cancelInnerBlockEditTopButton.addEventListener("click", closeInnerBlockEditModal);
@@ -4938,6 +4951,7 @@
           connect: null,
           handlePress: null,
           marquee: null,
+          editConnectionKey: null,
           editBlockId: null
         };
         els.innerDiagramTitle.textContent = "내부 다이어그램 - " + (block.title || "제목 없음");
@@ -4947,6 +4961,7 @@
 
       function closeInnerDiagramModal() {
         closeInnerBlockEditModal();
+        closeConnectionEditModal();
         clearInnerDraftConnection();
         hideInnerSelectionBox();
         store.innerDiagram = {
@@ -4958,6 +4973,7 @@
           connect: null,
           handlePress: null,
           marquee: null,
+          editConnectionKey: null,
           editBlockId: null
         };
         if (els.innerDiagramModal) {
@@ -5036,6 +5052,104 @@
         renderInnerDiagram();
       }
 
+      function extractInnerSelectionToCanvas() {
+        var parentBlock = getBlock(store.innerDiagram.blockId);
+        var selectedIds = store.innerDiagram.selectedIds.slice();
+        var selectedSet = new Set(selectedIds);
+        var selectedBlocks = selectedIds.map(getInnerBlock).filter(Boolean);
+        var idMap = new Map();
+        var bounds;
+        var baseX;
+        var baseY;
+        var createdIds = [];
+        if (!parentBlock || !selectedBlocks.length) {
+          showToast("밖으로 꺼낼 내부 블록을 선택해주세요.");
+          return;
+        }
+        bounds = getInnerBlocksBounds(selectedBlocks);
+        baseX = Math.round(clamp((Number(parentBlock.x) || 0) + getBlockWidth(parentBlock) + 100, 0, WORLD_WIDTH - bounds.width));
+        baseY = Math.round(clamp(Number(parentBlock.y) || 0, 0, WORLD_HEIGHT - bounds.height));
+        pushUndoSnapshot(createUndoSnapshot());
+        selectedBlocks.forEach(function (innerBlock) {
+          var outerId = createUniqueBlockId();
+          var width = Math.round(clamp(getInnerBlockWidth(innerBlock), BLOCK_RESIZE_MIN_WIDTH, 720));
+          var height = Math.round(clamp(getInnerBlockHeight(innerBlock), BLOCK_RESIZE_MIN_HEIGHT, 360));
+          idMap.set(innerBlock.id, outerId);
+          createdIds.push(outerId);
+          store.data.blocks.push({
+            id: outerId,
+            title: innerBlock.title || "내부 블록",
+            subtitle: "",
+            detail: "",
+            link: "",
+            tool: "",
+            images: [],
+            innerDiagram: createEmptyInnerDiagram(),
+            startDate: null,
+            dueDate: null,
+            status: null,
+            done: false,
+            highlight: false,
+            category: parentBlock.category || "",
+            type: "sub",
+            parentId: "",
+            children: undefined,
+            inheritColor: false,
+            color: validColor(innerBlock.color) ? innerBlock.color : getBlockColor(parentBlock),
+            width: width,
+            height: height,
+            x: Math.round(clamp(baseX + (Number(innerBlock.x) || 0) - bounds.left, 0, WORLD_WIDTH - width)),
+            y: Math.round(clamp(baseY + (Number(innerBlock.y) || 0) - bounds.top, 0, WORLD_HEIGHT - height))
+          });
+        });
+        store.innerDiagram.data.connections.forEach(function (connection) {
+          if (selectedSet.has(connection.from) && selectedSet.has(connection.to)) {
+            store.data.connections.push({
+              from: idMap.get(connection.from),
+              to: idMap.get(connection.to),
+              label: getConnectionLabel(connection),
+              ioType: getConnectionIoType(connection)
+            });
+          }
+        });
+        store.innerDiagram.data.blocks = store.innerDiagram.data.blocks.filter(function (block) {
+          return !selectedSet.has(block.id);
+        });
+        store.innerDiagram.data.connections = store.innerDiagram.data.connections.filter(function (connection) {
+          return !selectedSet.has(connection.from) && !selectedSet.has(connection.to);
+        });
+        store.innerDiagram.selectedIds = [];
+        parentBlock.innerDiagram = cloneInnerDiagram(store.innerDiagram.data);
+        setSelection(createdIds);
+        renderInnerDiagram();
+        renderAll();
+        saveLocalState();
+        showToast(selectedBlocks.length + "개 내부 블록을 밖으로 꺼냈습니다.");
+      }
+
+      function getInnerBlocksBounds(blocks) {
+        var left = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.x) || 0;
+        }));
+        var top = Math.min.apply(null, blocks.map(function (block) {
+          return Number(block.y) || 0;
+        }));
+        var right = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.x) || 0) + getInnerBlockWidth(block);
+        }));
+        var bottom = Math.max.apply(null, blocks.map(function (block) {
+          return (Number(block.y) || 0) + getInnerBlockHeight(block);
+        }));
+        return {
+          left: left,
+          top: top,
+          right: right,
+          bottom: bottom,
+          width: right - left,
+          height: bottom - top
+        };
+      }
+
       function duplicateInnerBlock(blockId) {
         var source = getInnerBlock(blockId);
         var copy;
@@ -5086,6 +5200,7 @@
           var editButton = document.createElement("button");
           var copyButton = document.createElement("button");
           var connectButton = document.createElement("button");
+          var extractButton = document.createElement("button");
           var deleteButton = document.createElement("button");
           var isSelected = store.innerDiagram.selectedIds.indexOf(block.id) !== -1;
           node.className = "inner-block" + (isSelected ? " is-selected" : "");
@@ -5153,6 +5268,18 @@
             event.stopPropagation();
             connectInnerSelection();
           });
+          extractButton.className = "block-action-button";
+          extractButton.type = "button";
+          extractButton.textContent = "밖으로";
+          extractButton.title = "선택 내부 블록을 밖으로 꺼내기";
+          extractButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (store.innerDiagram.selectedIds.indexOf(block.id) === -1) {
+              store.innerDiagram.selectedIds = [block.id];
+            }
+            extractInnerSelectionToCanvas();
+          });
           deleteButton.className = "block-action-button danger";
           deleteButton.type = "button";
           deleteButton.textContent = isSelected && store.innerDiagram.selectedIds.length > 1 ? store.innerDiagram.selectedIds.length + "개 삭제" : "삭제";
@@ -5165,7 +5292,7 @@
             }
             deleteInnerSelection();
           });
-          actions.append(editButton, copyButton, connectButton, deleteButton);
+          actions.append(editButton, copyButton, connectButton, extractButton, deleteButton);
           handle.className = "inner-connect-handle";
           handle.type = "button";
           handle.title = "연결";
@@ -5212,10 +5339,66 @@
           path.addEventListener("click", function (event) {
             event.preventDefault();
             event.stopPropagation();
-            removeInnerConnection(connection.from, connection.to);
+            editInnerConnectionLabel(getInnerConnectionKey(connection));
+          });
+          path.addEventListener("dblclick", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            editInnerConnectionLabel(getInnerConnectionKey(connection));
           });
           els.innerConnectionGroup.append(path);
+          var label = createInnerConnectionLabelElement(connection, fromBlock, toBlock);
+          if (label) {
+            els.innerConnectionGroup.append(label);
+          }
         });
+      }
+
+      function createInnerConnectionLabelElement(connection, fromBlock, toBlock) {
+        var labelText = getConnectionLabel(connection);
+        if (!labelText) {
+          return null;
+        }
+        var ioType = getConnectionIoType(connection);
+        var ioLabel = getConnectionIoLabel(ioType);
+        var point = getInnerConnectionLabelPoint(fromBlock, toBlock);
+        var size = getConnectionLabelSize(connection);
+        var key = getInnerConnectionKey(connection);
+        var foreignObject = createSvgElement("foreignObject");
+        var label = document.createElement("div");
+        var text = document.createElement("span");
+        foreignObject.setAttribute("x", Math.round(point.x - size.width / 2));
+        foreignObject.setAttribute("y", Math.round(point.y - size.height / 2));
+        foreignObject.setAttribute("width", size.width);
+        foreignObject.setAttribute("height", size.height);
+        foreignObject.setAttribute("class", "connection-label-box inner-connection-label-box");
+        foreignObject.dataset.innerConnectionKey = key;
+        foreignObject.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          editInnerConnectionLabel(key);
+        });
+        label.className = "connection-label" + (ioType ? " is-" + ioType : "");
+        if (ioLabel) {
+          var badge = document.createElement("span");
+          badge.className = "connection-io-badge";
+          badge.textContent = ioLabel;
+          label.append(badge);
+        }
+        text.className = "connection-label-text";
+        text.textContent = labelText;
+        label.append(text);
+        foreignObject.append(label);
+        return foreignObject;
+      }
+
+      function getInnerConnectionLabelPoint(fromBlock, toBlock) {
+        var start = getInnerEdgePoint(fromBlock, getInnerBlockCenter(toBlock));
+        var end = getInnerEdgePoint(toBlock, getInnerBlockCenter(fromBlock));
+        return {
+          x: (start.x + end.x) / 2,
+          y: (start.y + end.y) / 2
+        };
       }
 
       function startInnerBlockDrag(event, blockId) {
@@ -7189,6 +7372,7 @@
         if (!connection) {
           return;
         }
+        store.innerDiagram.editConnectionKey = null;
         store.editConnectionKey = key;
         els.connectionLabelText.value = getConnectionLabel(connection);
         setConnectionIoEditValue(getConnectionIoType(connection));
@@ -7201,12 +7385,17 @@
 
       function closeConnectionEditModal() {
         store.editConnectionKey = null;
+        store.innerDiagram.editConnectionKey = null;
         if (els.connectionEditModal) {
           els.connectionEditModal.classList.remove("is-open");
         }
       }
 
       function saveConnectionEditModal() {
+        if (store.innerDiagram.editConnectionKey) {
+          saveInnerConnectionEditModal();
+          return;
+        }
         var connection = findConnectionByKey(store.editConnectionKey);
         if (!connection) {
           closeConnectionEditModal();
@@ -9111,7 +9300,7 @@
           if (!sourceIdSet.has(connection.from) || !sourceIdSet.has(connection.to)) {
             return;
           }
-          addInnerConnectionToDiagram(innerDiagram, idMap.get(connection.from), idMap.get(connection.to));
+          addInnerConnectionToDiagram(innerDiagram, idMap.get(connection.from), idMap.get(connection.to), connection);
         });
 
         pushUndoSnapshot(undoSnapshot);
@@ -9175,7 +9364,7 @@
         };
       }
 
-      function addInnerConnectionToDiagram(innerDiagram, from, to) {
+      function addInnerConnectionToDiagram(innerDiagram, from, to, sourceConnection) {
         if (!from || !to || from === to) {
           return;
         }
@@ -9183,7 +9372,12 @@
           return connection.from === from && connection.to === to;
         });
         if (!exists) {
-          innerDiagram.connections.push({ from: from, to: to });
+          innerDiagram.connections.push({
+            from: from,
+            to: to,
+            label: getConnectionLabel(sourceConnection),
+            ioType: getConnectionIoType(sourceConnection)
+          });
         }
       }
 
@@ -10080,8 +10274,13 @@
             if (!blockIds.has(from) || !blockIds.has(to) || from === to || connectionKeys.has(key)) {
               return;
             }
-            connectionKeys.add(key);
-            result.connections.push({ from: from, to: to });
+          connectionKeys.add(key);
+            result.connections.push({
+              from: from,
+              to: to,
+              label: typeof raw.label === "string" ? raw.label : String(raw.label || ""),
+              ioType: normalizeConnectionIoType(raw.ioType || raw.flow || raw.kind)
+            });
           });
         }
 
@@ -10187,7 +10386,7 @@
           return connection.from === from && connection.to === to;
         });
         if (!exists) {
-          store.innerDiagram.data.connections.push({ from: from, to: to });
+          store.innerDiagram.data.connections.push({ from: from, to: to, label: "", ioType: "" });
           return true;
         }
         return false;
@@ -10201,6 +10400,47 @@
         if (store.innerDiagram.data.connections.length !== before) {
           renderInnerDiagram();
         }
+      }
+
+      function getInnerConnectionKey(connection) {
+        return String(connection && connection.from || "") + "\u0000" + String(connection && connection.to || "");
+      }
+
+      function findInnerConnectionByKey(key) {
+        return (store.innerDiagram.data.connections || []).find(function (connection) {
+          return getInnerConnectionKey(connection) === key;
+        }) || null;
+      }
+
+      function editInnerConnectionLabel(key) {
+        var connection = findInnerConnectionByKey(key);
+        if (!connection) {
+          return;
+        }
+        store.editConnectionKey = null;
+        store.innerDiagram.editConnectionKey = key;
+        els.connectionLabelText.value = getConnectionLabel(connection);
+        setConnectionIoEditValue(getConnectionIoType(connection));
+        els.connectionEditModal.classList.add("is-open");
+        setTimeout(function () {
+          els.connectionLabelText.focus();
+          els.connectionLabelText.select();
+        }, 0);
+      }
+
+      function saveInnerConnectionEditModal() {
+        var connection = findInnerConnectionByKey(store.innerDiagram.editConnectionKey);
+        if (!connection) {
+          closeConnectionEditModal();
+          return;
+        }
+        var nextLabel = String(els.connectionLabelText.value || "").trim();
+        var nextIoType = nextLabel ? normalizeConnectionIoType(els.connectionIoType.value) : "";
+        connection.label = nextLabel;
+        connection.ioType = nextIoType;
+        renderInnerDiagram();
+        closeConnectionEditModal();
+        showToast(nextLabel ? "내부 연결 내용을 저장했습니다." : "내부 연결 내용을 비웠습니다.");
       }
 
       function getInnerConnectionSourceIds(fromId, targetId) {
