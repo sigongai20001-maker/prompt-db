@@ -5492,6 +5492,7 @@
         var quickActions = document.createElement("div");
         var editButton = document.createElement("button");
         var copyButton = document.createElement("button");
+        var typeButton = document.createElement("button");
         var highlightButton = document.createElement("button");
         var innerActionButton = document.createElement("button");
         var deleteButton = document.createElement("button");
@@ -5690,6 +5691,16 @@
           duplicateBlock(block.id);
         });
 
+        typeButton.className = "block-action-button";
+        typeButton.type = "button";
+        typeButton.textContent = "성격";
+        typeButton.title = "블록 성격 바로 변경";
+        typeButton.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          cycleBlockType(block.id);
+        });
+
         highlightButton.className = "block-action-button";
         highlightButton.type = "button";
         highlightButton.textContent = block.highlight ? "핀 해제" : "핀";
@@ -5734,7 +5745,7 @@
           removeBlock(block.id);
         });
 
-        quickActions.append(editButton, copyButton, highlightButton, innerActionButton);
+        quickActions.append(editButton, copyButton, typeButton, highlightButton, innerActionButton);
         if (selectedCount > 1) {
           quickActions.append(connectSelectedButton);
         }
@@ -6495,6 +6506,50 @@
           return value;
         }
         return "sub";
+      }
+
+      function getBlockTypeLabel(type) {
+        var safeType = normalizeBlockType(type);
+        if (safeType === "main") {
+          return "메인";
+        }
+        if (safeType === "middle") {
+          return "중간";
+        }
+        if (safeType === "group") {
+          return "그룹";
+        }
+        return "서브";
+      }
+
+      function getNextBlockType(type) {
+        var types = ["sub", "middle", "main", "group"];
+        var index = types.indexOf(normalizeBlockType(type));
+        return types[(index + 1) % types.length];
+      }
+
+      function cycleBlockType(blockId) {
+        var block = getBlock(blockId);
+        var nextType;
+        var undoSnapshot;
+        if (!block) {
+          return;
+        }
+        nextType = getNextBlockType(block.type);
+        undoSnapshot = createUndoSnapshot();
+        block.type = nextType;
+        clearBlockManualSize(block);
+        if (nextType === "main" || nextType === "group") {
+          block.inheritColor = false;
+        }
+        if (nextType === "group" && !Array.isArray(block.children)) {
+          block.children = [];
+        }
+        normalizeDiagramParentIds(store.data);
+        pushUndoSnapshot(undoSnapshot);
+        renderAll();
+        saveLocalState();
+        showToast("블록 성격을 " + getBlockTypeLabel(nextType) + "(으)로 변경했습니다.");
       }
 
       function normalizeParentId(parentId, blockId) {
