@@ -1417,6 +1417,29 @@
       background: rgba(255,255,255,0.035);
     }
 
+    .tag-register-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tag-register-button {
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid rgba(61,220,151,0.46);
+      border-radius: 7px;
+      color: var(--accent-ink);
+      background: var(--accent);
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .tag-register-button:hover {
+      filter: brightness(1.05);
+    }
+
     .tool-chip-pill {
       flex: 0 0 auto;
       display: inline-flex;
@@ -2374,10 +2397,18 @@
           <label for="editSubtitle">서브타이틀</label>
           <input class="text-input" id="editSubtitle" type="text">
           <span class="field-hint">담당자 태그</span>
+          <div class="tag-register-row">
+            <input class="text-input" id="subtitleTagRegisterInput" type="text" placeholder="등록할 담당자 태그">
+            <button class="tag-register-button" id="addSubtitleTagButton" type="button">등록</button>
+          </div>
           <div class="subtitle-tags" id="subtitleTagButtons" aria-label="담당자 태그"></div>
         </div>
         <div class="field tool-field">
           <label for="editTool">TOOL (사용 AI 플랫폼)</label>
+          <div class="tag-register-row">
+            <input class="text-input" id="toolTagRegisterInput" type="text" placeholder="등록할 TOOL 태그">
+            <button class="tag-register-button" id="addToolTagButton" type="button">등록</button>
+          </div>
           <div class="tool-chip-row" id="editToolChips" role="group" aria-label="TOOL 빠른 선택"></div>
           <input class="text-input" id="editTool" type="text" placeholder="Claude, GPT, CODEX...">
         </div>
@@ -2741,6 +2772,8 @@
         els.editModal = document.getElementById("editModal");
         els.editTitle = document.getElementById("editTitle");
         els.editSubtitle = document.getElementById("editSubtitle");
+        els.subtitleTagRegisterInput = document.getElementById("subtitleTagRegisterInput");
+        els.addSubtitleTagButton = document.getElementById("addSubtitleTagButton");
         els.subtitleTagButtons = document.getElementById("subtitleTagButtons");
         els.editBlockType = document.getElementById("editBlockType");
         els.editBlockTypeToggle = document.getElementById("editBlockTypeToggle");
@@ -2754,6 +2787,8 @@
         els.editImageFile = document.getElementById("editImageFile");
         els.editImageList = document.getElementById("editImageList");
         els.editLink = document.getElementById("editLink");
+        els.toolTagRegisterInput = document.getElementById("toolTagRegisterInput");
+        els.addToolTagButton = document.getElementById("addToolTagButton");
         els.editToolChips = document.getElementById("editToolChips");
         els.editTool = document.getElementById("editTool");
         els.editStartDate = document.getElementById("editStartDate");
@@ -2860,6 +2895,8 @@
         els.copyJsonButton.addEventListener("click", copyJsonText);
         els.editBlockTypeToggle.addEventListener("click", handleBlockTypeButtonClick);
         els.editSubtitle.addEventListener("input", renderSubtitleTags);
+        els.addSubtitleTagButton.addEventListener("click", registerSubtitleTagsFromInput);
+        els.subtitleTagRegisterInput.addEventListener("keydown", handleSubtitleTagRegisterKeyDown);
         els.subtitleTagButtons.addEventListener("click", handleSubtitleTagClick);
         els.editColorChips.addEventListener("click", handleColorChipClick);
         els.inheritBlockColorButton.addEventListener("click", handleInheritBlockColorClick);
@@ -2870,6 +2907,8 @@
         els.editImageDropZone.addEventListener("drop", handleEditImageDrop);
         els.editModal.addEventListener("paste", handleEditImagePaste);
         els.editToolChips.addEventListener("click", handleToolChipClick);
+        els.addToolTagButton.addEventListener("click", registerToolTagsFromInput);
+        els.toolTagRegisterInput.addEventListener("keydown", handleToolTagRegisterKeyDown);
         els.editTool.addEventListener("input", handleToolInput);
         els.openInnerDiagramButton.addEventListener("click", openInnerDiagramFromEdit);
         els.deleteEditButton.addEventListener("click", deleteEditedBlock);
@@ -4002,6 +4041,7 @@
         setSelection([blockId]);
         els.editTitle.value = block.title;
         els.editSubtitle.value = block.subtitle || "";
+        els.subtitleTagRegisterInput.value = "";
         renderSubtitleTags();
         setEditBlockTypeValue(block.type);
         renderColorChips(getBlockColor(block));
@@ -4011,6 +4051,7 @@
         store.editImages = getBlockImages(block);
         renderEditImages();
         els.editLink.value = block.link || "";
+        els.toolTagRegisterInput.value = "";
         els.editTool.value = normalizeTool(block.tool);
         renderToolChips(els.editTool.value);
         els.editStartDate.value = block.startDate || "";
@@ -4061,7 +4102,6 @@
         if (shouldResetSize) {
           clearBlockManualSize(block);
         }
-        rememberSubtitleTags(block.subtitle);
         block.type = nextType;
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
         block.inheritColor = normalizeBlockType(block.type) !== "main" && normalizeBlockType(block.type) !== "group" && els.editColorInherited.value === "true";
@@ -4069,7 +4109,6 @@
         block.images = cloneBlockImages(store.editImages);
         block.link = nextLink;
         block.tool = nextTool;
-        rememberToolTag(block.tool);
         block.startDate = normalizeDateString(els.editStartDate.value);
         block.dueDate = normalizeDateString(els.editDueDate.value);
         block.status = normalizeScheduleStatus(els.editStatus.value);
@@ -4130,10 +4169,31 @@
         event.stopPropagation();
         var tool = normalizeTool(button.dataset.tool || button.textContent || "");
         els.editTool.value = tool;
-        rememberToolTag(tool);
         updateToolChipSelection(tool);
         previewEditedBlockVisual();
         els.editTool.focus();
+      }
+
+      function handleToolTagRegisterKeyDown(event) {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        registerToolTagsFromInput();
+      }
+
+      function registerToolTagsFromInput() {
+        var tools = parseToolTags(els.toolTagRegisterInput.value);
+        if (!tools.length) {
+          showToast("등록할 TOOL 태그를 입력해주세요.");
+          els.toolTagRegisterInput.focus();
+          return;
+        }
+        tools.forEach(rememberToolTag);
+        els.toolTagRegisterInput.value = "";
+        renderToolChips(els.editTool.value);
+        showToast(tools.length + "개 TOOL 태그를 등록했습니다.");
+        els.toolTagRegisterInput.focus();
       }
 
       function handleToolInput() {
@@ -4170,9 +4230,6 @@
         }
         TOOL_PRESETS.forEach(add);
         store.toolTags.forEach(add);
-        store.data.blocks.forEach(function (block) {
-          add(block.tool);
-        });
         return result.slice(0, SUBTITLE_TAG_LIMIT);
       }
 
@@ -4280,6 +4337,13 @@
         }
       }
 
+      function parseToolTags(value) {
+        return String(value || "")
+          .split(/[,;|/·\n\r]+/g)
+          .map(normalizeTool)
+          .filter(Boolean);
+      }
+
       function renderSubtitleTags() {
         if (!els.subtitleTagButtons) {
           return;
@@ -4348,9 +4412,30 @@
           tags.push(safeTag);
           els.editSubtitle.value = tags.join(", ");
         }
-        rememberSubtitleTags(safeTag);
         renderSubtitleTags();
         els.editSubtitle.focus();
+      }
+
+      function handleSubtitleTagRegisterKeyDown(event) {
+        if (event.key !== "Enter") {
+          return;
+        }
+        event.preventDefault();
+        registerSubtitleTagsFromInput();
+      }
+
+      function registerSubtitleTagsFromInput() {
+        var tags = parseSubtitleTags(els.subtitleTagRegisterInput.value);
+        if (!tags.length) {
+          showToast("등록할 담당자 태그를 입력해주세요.");
+          els.subtitleTagRegisterInput.focus();
+          return;
+        }
+        rememberSubtitleTags(tags.join(", "));
+        els.subtitleTagRegisterInput.value = "";
+        renderSubtitleTags();
+        showToast(tags.length + "개 담당자 태그를 등록했습니다.");
+        els.subtitleTagRegisterInput.focus();
       }
 
       function deleteSubtitleTag(tag) {
@@ -4394,9 +4479,6 @@
         }
         PERSON_TAG_PRESETS.forEach(add);
         store.subtitleTags.forEach(add);
-        store.data.blocks.forEach(function (block) {
-          parseSubtitleTags(block.subtitle).forEach(add);
-        });
         return result.slice(0, SUBTITLE_TAG_LIMIT);
       }
 
