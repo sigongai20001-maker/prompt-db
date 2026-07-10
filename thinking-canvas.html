@@ -4052,7 +4052,7 @@
         renderEditImages();
         els.editLink.value = block.link || "";
         els.toolTagRegisterInput.value = "";
-        els.editTool.value = normalizeTool(block.tool);
+        els.editTool.value = formatToolTags(block.tool);
         renderToolChips(els.editTool.value);
         els.editStartDate.value = block.startDate || "";
         els.editDueDate.value = block.dueDate || "";
@@ -4091,12 +4091,12 @@
         var nextSubtitle = els.editSubtitle.value;
         var nextType = normalizeBlockType(els.editBlockType.value);
         var nextLink = String(els.editLink.value || "").trim();
-        var nextTool = normalizeTool(els.editTool.value);
+        var nextTool = formatToolTags(els.editTool.value);
         var shouldResetSize = nextTitle !== block.title ||
           nextSubtitle !== String(block.subtitle || "") ||
           nextType !== normalizeBlockType(block.type) ||
           nextLink !== String(block.link || "") ||
-          nextTool !== normalizeTool(block.tool);
+          nextTool !== formatToolTags(block.tool);
         block.title = nextTitle;
         block.subtitle = nextSubtitle;
         if (shouldResetSize) {
@@ -4133,7 +4133,7 @@
           var pill = document.createElement("span");
           var button = document.createElement("button");
           var deleteButton = document.createElement("button");
-          var isActive = normalizeToolKey(tool) === normalizeToolKey(selectedTool);
+          var isActive = toolSelectionHasTool(selectedTool, tool);
           pill.className = "tool-chip-pill" + (isActive ? " is-active" : "");
           pill.dataset.tool = tool;
           button.className = "tool-chip-button";
@@ -4168,8 +4168,8 @@
         event.preventDefault();
         event.stopPropagation();
         var tool = normalizeTool(button.dataset.tool || button.textContent || "");
-        els.editTool.value = tool;
-        updateToolChipSelection(tool);
+        toggleToolInInput(tool);
+        updateToolChipSelection();
         previewEditedBlockVisual();
         els.editTool.focus();
       }
@@ -4205,9 +4205,9 @@
         if (!els.editToolChips) {
           return;
         }
-        var selectedKey = normalizeToolKey(value !== undefined ? value : els.editTool.value);
+        var selectedKeys = new Set(parseToolTags(value !== undefined ? value : els.editTool.value).map(normalizeToolKey));
         els.editToolChips.querySelectorAll(".tool-chip-pill").forEach(function (pill) {
-          var isActive = normalizeToolKey(pill.dataset.tool || "") === selectedKey && selectedKey !== "";
+          var isActive = selectedKeys.has(normalizeToolKey(pill.dataset.tool || ""));
           var button = pill.querySelector(".tool-chip-button");
           pill.classList.toggle("is-active", isActive);
           if (button) {
@@ -4270,10 +4270,8 @@
         if (store.toolHiddenTagKeys.indexOf(key) === -1) {
           store.toolHiddenTagKeys.push(key);
         }
-        if (normalizeToolKey(els.editTool.value) === key) {
-          els.editTool.value = "";
-          previewEditedBlockVisual();
-        }
+        removeToolFromInput(safeTool);
+        previewEditedBlockVisual();
         saveToolTagMemory();
         saveToolHiddenTagKeys();
         renderToolChips(els.editTool.value);
@@ -4342,6 +4340,61 @@
           .split(/[,;|/·\n\r]+/g)
           .map(normalizeTool)
           .filter(Boolean);
+      }
+
+      function formatToolTags(value) {
+        var result = [];
+        var seen = new Set();
+        parseToolTags(Array.isArray(value) ? value.join(", ") : value).forEach(function (tool) {
+          var key = normalizeToolKey(tool);
+          if (!key || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          result.push(tool);
+        });
+        return result.join(", ");
+      }
+
+      function toolSelectionHasTool(selection, tool) {
+        var key = normalizeToolKey(tool);
+        if (!key) {
+          return false;
+        }
+        return parseToolTags(selection).some(function (item) {
+          return normalizeToolKey(item) === key;
+        });
+      }
+
+      function toggleToolInInput(tool) {
+        var safeTool = normalizeTool(tool);
+        var key = normalizeToolKey(safeTool);
+        var currentTags;
+        var removed = false;
+        if (!safeTool || !key) {
+          return;
+        }
+        currentTags = parseToolTags(els.editTool.value).filter(function (item) {
+          var isTarget = normalizeToolKey(item) === key;
+          if (isTarget) {
+            removed = true;
+          }
+          return !isTarget;
+        });
+        if (!removed) {
+          currentTags.push(safeTool);
+        }
+        els.editTool.value = formatToolTags(currentTags);
+      }
+
+      function removeToolFromInput(tool) {
+        var key = normalizeToolKey(tool);
+        if (!key) {
+          return;
+        }
+        els.editTool.value = formatToolTags(parseToolTags(els.editTool.value).filter(function (item) {
+          return normalizeToolKey(item) !== key;
+        }));
       }
 
       function renderSubtitleTags() {
