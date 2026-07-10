@@ -5220,7 +5220,7 @@
             title.setAttribute("aria-label", "내부 블록 제목");
           }
           title.addEventListener("pointerdown", function (event) {
-            if (title.isContentEditable) {
+            if (title.isContentEditable && !(event.shiftKey || event.ctrlKey || event.metaKey)) {
               event.stopPropagation();
             }
           });
@@ -5606,15 +5606,13 @@
       }
 
       function handleInnerStagePointerDown(event) {
-        if (event.target !== els.innerDiagramStage && event.target !== els.innerDiagramWorld) {
+        if (event.target !== els.innerDiagramStage && event.target !== els.innerDiagramWorld && event.target !== els.innerBlocksLayer) {
           return;
         }
-        if (event.button === 0 && event.shiftKey) {
+        if (event.button === 0) {
           startInnerMarqueeSelection(event);
           return;
         }
-        store.innerDiagram.selectedIds = [];
-        renderInnerDiagram();
       }
 
       function startInnerMarqueeSelection(event) {
