@@ -3984,16 +3984,29 @@
           return;
         }
         var undoSnapshot = createUndoSnapshot();
-        block.title = els.editTitle.value;
-        block.subtitle = els.editSubtitle.value;
+        var nextTitle = els.editTitle.value;
+        var nextSubtitle = els.editSubtitle.value;
+        var nextType = normalizeBlockType(els.editBlockType.value);
+        var nextLink = String(els.editLink.value || "").trim();
+        var nextTool = normalizeTool(els.editTool.value);
+        var shouldResetSize = nextTitle !== block.title ||
+          nextSubtitle !== String(block.subtitle || "") ||
+          nextType !== normalizeBlockType(block.type) ||
+          nextLink !== String(block.link || "") ||
+          nextTool !== normalizeTool(block.tool);
+        block.title = nextTitle;
+        block.subtitle = nextSubtitle;
+        if (shouldResetSize) {
+          clearBlockManualSize(block);
+        }
         rememberSubtitleTags(block.subtitle);
-        block.type = normalizeBlockType(els.editBlockType.value);
+        block.type = nextType;
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
         block.inheritColor = normalizeBlockType(block.type) !== "main" && normalizeBlockType(block.type) !== "group" && els.editColorInherited.value === "true";
         block.detail = els.editDetail.value;
         block.images = cloneBlockImages(store.editImages);
-        block.link = String(els.editLink.value || "").trim();
-        block.tool = normalizeTool(els.editTool.value);
+        block.link = nextLink;
+        block.tool = nextTool;
         rememberToolTag(block.tool);
         block.startDate = normalizeDateString(els.editStartDate.value);
         block.dueDate = normalizeDateString(els.editDueDate.value);
@@ -5905,9 +5918,11 @@
           return;
         }
         block.title = normalizeInlineTitle(titleElement.textContent);
+        clearBlockManualSize(block);
         if (card) {
           card.title = block.title || "제목 없음";
           card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+          card.style.setProperty("--card-height", getBlockHeight(block) + "px");
         }
         renderConnections();
         scheduleLocalSave();
@@ -5923,13 +5938,23 @@
           titleElement.textContent = "제목 없음";
         }
         var card = getBlockElement(blockId);
+        clearBlockManualSize(block);
         if (card) {
           card.title = block.title || "제목 없음";
           card.style.setProperty("--card-width", getBlockWidth(block) + "px");
+          card.style.setProperty("--card-height", getBlockHeight(block) + "px");
         }
         renderConnections();
         saveLocalState();
         delete titleElement.dataset.undoCaptured;
+      }
+
+      function clearBlockManualSize(block) {
+        if (!block) {
+          return;
+        }
+        delete block.width;
+        delete block.height;
       }
 
       function normalizeInlineTitle(value) {
@@ -8664,7 +8689,7 @@
       function getBlockWidth(block) {
         var naturalWidth = getNaturalBlockWidth(block);
         var minimum = getBlockResizeMinimum(block).width;
-        return Math.max(minimum, finiteNumber(block && block.width) ? Number(block.width) : naturalWidth);
+        return Math.max(minimum, naturalWidth, finiteNumber(block && block.width) ? Number(block.width) : naturalWidth);
       }
 
       function getNaturalBlockWidth(block) {
@@ -8709,19 +8734,19 @@
             return total + fontSize;
           }
           if (/[A-Z0-9]/.test(character)) {
-            return total + fontSize * 0.68;
+            return total + fontSize * 0.75;
           }
           if (/[il.,:;!|'"`]/.test(character)) {
             return total + fontSize * 0.34;
           }
-          return total + fontSize * 0.58;
+          return total + fontSize * 0.62;
         }, 0);
       }
 
       function getBlockHeight(block) {
         var naturalHeight = getNaturalBlockHeight(block);
         var minimum = getBlockResizeMinimum(block).height;
-        return Math.max(minimum, finiteNumber(block && block.height) ? Number(block.height) : naturalHeight);
+        return Math.max(minimum, naturalHeight, finiteNumber(block && block.height) ? Number(block.height) : naturalHeight);
       }
 
       function getNaturalBlockHeight(block) {
