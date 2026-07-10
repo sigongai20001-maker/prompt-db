@@ -1969,6 +1969,12 @@
       stroke: rgba(130,145,166,0.82);
       stroke-width: 2.2;
       stroke-linecap: round;
+      cursor: pointer;
+      pointer-events: stroke;
+    }
+
+    .inner-connection-visible:hover {
+      stroke: var(--accent);
     }
 
     .inner-draft-connection {
@@ -1988,8 +1994,10 @@
     .inner-block {
       position: absolute;
       box-sizing: border-box;
-      width: 170px;
-      min-height: 56px;
+      width: var(--inner-block-width, 170px);
+      height: var(--inner-block-height, 56px);
+      min-width: 120px;
+      min-height: 44px;
       display: flex;
       align-items: center;
       padding: 10px 12px;
@@ -2003,9 +2011,40 @@
       user-select: none;
     }
 
+    .inner-block.is-resizing {
+      user-select: none;
+    }
+
     .inner-block.is-selected {
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(61,220,151,0.34), 0 8px 20px rgba(0,0,0,0.35);
+    }
+
+    .inner-block-actions {
+      position: absolute;
+      right: 8px;
+      top: -42px;
+      z-index: 8;
+      display: none;
+      gap: 6px;
+      padding: 5px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      background: rgba(28,33,41,0.96);
+      box-shadow: var(--shadow);
+      pointer-events: auto;
+    }
+
+    .inner-block:hover .inner-block-actions,
+    .inner-block.is-selected .inner-block-actions {
+      display: inline-flex;
+    }
+
+    .inner-block-actions .block-action-button {
+      min-width: 46px;
+      height: 28px;
+      padding: 0 9px;
+      font-size: 12px;
     }
 
     .inner-block-title {
@@ -2015,6 +2054,17 @@
       line-height: 1.35;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .inner-block-title[contenteditable="plaintext-only"] {
+      min-width: 40px;
+      outline: none;
+      cursor: text;
+    }
+
+    .inner-block-title[contenteditable="plaintext-only"]:focus {
+      color: #fff;
+      text-shadow: 0 0 0 currentColor;
     }
 
     .inner-connect-handle {
@@ -2040,6 +2090,32 @@
       border-color: var(--accent);
       background: var(--accent);
       outline: none;
+    }
+
+    .inner-block-resize-handle {
+      position: absolute;
+      right: -1px;
+      bottom: -1px;
+      z-index: 7;
+      display: none;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 7px 0 7px 0;
+      appearance: none;
+      background:
+        linear-gradient(135deg, transparent 0 43%, rgba(255,255,255,0.72) 44% 50%, transparent 51% 100%),
+        linear-gradient(135deg, transparent 0 58%, rgba(255,255,255,0.58) 59% 65%, transparent 66% 100%),
+        rgba(15,17,21,0.82);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.34);
+      cursor: nwse-resize;
+      pointer-events: auto;
+    }
+
+    .inner-block:hover .inner-block-resize-handle,
+    .inner-block.is-selected .inner-block-resize-handle {
+      display: block;
     }
 
     #jsonText {
@@ -2657,6 +2733,8 @@
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
       var INNER_BLOCK_HEIGHT = 56;
+      var INNER_BLOCK_MIN_WIDTH = 120;
+      var INNER_BLOCK_MIN_HEIGHT = 44;
       var SUBTITLE_TAG_LIMIT = 80;
       var PERSON_TAG_PRESETS = ["미한솔", "한나", "소영", "의근", "소희", "정민", "지영", "파멜라", "민정"];
       var TOOL_PRESETS = ["Claude", "GPT", "GPT Image 2", "HeyGen", "Sono AI", "CODEX", "Gemini"];
@@ -2688,6 +2766,7 @@
           data: createEmptyInnerDiagram(),
           selectedIds: [],
           drag: null,
+          resize: null,
           connect: null,
           handlePress: null,
           marquee: null,
@@ -4855,6 +4934,7 @@
           data: cloneInnerDiagram(block.innerDiagram),
           selectedIds: [],
           drag: null,
+          resize: null,
           connect: null,
           handlePress: null,
           marquee: null,
@@ -4874,6 +4954,7 @@
           data: createEmptyInnerDiagram(),
           selectedIds: [],
           drag: null,
+          resize: null,
           connect: null,
           handlePress: null,
           marquee: null,
@@ -4915,7 +4996,9 @@
           title: "내부 블록",
           color: parentBlock ? getBlockColor(parentBlock) : FALLBACK_COLOR,
           x: Math.round(clamp(x, 16, INNER_WORLD_WIDTH - INNER_BLOCK_WIDTH - 16)),
-          y: Math.round(clamp(y, 16, INNER_WORLD_HEIGHT - INNER_BLOCK_HEIGHT - 16))
+          y: Math.round(clamp(y, 16, INNER_WORLD_HEIGHT - INNER_BLOCK_HEIGHT - 16)),
+          width: INNER_BLOCK_WIDTH,
+          height: INNER_BLOCK_HEIGHT
         };
         store.innerDiagram.data.blocks.push(block);
         store.innerDiagram.selectedIds = [block.id];
@@ -4953,6 +5036,41 @@
         renderInnerDiagram();
       }
 
+      function duplicateInnerBlock(blockId) {
+        var source = getInnerBlock(blockId);
+        var copy;
+        if (!source) {
+          return;
+        }
+        copy = {
+          id: createInnerBlockId(store.innerDiagram.data),
+          title: source.title || "내부 블록",
+          color: validColor(source.color) ? source.color : FALLBACK_COLOR,
+          x: Math.round(clamp((Number(source.x) || 0) + 36, 0, INNER_WORLD_WIDTH - getInnerBlockWidth(source))),
+          y: Math.round(clamp((Number(source.y) || 0) + 36, 0, INNER_WORLD_HEIGHT - getInnerBlockHeight(source))),
+          width: getInnerBlockWidth(source),
+          height: getInnerBlockHeight(source)
+        };
+        store.innerDiagram.data.blocks.push(copy);
+        store.innerDiagram.selectedIds = [copy.id];
+        renderInnerDiagram();
+      }
+
+      function commitInlineInnerBlockTitle(blockId, titleElement) {
+        var block = getInnerBlock(blockId);
+        var nextTitle;
+        if (!block || !titleElement) {
+          return;
+        }
+        nextTitle = normalizeInlineTitle(titleElement.textContent) || "내부 블록";
+        if (nextTitle === block.title) {
+          titleElement.textContent = nextTitle;
+          return;
+        }
+        block.title = nextTitle;
+        renderInnerDiagram();
+      }
+
       function renderInnerDiagram() {
         if (!els.innerBlocksLayer || !els.innerConnectionGroup) {
           return;
@@ -4963,15 +5081,91 @@
           var node = document.createElement("div");
           var title = document.createElement("div");
           var handle = document.createElement("button");
-          node.className = "inner-block" + (store.innerDiagram.selectedIds.indexOf(block.id) !== -1 ? " is-selected" : "");
+          var resizeHandle = document.createElement("button");
+          var actions = document.createElement("div");
+          var editButton = document.createElement("button");
+          var copyButton = document.createElement("button");
+          var connectButton = document.createElement("button");
+          var deleteButton = document.createElement("button");
+          var isSelected = store.innerDiagram.selectedIds.indexOf(block.id) !== -1;
+          node.className = "inner-block" + (isSelected ? " is-selected" : "");
           node.dataset.innerId = block.id;
           node.style.left = (Number(block.x) || 0) + "px";
           node.style.top = (Number(block.y) || 0) + "px";
+          node.style.setProperty("--inner-block-width", getInnerBlockWidth(block) + "px");
+          node.style.setProperty("--inner-block-height", getInnerBlockHeight(block) + "px");
           node.style.setProperty("--inner-color", validColor(block.color) ? block.color : FALLBACK_COLOR);
           node.title = block.title || "내부 블록";
           title.className = "inner-block-title";
           title.textContent = block.title || "내부 블록";
-          node.append(title);
+          if (isSelected) {
+            title.contentEditable = "plaintext-only";
+            title.spellcheck = false;
+            title.setAttribute("role", "textbox");
+            title.setAttribute("aria-label", "내부 블록 제목");
+          }
+          title.addEventListener("pointerdown", function (event) {
+            if (title.isContentEditable) {
+              event.stopPropagation();
+            }
+          });
+          title.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commitInlineInnerBlockTitle(block.id, title);
+              title.blur();
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              var currentBlock = getInnerBlock(block.id);
+              title.textContent = currentBlock && currentBlock.title ? currentBlock.title : "내부 블록";
+              title.blur();
+            }
+          });
+          title.addEventListener("blur", function () {
+            commitInlineInnerBlockTitle(block.id, title);
+          });
+          actions.className = "inner-block-actions";
+          editButton.className = "block-action-button";
+          editButton.type = "button";
+          editButton.textContent = "수정";
+          editButton.title = "내부 블록 수정";
+          editButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openInnerBlockEditModal(block.id);
+          });
+          copyButton.className = "block-action-button";
+          copyButton.type = "button";
+          copyButton.textContent = "복사";
+          copyButton.title = "내부 블록 복사";
+          copyButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            duplicateInnerBlock(block.id);
+          });
+          connectButton.className = "block-action-button primary";
+          connectButton.type = "button";
+          connectButton.textContent = "연결";
+          connectButton.title = "선택된 내부 블록 연결";
+          connectButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            connectInnerSelection();
+          });
+          deleteButton.className = "block-action-button danger";
+          deleteButton.type = "button";
+          deleteButton.textContent = isSelected && store.innerDiagram.selectedIds.length > 1 ? store.innerDiagram.selectedIds.length + "개 삭제" : "삭제";
+          deleteButton.title = "내부 블록 삭제";
+          deleteButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (store.innerDiagram.selectedIds.indexOf(block.id) === -1) {
+              store.innerDiagram.selectedIds = [block.id];
+            }
+            deleteInnerSelection();
+          });
+          actions.append(editButton, copyButton, connectButton, deleteButton);
           handle.className = "inner-connect-handle";
           handle.type = "button";
           handle.title = "연결";
@@ -4979,8 +5173,18 @@
           handle.addEventListener("pointerdown", function (event) {
             startInnerHandlePress(event, block.id);
           });
-          node.append(handle);
+          resizeHandle.className = "inner-block-resize-handle";
+          resizeHandle.type = "button";
+          resizeHandle.title = "내부 블록 크기 조절";
+          resizeHandle.setAttribute("aria-label", "내부 블록 크기 조절");
+          resizeHandle.addEventListener("pointerdown", function (event) {
+            startInnerBlockResize(event, block.id);
+          });
+          node.append(actions, title, handle, resizeHandle);
           node.addEventListener("pointerdown", function (event) {
+            if (isControlTarget(event.target)) {
+              return;
+            }
             startInnerBlockDrag(event, block.id);
           });
           node.addEventListener("dblclick", function (event) {
@@ -5003,6 +5207,13 @@
           var path = createSvgElement("path");
           path.setAttribute("class", "inner-connection-visible");
           path.setAttribute("d", getInnerConnectionPath(fromBlock, toBlock));
+          path.dataset.from = connection.from;
+          path.dataset.to = connection.to;
+          path.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            removeInnerConnection(connection.from, connection.to);
+          });
           els.innerConnectionGroup.append(path);
         });
       }
@@ -5047,11 +5258,11 @@
           if (!block) {
             return;
           }
-          block.x = Math.round(clamp(item.x + deltaX, 0, INNER_WORLD_WIDTH - INNER_BLOCK_WIDTH));
-          block.y = Math.round(clamp(item.y + deltaY, 0, INNER_WORLD_HEIGHT - INNER_BLOCK_HEIGHT));
+          block.x = Math.round(clamp(item.x + deltaX, 0, INNER_WORLD_WIDTH - getInnerBlockWidth(block)));
+          block.y = Math.round(clamp(item.y + deltaY, 0, INNER_WORLD_HEIGHT - getInnerBlockHeight(block)));
           setInnerBlockPosition(block);
         });
-        renderInnerConnections();
+      renderInnerConnections();
       }
 
       function finishInnerBlockDrag(event) {
@@ -5060,6 +5271,81 @@
           safelyReleasePointer(target, event.pointerId);
         }
         store.innerDiagram.drag = null;
+      }
+
+      function startInnerBlockResize(event, blockId) {
+        var block;
+        var node;
+        var point;
+        if (event.button !== 0 || store.innerDiagram.drag || store.innerDiagram.connect || store.innerDiagram.handlePress) {
+          return;
+        }
+        block = getInnerBlock(blockId);
+        if (!block) {
+          return;
+        }
+        if (store.innerDiagram.selectedIds.indexOf(blockId) === -1) {
+          store.innerDiagram.selectedIds = [blockId];
+          renderInnerDiagram();
+        }
+        block = getInnerBlock(blockId);
+        node = getInnerBlockElement(blockId);
+        point = screenToInnerWorld(event.clientX, event.clientY);
+        store.innerDiagram.resize = {
+          blockId: blockId,
+          pointerId: event.pointerId,
+          startWorldX: point.x,
+          startWorldY: point.y,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startWidth: getInnerBlockWidth(block),
+          startHeight: getInnerBlockHeight(block),
+          moved: false
+        };
+        if (node) {
+          node.classList.add("is-resizing");
+          node.setPointerCapture(event.pointerId);
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function moveInnerResizedBlock(event) {
+        var resize = store.innerDiagram.resize;
+        var block = resize && getInnerBlock(resize.blockId);
+        var node = block && getInnerBlockElement(block.id);
+        var point;
+        var nextWidth;
+        var nextHeight;
+        if (!resize || !block || !node) {
+          return;
+        }
+        if (Math.abs(event.clientX - resize.startClientX) > 3 || Math.abs(event.clientY - resize.startClientY) > 3) {
+          resize.moved = true;
+        }
+        point = screenToInnerWorld(event.clientX, event.clientY);
+        nextWidth = Math.round(clamp(resize.startWidth + point.x - resize.startWorldX, getInnerBlockMinWidth(block), INNER_WORLD_WIDTH - (Number(block.x) || 0)));
+        nextHeight = Math.round(clamp(resize.startHeight + point.y - resize.startWorldY, getInnerBlockMinHeight(block), INNER_WORLD_HEIGHT - (Number(block.y) || 0)));
+        block.width = nextWidth;
+        block.height = nextHeight;
+        applyInnerBlockSize(node, block);
+        renderInnerConnections();
+        event.preventDefault();
+      }
+
+      function finishInnerBlockResize(event) {
+        var resize = store.innerDiagram.resize;
+        var node = resize && getInnerBlockElement(resize.blockId);
+        if (node) {
+          node.classList.remove("is-resizing");
+          safelyReleasePointer(node, event.pointerId);
+        }
+        store.innerDiagram.resize = null;
+        if (resize && resize.moved) {
+          renderInnerDiagram();
+        }
+        event.preventDefault();
+        event.stopPropagation();
       }
 
       function startInnerHandlePress(event, blockId) {
@@ -5179,8 +5465,8 @@
           return rectsIntersect(rect, {
             left: Number(block.x) || 0,
             top: Number(block.y) || 0,
-            right: (Number(block.x) || 0) + INNER_BLOCK_WIDTH,
-            bottom: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT
+            right: (Number(block.x) || 0) + getInnerBlockWidth(block),
+            bottom: (Number(block.y) || 0) + getInnerBlockHeight(block)
           });
         }).map(function (block) {
           return block.id;
@@ -8321,6 +8607,10 @@
           moveInnerMarqueeSelection(event);
           return;
         }
+        if (store.innerDiagram.resize && event.pointerId === store.innerDiagram.resize.pointerId) {
+          moveInnerResizedBlock(event);
+          return;
+        }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
           moveInnerDraggedBlock(event);
           return;
@@ -8368,6 +8658,10 @@
         }
         if (store.innerDiagram.marquee && event.pointerId === store.innerDiagram.marquee.pointerId) {
           finishInnerMarqueeSelection(event);
+          return;
+        }
+        if (store.innerDiagram.resize && event.pointerId === store.innerDiagram.resize.pointerId) {
+          finishInnerBlockResize(event);
           return;
         }
         if (store.innerDiagram.drag && event.pointerId === store.innerDiagram.drag.pointerId) {
@@ -8799,13 +9093,17 @@
 
         sourceBlocks.forEach(function (sourceBlock) {
           var innerId = createInnerBlockId(innerDiagram);
+          var innerWidth = Math.round(clamp(getBlockWidth(sourceBlock), INNER_BLOCK_MIN_WIDTH, 520));
+          var innerHeight = Math.round(clamp(getBlockHeight(sourceBlock), INNER_BLOCK_MIN_HEIGHT, 220));
           idMap.set(sourceBlock.id, innerId);
           innerDiagram.blocks.push({
             id: innerId,
             title: sourceBlock.title || "내부 블록",
             color: getBlockColor(sourceBlock),
-            x: Math.round(clamp(placement.x + (Number(sourceBlock.x) || 0) - sourceBounds.left, 0, INNER_WORLD_WIDTH - INNER_BLOCK_WIDTH)),
-            y: Math.round(clamp(placement.y + (Number(sourceBlock.y) || 0) - sourceBounds.top, 0, INNER_WORLD_HEIGHT - INNER_BLOCK_HEIGHT))
+            x: Math.round(clamp(placement.x + (Number(sourceBlock.x) || 0) - sourceBounds.left, 0, INNER_WORLD_WIDTH - innerWidth)),
+            y: Math.round(clamp(placement.y + (Number(sourceBlock.y) || 0) - sourceBounds.top, 0, INNER_WORLD_HEIGHT - innerHeight)),
+            width: innerWidth,
+            height: innerHeight
           });
         });
 
@@ -8860,10 +9158,10 @@
           return { x: 80, y: 80 };
         }
         var existingRight = Math.max.apply(null, innerDiagram.blocks.map(function (block) {
-          return (Number(block.x) || 0) + INNER_BLOCK_WIDTH;
+          return (Number(block.x) || 0) + getInnerBlockWidth(block);
         }));
         var existingBottom = Math.max.apply(null, innerDiagram.blocks.map(function (block) {
-          return (Number(block.y) || 0) + INNER_BLOCK_HEIGHT;
+          return (Number(block.y) || 0) + getInnerBlockHeight(block);
         }));
         var x = existingRight + 80;
         var y = 80;
@@ -9762,7 +10060,9 @@
               title: typeof raw.title === "string" ? raw.title : String(raw.title || "내부 블록"),
               color: validColor(raw.color) ? raw.color : FALLBACK_COLOR,
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
-              y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
+              y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36,
+              width: finiteNumber(raw.width) ? Math.round(clamp(Number(raw.width), INNER_BLOCK_MIN_WIDTH, INNER_WORLD_WIDTH)) : undefined,
+              height: finiteNumber(raw.height) ? Math.round(clamp(Number(raw.height), INNER_BLOCK_MIN_HEIGHT, INNER_WORLD_HEIGHT)) : undefined
             });
           });
         }
@@ -9852,6 +10152,31 @@
         }
         element.style.left = (Number(block.x) || 0) + "px";
         element.style.top = (Number(block.y) || 0) + "px";
+        applyInnerBlockSize(element, block);
+      }
+
+      function applyInnerBlockSize(element, block) {
+        element.style.setProperty("--inner-block-width", getInnerBlockWidth(block) + "px");
+        element.style.setProperty("--inner-block-height", getInnerBlockHeight(block) + "px");
+      }
+
+      function getInnerBlockWidth(block) {
+        var title = String(block && block.title || "내부 블록");
+        var autoWidth = Math.ceil(estimateTextWidth(title, 13) + 62);
+        return Math.round(clamp(finiteNumber(block && block.width) ? Number(block.width) : Math.max(INNER_BLOCK_WIDTH, autoWidth), getInnerBlockMinWidth(block), INNER_WORLD_WIDTH));
+      }
+
+      function getInnerBlockHeight(block) {
+        return Math.round(clamp(finiteNumber(block && block.height) ? Number(block.height) : INNER_BLOCK_HEIGHT, getInnerBlockMinHeight(), INNER_WORLD_HEIGHT));
+      }
+
+      function getInnerBlockMinWidth(block) {
+        var title = String(block && block.title || "내부 블록");
+        return Math.max(INNER_BLOCK_MIN_WIDTH, Math.min(360, Math.ceil(estimateTextWidth(title, 13) + 42)));
+      }
+
+      function getInnerBlockMinHeight() {
+        return INNER_BLOCK_MIN_HEIGHT;
       }
 
       function addInnerConnection(from, to) {
@@ -9866,6 +10191,16 @@
           return true;
         }
         return false;
+      }
+
+      function removeInnerConnection(from, to) {
+        var before = store.innerDiagram.data.connections.length;
+        store.innerDiagram.data.connections = store.innerDiagram.data.connections.filter(function (connection) {
+          return !(connection.from === from && connection.to === to);
+        });
+        if (store.innerDiagram.data.connections.length !== before) {
+          renderInnerDiagram();
+        }
       }
 
       function getInnerConnectionSourceIds(fromId, targetId) {
@@ -9907,27 +10242,27 @@
 
       function getInnerBlockCenter(block) {
         return {
-          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH / 2,
-          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+          x: (Number(block.x) || 0) + getInnerBlockWidth(block) / 2,
+          y: (Number(block.y) || 0) + getInnerBlockHeight(block) / 2
         };
       }
 
       function getInnerHandlePoint(block) {
         return {
-          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH,
-          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+          x: (Number(block.x) || 0) + getInnerBlockWidth(block),
+          y: (Number(block.y) || 0) + getInnerBlockHeight(block) / 2
         };
       }
 
       function getInnerEdgePoint(block, targetPoint) {
         var start = {
-          x: (Number(block.x) || 0) + INNER_BLOCK_WIDTH / 2,
-          y: (Number(block.y) || 0) + INNER_BLOCK_HEIGHT / 2
+          x: (Number(block.x) || 0) + getInnerBlockWidth(block) / 2,
+          y: (Number(block.y) || 0) + getInnerBlockHeight(block) / 2
         };
         var dx = targetPoint.x - start.x;
         var dy = targetPoint.y - start.y;
-        var halfWidth = INNER_BLOCK_WIDTH / 2;
-        var halfHeight = INNER_BLOCK_HEIGHT / 2;
+        var halfWidth = getInnerBlockWidth(block) / 2;
+        var halfHeight = getInnerBlockHeight(block) / 2;
         var scale = Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight, 1);
         return {
           x: start.x + dx / scale,
