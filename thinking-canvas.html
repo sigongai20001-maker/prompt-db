@@ -845,12 +845,80 @@
       right: 40px;
     }
 
+    .block-image-button {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 7px;
+      color: inherit;
+      background: rgba(15,17,21,0.72);
+      font-size: 13px;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
+    .block-card.has-link .block-image-button,
+    .block-card.has-inner .block-image-button {
+      right: 40px;
+    }
+
+    .block-card.has-link.has-inner .block-image-button {
+      right: 72px;
+    }
+
+    .block-html-button {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 7px;
+      color: var(--accent);
+      background: rgba(15,17,21,0.72);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
+    .block-image-count {
+      position: absolute;
+      right: -6px;
+      top: -6px;
+      min-width: 15px;
+      height: 15px;
+      padding: 0 3px;
+      border: 1px solid rgba(15,17,21,0.92);
+      border-radius: 999px;
+      color: #07150f;
+      background: var(--accent);
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 13px;
+      text-align: center;
+    }
+
     .block-link-button:hover {
       border-color: var(--accent);
       background: rgba(61,220,151,0.16);
     }
 
-    .block-inner-button:hover {
+    .block-inner-button:hover,
+    .block-image-button:hover,
+    .block-html-button:hover {
       border-color: var(--accent);
       background: rgba(61,220,151,0.16);
     }
@@ -895,6 +963,19 @@
 
     .block-card.has-link.has-inner .block-top {
       padding-right: 76px;
+    }
+
+    .block-card.has-images .block-top {
+      padding-right: 44px;
+    }
+
+    .block-card.has-images.has-link .block-top,
+    .block-card.has-images.has-inner .block-top {
+      padding-right: 76px;
+    }
+
+    .block-card.has-images.has-link.has-inner .block-top {
+      padding-right: 108px;
     }
 
     .block-card.has-tool .block-top {
@@ -1834,6 +1915,25 @@
       background: #0f1115;
     }
 
+    .html-file-card {
+      display: grid;
+      grid-template-rows: 94px auto;
+      cursor: pointer;
+    }
+
+    .html-file-icon {
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      background:
+        linear-gradient(135deg, rgba(61,220,151,0.14), transparent 64%),
+        #0f1115;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -3px;
+    }
+
     .image-card button {
       position: absolute;
       right: 6px;
@@ -1894,6 +1994,26 @@
       text-align: center;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .html-preview-panel {
+      width: min(1280px, 100%);
+      max-height: min(92vh, 980px);
+    }
+
+    .html-preview-body {
+      min-height: min(76vh, 760px);
+      padding: 12px;
+      background: #0f1115;
+    }
+
+    .html-preview-frame {
+      width: 100%;
+      height: min(72vh, 720px);
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
     }
 
     .inner-diagram-row {
@@ -2526,11 +2646,11 @@
           <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
         </div>
         <div class="field">
-          <label for="editImageFile">이미지 첨부</label>
+          <label for="editImageFile">이미지·HTML 첨부</label>
           <div class="image-drop-zone" id="editImageDropZone" tabindex="0">
-            <strong>이미지 드래그 또는 Ctrl+V</strong>
-            <span>복사한 이미지나 이미지 파일을 이 영역에 붙여넣거나 끌어오세요.</span>
-            <input class="image-file-input" id="editImageFile" type="file" accept="image/*" multiple>
+            <strong>이미지 또는 HTML 드래그·Ctrl+V</strong>
+            <span>복사한 이미지나 로컬 .html/.htm 파일을 붙여넣거나 끌어오세요.</span>
+            <input class="image-file-input" id="editImageFile" type="file" accept="image/*,.html,.htm,text/html" multiple>
           </div>
           <div class="image-list" id="editImageList"></div>
         </div>
@@ -2613,6 +2733,25 @@
           <img id="imagePreviewImage" alt="첨부 이미지 미리보기">
         </div>
         <div class="image-preview-name" id="imagePreviewName"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="htmlPreviewModal" role="dialog" aria-modal="true" aria-labelledby="htmlPreviewTitle">
+    <section class="modal-panel html-preview-panel">
+      <header class="modal-header">
+        <h2 id="htmlPreviewTitle">HTML 미리보기</h2>
+        <button class="modal-button" id="closeHtmlPreviewButton" type="button">닫기</button>
+      </header>
+      <div class="modal-body html-preview-body">
+        <iframe
+          class="html-preview-frame"
+          id="htmlPreviewFrame"
+          title="첨부 HTML 미리보기"
+          sandbox="allow-scripts allow-forms allow-modals allow-popups"
+          referrerpolicy="no-referrer"
+        ></iframe>
+        <div class="image-preview-name" id="htmlPreviewName"></div>
       </div>
     </section>
   </div>
@@ -2771,6 +2910,7 @@
         editBlockId: null,
         editConnectionKey: null,
         editImages: [],
+        editHtmlFiles: [],
         innerDiagram: {
           blockId: null,
           data: createEmptyInnerDiagram(),
@@ -2903,6 +3043,11 @@
         els.imagePreviewImage = document.getElementById("imagePreviewImage");
         els.imagePreviewName = document.getElementById("imagePreviewName");
         els.closeImagePreviewButton = document.getElementById("closeImagePreviewButton");
+        els.htmlPreviewModal = document.getElementById("htmlPreviewModal");
+        els.htmlPreviewTitle = document.getElementById("htmlPreviewTitle");
+        els.htmlPreviewFrame = document.getElementById("htmlPreviewFrame");
+        els.htmlPreviewName = document.getElementById("htmlPreviewName");
+        els.closeHtmlPreviewButton = document.getElementById("closeHtmlPreviewButton");
         els.innerDiagramModal = document.getElementById("innerDiagramModal");
         els.innerDiagramTitle = document.getElementById("innerDiagramTitle");
         els.closeInnerDiagramTopButton = document.getElementById("closeInnerDiagramTopButton");
@@ -3008,6 +3153,7 @@
         els.cancelEditTopButton.addEventListener("click", closeEditModal);
         els.closeLinkButton.addEventListener("click", closeLinkModal);
         els.closeImagePreviewButton.addEventListener("click", closeImagePreviewModal);
+        els.closeHtmlPreviewButton.addEventListener("click", closeHtmlPreviewModal);
         els.closeInnerDiagramTopButton.addEventListener("click", closeInnerDiagramModal);
         els.cancelInnerDiagramButton.addEventListener("click", closeInnerDiagramModal);
         els.saveInnerDiagramButton.addEventListener("click", saveInnerDiagramModal);
@@ -3032,6 +3178,7 @@
         els.editModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.linkModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.imagePreviewModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
+        els.htmlPreviewModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.innerDiagramModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.innerBlockEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
         els.connectionEditModal.addEventListener("pointerdown", closeWhenBackdropIsClicked);
@@ -3207,6 +3354,9 @@
         }
         if (els.imagePreviewModal) {
           closeImagePreviewModal();
+        }
+        if (els.htmlPreviewModal) {
+          closeHtmlPreviewModal();
         }
         if (els.innerDiagramModal) {
           closeInnerDiagramModal();
@@ -3957,6 +4107,7 @@
             link: block.link,
             tool: block.tool,
             images: getBlockImages(block),
+            htmlFiles: getBlockHtmlFiles(block),
             category: block.category,
             type: block.type,
             parentId: block.parentId || "",
@@ -4141,6 +4292,7 @@
         setEditColorInheritedValue(shouldInheritBlockColor(store.data, block));
         els.editDetail.value = block.detail;
         store.editImages = getBlockImages(block);
+        store.editHtmlFiles = getBlockHtmlFiles(block);
         renderEditImages();
         els.editLink.value = block.link || "";
         els.toolTagRegisterInput.value = "";
@@ -4162,6 +4314,7 @@
       function closeEditModal() {
         store.editBlockId = null;
         store.editImages = [];
+        store.editHtmlFiles = [];
         if (els.editImageDropZone) {
           els.editImageDropZone.classList.remove("is-drop-target");
         }
@@ -4199,6 +4352,7 @@
         block.inheritColor = normalizeBlockType(block.type) !== "main" && normalizeBlockType(block.type) !== "group" && els.editColorInherited.value === "true";
         block.detail = els.editDetail.value;
         block.images = cloneBlockImages(store.editImages);
+        block.htmlFiles = cloneBlockHtmlFiles(store.editHtmlFiles);
         block.link = nextLink;
         block.tool = nextTool;
         block.startDate = normalizeDateString(els.editStartDate.value);
@@ -4785,12 +4939,12 @@
       }
 
       function handleEditImageFileSelect(event) {
-        addEditImageFiles(event.target.files);
+        addEditAttachmentFiles(event.target.files);
         event.target.value = "";
       }
 
       function handleEditImageDragEnter(event) {
-        if (!hasImageFiles(event.dataTransfer)) {
+        if (!hasAttachmentFiles(event.dataTransfer)) {
           return;
         }
         event.preventDefault();
@@ -4798,7 +4952,7 @@
       }
 
       function handleEditImageDragOver(event) {
-        if (!hasImageFiles(event.dataTransfer)) {
+        if (!hasAttachmentFiles(event.dataTransfer)) {
           return;
         }
         event.preventDefault();
@@ -4813,41 +4967,51 @@
       }
 
       function handleEditImageDrop(event) {
-        if (!hasImageFiles(event.dataTransfer)) {
+        if (!hasAttachmentFiles(event.dataTransfer)) {
           return;
         }
         event.preventDefault();
         els.editImageDropZone.classList.remove("is-drop-target");
-        addEditImageFiles(event.dataTransfer.files);
+        addEditAttachmentFiles(event.dataTransfer.files);
       }
 
       function handleEditImagePaste(event) {
         if (!els.editModal.classList.contains("is-open")) {
           return;
         }
-        var files = getImageFilesFromClipboard(event.clipboardData);
+        var files = getAttachmentFilesFromClipboard(event.clipboardData);
         if (!files.length) {
           return;
         }
         event.preventDefault();
-        addEditImageFiles(files);
+        addEditAttachmentFiles(files);
       }
 
-      function addEditImageFiles(fileList) {
-        var files = getImageFilesFromFileList(fileList);
+      function addEditAttachmentFiles(fileList) {
+        var files = getAttachmentFilesFromFileList(fileList);
         if (!files.length) {
-          showToast("이미지 파일만 첨부할 수 있습니다.");
+          showToast("이미지 또는 HTML 파일만 첨부할 수 있습니다.");
           return;
         }
-        Promise.all(files.map(readImageFileAsDataUrl)).then(function (images) {
+        var imageFiles = files.filter(isImageFile);
+        var htmlFiles = files.filter(isHtmlFile);
+        Promise.all([
+          Promise.all(imageFiles.map(readImageFileAsDataUrl)),
+          Promise.all(htmlFiles.map(readHtmlFileAsText))
+        ]).then(function (results) {
+          var images = results[0];
+          var htmlDocuments = results[1];
           store.editImages = cloneBlockImages(store.editImages).concat(images);
+          store.editHtmlFiles = cloneBlockHtmlFiles(store.editHtmlFiles).concat(htmlDocuments);
           renderEditImages();
           if (images[0]) {
             openImagePreview(images[0]);
+          } else if (htmlDocuments[0]) {
+            openHtmlPreview(htmlDocuments[0]);
           }
-          showToast(images.length > 1 ? images.length + "개 이미지를 첨부했습니다." : "이미지를 첨부했습니다.");
+          showToast(files.length > 1 ? files.length + "개 파일을 첨부했습니다." : (htmlDocuments.length ? "HTML 파일을 첨부했습니다." : "이미지를 첨부했습니다."));
         }).catch(function () {
-          showToast("이미지를 읽지 못했습니다.");
+          showToast("첨부 파일을 읽지 못했습니다.");
         });
       }
 
@@ -4864,6 +5028,22 @@
           };
           reader.onerror = reject;
           reader.readAsDataURL(file);
+        });
+      }
+
+      function readHtmlFileAsText(file) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function () {
+            resolve({
+              id: createHtmlFileId(),
+              name: file.name || "첨부 문서.html",
+              type: "text/html",
+              content: String(reader.result || "")
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsText(file);
         });
       }
 
@@ -4903,6 +5083,40 @@
           card.append(img, removeButton, name);
           els.editImageList.append(card);
         });
+        cloneBlockHtmlFiles(store.editHtmlFiles).forEach(function (htmlFile) {
+          var card = document.createElement("div");
+          var icon = document.createElement("div");
+          var removeButton = document.createElement("button");
+          var name = document.createElement("div");
+
+          card.className = "image-card html-file-card";
+          card.tabIndex = 0;
+          card.title = "HTML 팝업 미리보기";
+          card.addEventListener("click", function () {
+            openHtmlPreview(htmlFile);
+          });
+          card.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openHtmlPreview(htmlFile);
+            }
+          });
+          icon.className = "html-file-icon";
+          icon.textContent = "</>";
+          removeButton.type = "button";
+          removeButton.textContent = "×";
+          removeButton.title = "HTML 파일 삭제";
+          removeButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            removeEditHtmlFile(htmlFile.id);
+          });
+          name.className = "image-card-name";
+          name.textContent = htmlFile.name || "첨부 문서.html";
+
+          card.append(icon, removeButton, name);
+          els.editImageList.append(card);
+        });
       }
 
       function openImagePreview(image) {
@@ -4927,6 +5141,31 @@
         }
         if (els.imagePreviewName) {
           els.imagePreviewName.textContent = "";
+        }
+      }
+
+      function openHtmlPreview(htmlFile) {
+        var safeFile = normalizeBlockHtmlFile(htmlFile);
+        if (!safeFile) {
+          return;
+        }
+        els.htmlPreviewTitle.textContent = safeFile.name || "HTML 미리보기";
+        els.htmlPreviewName.textContent = safeFile.name || "첨부 문서.html";
+        els.htmlPreviewFrame.srcdoc = safeFile.content;
+        els.htmlPreviewModal.classList.add("is-open");
+      }
+
+      function closeHtmlPreviewModal() {
+        if (!els.htmlPreviewModal) {
+          return;
+        }
+        els.htmlPreviewModal.classList.remove("is-open");
+        if (els.htmlPreviewFrame) {
+          els.htmlPreviewFrame.removeAttribute("srcdoc");
+          els.htmlPreviewFrame.src = "about:blank";
+        }
+        if (els.htmlPreviewName) {
+          els.htmlPreviewName.textContent = "";
         }
       }
 
@@ -5824,31 +6063,65 @@
         renderEditImages();
       }
 
-      function hasImageFiles(dataTransfer) {
+      function removeEditHtmlFile(fileId) {
+        store.editHtmlFiles = cloneBlockHtmlFiles(store.editHtmlFiles).filter(function (htmlFile) {
+          return htmlFile.id !== fileId;
+        });
+        renderEditImages();
+      }
+
+      function hasAttachmentFiles(dataTransfer) {
         if (!dataTransfer) {
           return false;
         }
         if (dataTransfer.items && dataTransfer.items.length) {
-          return Array.from(dataTransfer.items).some(function (item) {
-            return item.kind === "file" && /^image\//i.test(item.type || "");
+          var hasSupportedItem = Array.from(dataTransfer.items).some(function (item) {
+            if (item.kind !== "file") {
+              return false;
+            }
+            var file = item.getAsFile ? item.getAsFile() : null;
+            return isImageFile(file) || isHtmlFile(file) || /^image\//i.test(item.type || "") || /^text\/html$/i.test(item.type || "");
           });
+          if (hasSupportedItem) {
+            return true;
+          }
         }
-        return getImageFilesFromFileList(dataTransfer.files).length > 0;
+        if (Array.from(dataTransfer.types || []).indexOf("Files") >= 0) {
+          return true;
+        }
+        return getAttachmentFilesFromFileList(dataTransfer.files).length > 0;
       }
 
-      function getImageFilesFromClipboard(clipboardData) {
-        if (!clipboardData || !clipboardData.items) {
+      function getAttachmentFilesFromClipboard(clipboardData) {
+        if (!clipboardData) {
+          return [];
+        }
+        var directFiles = getAttachmentFilesFromFileList(clipboardData.files);
+        if (directFiles.length) {
+          return directFiles;
+        }
+        if (!clipboardData.items) {
           return [];
         }
         return Array.from(clipboardData.items).map(function (item) {
-          return item.kind === "file" && /^image\//i.test(item.type || "") ? item.getAsFile() : null;
-        }).filter(Boolean);
+          return item.kind === "file" && item.getAsFile ? item.getAsFile() : null;
+        }).filter(function (file) {
+          return isImageFile(file) || isHtmlFile(file);
+        });
       }
 
-      function getImageFilesFromFileList(fileList) {
+      function getAttachmentFilesFromFileList(fileList) {
         return Array.from(fileList || []).filter(function (file) {
-          return file && /^image\//i.test(file.type || "");
+          return isImageFile(file) || isHtmlFile(file);
         });
+      }
+
+      function isImageFile(file) {
+        return Boolean(file && /^image\//i.test(file.type || ""));
+      }
+
+      function isHtmlFile(file) {
+        return Boolean(file && (/^text\/html$/i.test(file.type || "") || /\.html?$/i.test(file.name || "")));
       }
 
       function closeWhenBackdropIsClicked(event) {
@@ -5863,6 +6136,9 @@
         }
         if (event.target === els.imagePreviewModal) {
           closeImagePreviewModal();
+        }
+        if (event.target === els.htmlPreviewModal) {
+          closeHtmlPreviewModal();
         }
         if (event.target === els.innerDiagramModal) {
           closeInnerDiagramModal();
@@ -5935,6 +6211,10 @@
         }
         if (els.imagePreviewModal.classList.contains("is-open")) {
           closeImagePreviewModal();
+          modalWasOpen = true;
+        }
+        if (els.htmlPreviewModal.classList.contains("is-open")) {
+          closeHtmlPreviewModal();
           modalWasOpen = true;
         }
         if (els.innerDiagramModal.classList.contains("is-open")) {
@@ -6023,6 +6303,10 @@
         var handle = document.createElement("button");
         var linkButton = null;
         var innerButton = null;
+        var imageButton = null;
+        var htmlButton = null;
+        var blockImages = getBlockImages(block);
+        var blockHtmlFiles = getBlockHtmlFiles(block);
         var createMenu = document.createElement("div");
         var createMainButton = document.createElement("button");
         var createMiddleButton = document.createElement("button");
@@ -6059,6 +6343,12 @@
         if (hasInnerDiagram(block)) {
           card.classList.add("has-inner");
         }
+        if (blockImages.length) {
+          card.classList.add("has-images");
+        }
+        if (blockHtmlFiles.length) {
+          card.classList.add("has-html");
+        }
         if (blockType === "group" && groupChildren.length) {
           card.classList.add("has-children");
         }
@@ -6069,6 +6359,10 @@
         setBlockPosition(card, block);
 
         top.className = "block-top";
+        var topActionCount = (isValidLink(block.link) ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0) + (blockHtmlFiles.length ? 1 : 0);
+        if (topActionCount) {
+          top.style.paddingRight = (12 + topActionCount * 32) + "px";
+        }
         title.className = "block-title";
         title.dataset.titleEditor = "true";
         title.textContent = block.title || "제목 없음";
@@ -6146,6 +6440,49 @@
             event.preventDefault();
             event.stopPropagation();
             openInnerDiagramModal(block.id);
+          });
+        }
+
+        if (blockImages.length) {
+          imageButton = document.createElement("button");
+          imageButton.className = "block-image-button";
+          imageButton.type = "button";
+          imageButton.title = "첨부 이미지 " + blockImages.length + "개 미리보기";
+          imageButton.setAttribute("aria-label", imageButton.title);
+          imageButton.textContent = "🖼";
+          if (blockImages.length > 1) {
+            var imageCount = document.createElement("span");
+            imageCount.className = "block-image-count";
+            imageCount.textContent = String(blockImages.length);
+            imageCount.setAttribute("aria-hidden", "true");
+            imageButton.append(imageCount);
+          }
+          imageButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openImagePreview(blockImages[0]);
+          });
+        }
+
+        if (blockHtmlFiles.length) {
+          htmlButton = document.createElement("button");
+          htmlButton.className = "block-html-button";
+          htmlButton.type = "button";
+          htmlButton.title = "첨부 HTML " + blockHtmlFiles.length + "개 미리보기";
+          htmlButton.setAttribute("aria-label", htmlButton.title);
+          htmlButton.textContent = "</>";
+          htmlButton.style.right = (8 + 32 * ((isValidLink(block.link) ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0))) + "px";
+          if (blockHtmlFiles.length > 1) {
+            var htmlCount = document.createElement("span");
+            htmlCount.className = "block-image-count";
+            htmlCount.textContent = String(blockHtmlFiles.length);
+            htmlCount.setAttribute("aria-hidden", "true");
+            htmlButton.append(htmlCount);
+          }
+          htmlButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openHtmlPreview(blockHtmlFiles[0]);
           });
         }
 
@@ -6289,6 +6626,12 @@
         }
         if (linkButton) {
           card.append(linkButton);
+        }
+        if (imageButton) {
+          card.append(imageButton);
+        }
+        if (htmlButton) {
+          card.append(htmlButton);
         }
         if (isActiveBlock) {
           card.append(quickActions);
@@ -7477,6 +7820,7 @@
           link: "",
           tool: "",
           images: [],
+          htmlFiles: [],
           innerDiagram: createEmptyInnerDiagram(),
           startDate: null,
           dueDate: null,
@@ -8142,6 +8486,7 @@
           link: String(source.link || ""),
           tool: normalizeTool(source.tool),
           images: getBlockImages(source),
+          htmlFiles: getBlockHtmlFiles(source),
           innerDiagram: cloneInnerDiagram(source.innerDiagram),
           startDate: normalizeDateString(source.startDate),
           dueDate: normalizeDateString(source.dueDate),
@@ -8215,6 +8560,7 @@
             link: String(source.link || ""),
             tool: normalizeTool(source.tool),
             images: cloneBlockImages(source.images),
+            htmlFiles: cloneBlockHtmlFiles(source.htmlFiles),
             innerDiagram: cloneInnerDiagram(source.innerDiagram),
             startDate: normalizeDateString(source.startDate),
             dueDate: normalizeDateString(source.dueDate),
@@ -8268,6 +8614,7 @@
           link: String(block.link || ""),
           tool: normalizeTool(block.tool),
           images: getBlockImages(block),
+          htmlFiles: getBlockHtmlFiles(block),
           innerDiagram: cloneInnerDiagram(block.innerDiagram),
           startDate: normalizeDateString(block.startDate),
           dueDate: normalizeDateString(block.dueDate),
@@ -8303,6 +8650,7 @@
           link: "",
           tool: "",
           images: [],
+          htmlFiles: [],
           innerDiagram: createEmptyInnerDiagram(),
           startDate: null,
           dueDate: null,
@@ -9526,7 +9874,9 @@
         var toolFontSize = 11;
         var linkSpace = isValidLink(block && block.link) ? 34 : 0;
         var innerSpace = hasInnerDiagram(block) ? 34 : 0;
-        var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace + innerSpace;
+        var imageSpace = getBlockImages(block).length ? 34 : 0;
+        var htmlSpace = getBlockHtmlFiles(block).length ? 34 : 0;
+        var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace + innerSpace + imageSpace + htmlSpace;
         var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
         var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, toolFontSize) + padding) : 0;
@@ -10223,6 +10573,32 @@
         return "img-" + Date.now().toString(36) + "-" + String(seed == null ? Math.random().toString(36).slice(2, 8) : seed);
       }
 
+      function getBlockHtmlFiles(block) {
+        return cloneBlockHtmlFiles(block && block.htmlFiles);
+      }
+
+      function cloneBlockHtmlFiles(files) {
+        return Array.isArray(files) ? files.map(normalizeBlockHtmlFile).filter(Boolean) : [];
+      }
+
+      function normalizeBlockHtmlFile(file, index) {
+        var raw = isPlainObject(file) ? file : { content: file };
+        var content = typeof raw.content === "string" ? raw.content : String(raw.content || raw.html || "");
+        if (!content.trim()) {
+          return null;
+        }
+        return {
+          id: typeof raw.id === "string" && raw.id ? raw.id : createHtmlFileId(index),
+          name: typeof raw.name === "string" && raw.name ? raw.name : "첨부 문서.html",
+          type: "text/html",
+          content: content
+        };
+      }
+
+      function createHtmlFileId(seed) {
+        return "html-" + Date.now().toString(36) + "-" + String(seed == null ? Math.random().toString(36).slice(2, 8) : seed);
+      }
+
       function createEmptyInnerDiagram() {
         return {
           blocks: [],
@@ -10559,6 +10935,7 @@
               link: String(block.link || ""),
               tool: normalizeTool(block.tool),
               images: getBlockImages(block),
+              htmlFiles: getBlockHtmlFiles(block),
               innerDiagram: cloneInnerDiagram(block.innerDiagram),
               startDate: normalizeDateString(block.startDate),
               dueDate: normalizeDateString(block.dueDate),
@@ -10652,6 +11029,7 @@
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
               tool: typeof raw.tool === "string" ? normalizeTool(raw.tool) : normalizeTool(raw.tool || ""),
               images: cloneBlockImages(raw.images),
+              htmlFiles: cloneBlockHtmlFiles(raw.htmlFiles),
               innerDiagram: cloneInnerDiagram(raw.innerDiagram),
               startDate: normalizeDateString(raw.startDate),
               dueDate: normalizeDateString(raw.dueDate),
@@ -10865,6 +11243,7 @@
           els.editModal.classList.contains("is-open") ||
           els.linkModal.classList.contains("is-open") ||
           els.imagePreviewModal.classList.contains("is-open") ||
+          els.htmlPreviewModal.classList.contains("is-open") ||
           els.innerDiagramModal.classList.contains("is-open") ||
           els.innerBlockEditModal.classList.contains("is-open") ||
           els.connectionEditModal.classList.contains("is-open");
