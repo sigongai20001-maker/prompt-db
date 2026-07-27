@@ -2030,6 +2030,20 @@
       background: #fff;
     }
 
+    .html-preview-frame:fullscreen {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      border-radius: 0;
+    }
+
+    .html-preview-frame:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      border: 0;
+      border-radius: 0;
+    }
+
     .inner-diagram-row {
       display: flex;
       align-items: center;
@@ -2760,12 +2774,14 @@
       <div class="modal-body html-preview-body">
         <div class="html-preview-toolbar">
           <button class="modal-button primary" id="openHtmlNewTabButton" type="button">새 탭 열기</button>
+          <button class="modal-button" id="fullscreenHtmlPreviewButton" type="button">풀스크린</button>
         </div>
         <iframe
           class="html-preview-frame"
           id="htmlPreviewFrame"
           title="첨부 HTML 미리보기"
           sandbox="allow-scripts allow-forms allow-modals allow-popups"
+          allowfullscreen
           referrerpolicy="no-referrer"
         ></iframe>
         <div class="image-preview-name" id="htmlPreviewName"></div>
@@ -3066,6 +3082,7 @@
         els.htmlPreviewFrame = document.getElementById("htmlPreviewFrame");
         els.htmlPreviewName = document.getElementById("htmlPreviewName");
         els.openHtmlNewTabButton = document.getElementById("openHtmlNewTabButton");
+        els.fullscreenHtmlPreviewButton = document.getElementById("fullscreenHtmlPreviewButton");
         els.closeHtmlPreviewButton = document.getElementById("closeHtmlPreviewButton");
         els.innerDiagramModal = document.getElementById("innerDiagramModal");
         els.innerDiagramTitle = document.getElementById("innerDiagramTitle");
@@ -3173,6 +3190,7 @@
         els.closeLinkButton.addEventListener("click", closeLinkModal);
         els.closeImagePreviewButton.addEventListener("click", closeImagePreviewModal);
         els.openHtmlNewTabButton.addEventListener("click", openCurrentHtmlPreviewInNewTab);
+        els.fullscreenHtmlPreviewButton.addEventListener("click", toggleHtmlPreviewFullscreen);
         els.closeHtmlPreviewButton.addEventListener("click", closeHtmlPreviewModal);
         els.closeInnerDiagramTopButton.addEventListener("click", closeInnerDiagramModal);
         els.cancelInnerDiagramButton.addEventListener("click", closeInnerDiagramModal);
@@ -3208,6 +3226,8 @@
         document.addEventListener("pointermove", handlePointerMove);
         document.addEventListener("pointerup", handlePointerUp);
         document.addEventListener("pointercancel", handlePointerUp);
+        document.addEventListener("fullscreenchange", updateHtmlPreviewFullscreenButton);
+        document.addEventListener("webkitfullscreenchange", updateHtmlPreviewFullscreenButton);
         document.addEventListener("keydown", handleKeyDown);
         document.addEventListener("keyup", handleKeyUp);
       }
@@ -5184,6 +5204,7 @@
         store.htmlPreviewFile = safeFile;
         els.htmlPreviewFrame.srcdoc = safeFile.content;
         els.htmlPreviewModal.classList.add("is-open");
+        updateHtmlPreviewFullscreenButton();
       }
 
       function openCurrentHtmlPreviewInNewTab(event) {
@@ -5207,9 +5228,54 @@
         }, 60000);
       }
 
+      function toggleHtmlPreviewFullscreen(event) {
+        var frame = els.htmlPreviewFrame;
+        var fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+        var requestFullscreen;
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (!frame) {
+          return;
+        }
+        if (fullscreenElement === frame) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+          return;
+        }
+        requestFullscreen = frame.requestFullscreen || frame.webkitRequestFullscreen;
+        if (!requestFullscreen) {
+          showToast("이 브라우저에서는 풀스크린을 지원하지 않습니다.");
+          return;
+        }
+        Promise.resolve(requestFullscreen.call(frame)).catch(function () {
+          showToast("풀스크린을 열 수 없습니다.");
+        });
+      }
+
+      function updateHtmlPreviewFullscreenButton() {
+        var fullscreenElement;
+        if (!els.fullscreenHtmlPreviewButton) {
+          return;
+        }
+        fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+        els.fullscreenHtmlPreviewButton.textContent = fullscreenElement === els.htmlPreviewFrame ? "풀스크린 종료" : "풀스크린";
+      }
+
       function closeHtmlPreviewModal() {
         if (!els.htmlPreviewModal) {
           return;
+        }
+        if ((document.fullscreenElement || document.webkitFullscreenElement) === els.htmlPreviewFrame) {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(function () {});
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
         }
         els.htmlPreviewModal.classList.remove("is-open");
         store.htmlPreviewFile = null;
@@ -5220,6 +5286,7 @@
         if (els.htmlPreviewName) {
           els.htmlPreviewName.textContent = "";
         }
+        updateHtmlPreviewFullscreenButton();
       }
 
       function openInnerDiagramFromEdit() {
