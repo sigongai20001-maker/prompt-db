@@ -1949,6 +1949,13 @@
       cursor: pointer;
     }
 
+    .image-card button.html-open-button {
+      right: 40px;
+      border-color: rgba(61,220,151,0.62);
+      color: #07150f;
+      background: var(--accent);
+    }
+
     .image-card-name {
       overflow: hidden;
       padding: 7px 8px;
@@ -2005,6 +2012,13 @@
       min-height: min(76vh, 760px);
       padding: 12px;
       background: #0f1115;
+    }
+
+    .html-preview-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 10px;
     }
 
     .html-preview-frame {
@@ -2744,6 +2758,9 @@
         <button class="modal-button" id="closeHtmlPreviewButton" type="button">닫기</button>
       </header>
       <div class="modal-body html-preview-body">
+        <div class="html-preview-toolbar">
+          <button class="modal-button primary" id="openHtmlNewTabButton" type="button">새 탭 열기</button>
+        </div>
         <iframe
           class="html-preview-frame"
           id="htmlPreviewFrame"
@@ -2911,6 +2928,7 @@
         editConnectionKey: null,
         editImages: [],
         editHtmlFiles: [],
+        htmlPreviewFile: null,
         innerDiagram: {
           blockId: null,
           data: createEmptyInnerDiagram(),
@@ -3047,6 +3065,7 @@
         els.htmlPreviewTitle = document.getElementById("htmlPreviewTitle");
         els.htmlPreviewFrame = document.getElementById("htmlPreviewFrame");
         els.htmlPreviewName = document.getElementById("htmlPreviewName");
+        els.openHtmlNewTabButton = document.getElementById("openHtmlNewTabButton");
         els.closeHtmlPreviewButton = document.getElementById("closeHtmlPreviewButton");
         els.innerDiagramModal = document.getElementById("innerDiagramModal");
         els.innerDiagramTitle = document.getElementById("innerDiagramTitle");
@@ -3153,6 +3172,7 @@
         els.cancelEditTopButton.addEventListener("click", closeEditModal);
         els.closeLinkButton.addEventListener("click", closeLinkModal);
         els.closeImagePreviewButton.addEventListener("click", closeImagePreviewModal);
+        els.openHtmlNewTabButton.addEventListener("click", openCurrentHtmlPreviewInNewTab);
         els.closeHtmlPreviewButton.addEventListener("click", closeHtmlPreviewModal);
         els.closeInnerDiagramTopButton.addEventListener("click", closeInnerDiagramModal);
         els.cancelInnerDiagramButton.addEventListener("click", closeInnerDiagramModal);
@@ -5086,6 +5106,7 @@
         cloneBlockHtmlFiles(store.editHtmlFiles).forEach(function (htmlFile) {
           var card = document.createElement("div");
           var icon = document.createElement("div");
+          var openButton = document.createElement("button");
           var removeButton = document.createElement("button");
           var name = document.createElement("div");
 
@@ -5103,6 +5124,15 @@
           });
           icon.className = "html-file-icon";
           icon.textContent = "</>";
+          openButton.type = "button";
+          openButton.className = "html-open-button";
+          openButton.textContent = "열기";
+          openButton.title = "HTML 새 탭 열기";
+          openButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openHtmlFileInNewTab(htmlFile);
+          });
           removeButton.type = "button";
           removeButton.textContent = "×";
           removeButton.title = "HTML 파일 삭제";
@@ -5114,7 +5144,7 @@
           name.className = "image-card-name";
           name.textContent = htmlFile.name || "첨부 문서.html";
 
-          card.append(icon, removeButton, name);
+          card.append(icon, openButton, removeButton, name);
           els.editImageList.append(card);
         });
       }
@@ -5151,8 +5181,30 @@
         }
         els.htmlPreviewTitle.textContent = safeFile.name || "HTML 미리보기";
         els.htmlPreviewName.textContent = safeFile.name || "첨부 문서.html";
+        store.htmlPreviewFile = safeFile;
         els.htmlPreviewFrame.srcdoc = safeFile.content;
         els.htmlPreviewModal.classList.add("is-open");
+      }
+
+      function openCurrentHtmlPreviewInNewTab(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        openHtmlFileInNewTab(store.htmlPreviewFile);
+      }
+
+      function openHtmlFileInNewTab(htmlFile) {
+        var safeFile = normalizeBlockHtmlFile(htmlFile);
+        var objectUrl;
+        if (!safeFile) {
+          return;
+        }
+        objectUrl = URL.createObjectURL(new Blob([safeFile.content], { type: "text/html;charset=utf-8" }));
+        window.open(objectUrl, "_blank", "noopener");
+        window.setTimeout(function () {
+          URL.revokeObjectURL(objectUrl);
+        }, 60000);
       }
 
       function closeHtmlPreviewModal() {
@@ -5160,6 +5212,7 @@
           return;
         }
         els.htmlPreviewModal.classList.remove("is-open");
+        store.htmlPreviewFile = null;
         if (els.htmlPreviewFrame) {
           els.htmlPreviewFrame.removeAttribute("srcdoc");
           els.htmlPreviewFrame.src = "about:blank";
