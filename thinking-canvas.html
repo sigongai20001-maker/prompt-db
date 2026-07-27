@@ -2291,6 +2291,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
+      overflow: hidden;
       padding: 8px 10px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -2298,12 +2299,18 @@
     }
 
     .link-preview-type {
+      flex: 1 1 auto;
       min-width: 0;
       overflow: hidden;
       color: var(--muted);
       font-size: 13px;
       font-weight: 700;
       text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .link-preview-toolbar .modal-button {
+      flex: 0 0 auto;
       white-space: nowrap;
     }
 
