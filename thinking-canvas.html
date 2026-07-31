@@ -2678,7 +2678,7 @@
         </div>
         <div class="field">
           <label for="editLink">통합 링크 (웹페이지·문서·이미지·영상)</label>
-          <input class="text-input" id="editLink" type="url" placeholder="https://notion.so/... 또는 https://...">
+          <input class="text-input" id="editLink" type="text" placeholder="https://... 또는 G:\내 드라이브\...">
         </div>
         <div class="field">
           <label for="editImageFile">이미지·HTML 첨부</label>
@@ -6434,6 +6434,8 @@
         var htmlButton = null;
         var blockImages = getBlockImages(block);
         var blockHtmlFiles = getBlockHtmlFiles(block);
+        var hasBlockLink = isOpenableLink(block.link);
+        var isLocalBlockLink = isLocalPathLink(block.link);
         var createMenu = document.createElement("div");
         var createMainButton = document.createElement("button");
         var createMiddleButton = document.createElement("button");
@@ -6458,7 +6460,7 @@
         card.classList.toggle("is-done", Boolean(block.done));
         card.classList.toggle("is-highlighted", Boolean(block.highlight));
         card.classList.toggle("is-highlight-filtered", store.highlightOnly && !block.highlight);
-        if (isValidLink(block.link)) {
+        if (hasBlockLink) {
           card.classList.add("has-link");
         }
         if (dueBadge) {
@@ -6486,7 +6488,7 @@
         setBlockPosition(card, block);
 
         top.className = "block-top";
-        var topActionCount = (isValidLink(block.link) ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0) + (blockHtmlFiles.length ? 1 : 0);
+        var topActionCount = (hasBlockLink ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0) + (blockHtmlFiles.length ? 1 : 0);
         if (topActionCount) {
           top.style.paddingRight = (12 + topActionCount * 32) + "px";
         }
@@ -6544,12 +6546,12 @@
         resizeHandle.title = "블록 크기 조절";
         resizeHandle.setAttribute("aria-label", "블록 크기 조절");
 
-        if (isValidLink(block.link)) {
+        if (hasBlockLink) {
           linkButton = document.createElement("button");
           linkButton.className = "block-link-button";
           linkButton.type = "button";
-          linkButton.title = "링크 열기";
-          linkButton.textContent = "🔗";
+          linkButton.title = isLocalBlockLink ? "로컬 폴더 열기" : "링크 열기";
+          linkButton.textContent = isLocalBlockLink ? "📁" : "🔗";
           linkButton.addEventListener("click", function (event) {
             event.preventDefault();
             event.stopPropagation();
@@ -6598,7 +6600,7 @@
           htmlButton.title = "첨부 HTML " + blockHtmlFiles.length + "개 미리보기";
           htmlButton.setAttribute("aria-label", htmlButton.title);
           htmlButton.textContent = "</>";
-          htmlButton.style.right = (8 + 32 * ((isValidLink(block.link) ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0))) + "px";
+          htmlButton.style.right = (8 + 32 * ((hasBlockLink ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0))) + "px";
           if (blockHtmlFiles.length > 1) {
             var htmlCount = document.createElement("span");
             htmlCount.className = "block-image-count";
@@ -9999,7 +10001,7 @@
         var titleFontSize = isMain ? 26 : (isMiddle ? 18 : 14);
         var summaryFontSize = 12;
         var toolFontSize = 11;
-        var linkSpace = isValidLink(block && block.link) ? 34 : 0;
+        var linkSpace = isOpenableLink(block && block.link) ? 34 : 0;
         var innerSpace = hasInnerDiagram(block) ? 34 : 0;
         var imageSpace = getBlockImages(block).length ? 34 : 0;
         var htmlSpace = getBlockHtmlFiles(block).length ? 34 : 0;
@@ -10472,12 +10474,73 @@
         return /^https?:\/\//i.test(String(url || "").trim());
       }
 
+      function isOpenableLink(url) {
+        return isValidLink(url) || isLocalPathLink(url);
+      }
+
+      function isLocalPathLink(url) {
+        var value = String(url || "").trim();
+        return /^file:\/\//i.test(value) || /^[a-zA-Z]:[\\/]/.test(value) || /^\\\\[^\\\/]+[\\\/][^\\\/]+/.test(value);
+      }
+
+      function createLocalFileUrl(path) {
+        var value = String(path || "").trim();
+        var normalized;
+        var parts;
+        var host;
+        if (/^file:\/\//i.test(value)) {
+          return value.replace(/\\/g, "/");
+        }
+        if (/^[a-zA-Z]:[\\/]/.test(value)) {
+          normalized = value.replace(/\\/g, "/");
+          return "file:///" + normalized.split("/").map(function (part, index) {
+            return index === 0 ? part : encodeURIComponent(part);
+          }).join("/");
+        }
+        if (/^\\\\[^\\\/]+[\\\/][^\\\/]+/.test(value)) {
+          normalized = value.replace(/^\\\\/, "").replace(/\\/g, "/");
+          parts = normalized.split("/");
+          host = parts.shift() || "";
+          return "file://" + host + "/" + parts.map(function (part) {
+            return encodeURIComponent(part);
+          }).join("/");
+        }
+        return "";
+      }
+
       function openBlockLink(url, title) {
         var safeUrl = String(url || "").trim();
+        if (isLocalPathLink(safeUrl)) {
+          openLocalPathLink(safeUrl);
+          return;
+        }
         if (!isValidLink(safeUrl)) {
           return;
         }
         openLinkModal(safeUrl, title || "자료 보기");
+      }
+
+      function openLocalPathLink(path) {
+        var safePath = String(path || "").trim();
+        var fileUrl = createLocalFileUrl(safePath);
+        var opened;
+        if (!fileUrl) {
+          return;
+        }
+        opened = window.open(fileUrl, "_blank", "noopener");
+        if (opened) {
+          showToast("로컬 폴더 열기를 요청했습니다.");
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(safePath).then(function () {
+            showToast("브라우저가 로컬 폴더 열기를 막아 경로를 복사했습니다.");
+          }).catch(function () {
+            showToast("브라우저가 로컬 폴더 열기를 막을 수 있습니다.");
+          });
+        } else {
+          showToast("브라우저가 로컬 폴더 열기를 막을 수 있습니다.");
+        }
       }
 
       function openLinkModal(url, title) {
