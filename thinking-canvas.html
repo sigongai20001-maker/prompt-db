@@ -841,6 +841,25 @@
       pointer-events: auto;
     }
 
+    .block-schedule-button {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 7px;
+      background: rgba(15,17,21,0.72);
+      color: inherit;
+      font-size: 13px;
+      line-height: 1;
+      pointer-events: auto;
+    }
+
     .block-card.has-link .block-inner-button {
       right: 40px;
     }
@@ -918,7 +937,8 @@
 
     .block-inner-button:hover,
     .block-image-button:hover,
-    .block-html-button:hover {
+    .block-html-button:hover,
+    .block-schedule-button:hover {
       border-color: var(--accent);
       background: rgba(61,220,151,0.16);
     }
@@ -6621,6 +6641,7 @@
         var highlightStar = null;
         var handle = document.createElement("button");
         var linkButton = null;
+        var scheduleButton = null;
         var innerButton = null;
         var imageButton = null;
         var htmlButton = null;
@@ -6628,6 +6649,7 @@
         var blockHtmlFiles = getBlockHtmlFiles(block);
         var hasBlockLink = isOpenableLink(block.link);
         var isLocalBlockLink = isLocalPathLink(block.link);
+        var hasSchedule = hasBlockSchedule(block);
         var createMenu = document.createElement("div");
         var createMainButton = document.createElement("button");
         var createMiddleButton = document.createElement("button");
@@ -6658,6 +6680,9 @@
         if (dueBadge) {
           card.classList.add("has-due");
         }
+        if (hasSchedule) {
+          card.classList.add("has-schedule");
+        }
         if (toolBadge) {
           card.classList.add("has-tool");
         }
@@ -6680,7 +6705,7 @@
         setBlockPosition(card, block);
 
         top.className = "block-top";
-        var topActionCount = (hasBlockLink ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0) + (blockHtmlFiles.length ? 1 : 0);
+        var topActionCount = (hasBlockLink ? 1 : 0) + (hasSchedule ? 1 : 0) + (hasInnerDiagram(block) ? 1 : 0) + (blockImages.length ? 1 : 0) + (blockHtmlFiles.length ? 1 : 0);
         if (topActionCount) {
           top.style.paddingRight = (12 + topActionCount * 32) + "px";
         }
@@ -6751,6 +6776,29 @@
           });
         }
 
+        if (hasSchedule) {
+          scheduleButton = document.createElement("button");
+          scheduleButton.className = "block-schedule-button";
+          scheduleButton.type = "button";
+          scheduleButton.title = getScheduleButtonTitle(block);
+          scheduleButton.setAttribute("aria-label", scheduleButton.title);
+          scheduleButton.textContent = "\uD83D\uDCC5";
+          scheduleButton.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            openEditModal(block.id);
+            window.setTimeout(function () {
+              if (normalizeDateString(block.dueDate) && els.editDueDate) {
+                els.editDueDate.focus();
+                return;
+              }
+              if (els.editStartDate) {
+                els.editStartDate.focus();
+              }
+            }, 0);
+          });
+        }
+
         if (hasInnerDiagram(block)) {
           innerButton = document.createElement("button");
           innerButton.className = "block-inner-button";
@@ -6806,6 +6854,8 @@
             openHtmlPreview(blockHtmlFiles[0]);
           });
         }
+
+        positionTopActionButtons([linkButton, scheduleButton, innerButton, imageButton, htmlButton]);
 
         createMenu.className = "block-create-menu";
         createMainButton.className = "block-action-button primary";
@@ -6947,6 +6997,9 @@
         }
         if (linkButton) {
           card.append(linkButton);
+        }
+        if (scheduleButton) {
+          card.append(scheduleButton);
         }
         if (imageButton) {
           card.append(imageButton);
@@ -7114,6 +7167,37 @@
         badge.textContent = "🛠 " + tool;
         badge.title = "TOOL: " + tool;
         return badge;
+      }
+
+      function hasBlockSchedule(block) {
+        return Boolean(
+          normalizeDateString(block && block.startDate) ||
+          normalizeDateString(block && block.dueDate) ||
+          normalizeScheduleStatus(block && block.status)
+        );
+      }
+
+      function getScheduleButtonTitle(block) {
+        var parts = [];
+        var startDate = normalizeDateString(block && block.startDate);
+        var dueDate = normalizeDateString(block && block.dueDate);
+        var status = normalizeScheduleStatus(block && block.status);
+        if (startDate) {
+          parts.push("Start " + startDate);
+        }
+        if (dueDate) {
+          parts.push("Due " + dueDate);
+        }
+        if (status) {
+          parts.push("Status " + getScheduleStatusLabel(status));
+        }
+        return parts.length ? parts.join(" / ") : "Schedule";
+      }
+
+      function positionTopActionButtons(buttons) {
+        buttons.filter(Boolean).forEach(function (button, index) {
+          button.style.right = (8 + index * 32) + "px";
+        });
       }
 
       function createDdayBadge(block) {
