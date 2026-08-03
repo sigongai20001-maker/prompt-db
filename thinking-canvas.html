@@ -1458,6 +1458,141 @@
       gap: 6px;
     }
 
+    .date-input-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 42px;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .date-picker-trigger {
+      min-height: 38px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.04);
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .date-picker-trigger:hover,
+    .date-picker-trigger:focus-visible {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.12);
+      outline: none;
+    }
+
+    .date-picker-popover {
+      position: fixed;
+      z-index: 90;
+      width: 292px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      background: #1c2129;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.46);
+    }
+
+    .date-picker-popover[hidden] {
+      display: none;
+    }
+
+    .date-picker-header,
+    .date-picker-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .date-picker-title {
+      flex: 1 1 auto;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .date-picker-nav,
+    .date-picker-action {
+      min-height: 34px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 7px;
+      color: var(--ink);
+      background: rgba(255,255,255,0.04);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .date-picker-nav {
+      width: 36px;
+      padding: 0;
+      font-size: 18px;
+    }
+
+    .date-picker-action {
+      flex: 1 1 0;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .date-picker-nav:hover,
+    .date-picker-action:hover {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.12);
+    }
+
+    .date-picker-weekdays,
+    .date-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .date-picker-weekdays {
+      margin: 12px 0 6px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .date-picker-day {
+      min-width: 0;
+      height: 34px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .date-picker-day:hover {
+      border-color: rgba(61,220,151,0.65);
+      background: rgba(61,220,151,0.10);
+    }
+
+    .date-picker-day.is-today {
+      border-color: rgba(59,130,246,0.72);
+      color: #dbeafe;
+    }
+
+    .date-picker-day.is-selected {
+      border-color: transparent;
+      color: var(--accent-ink);
+      background: var(--accent);
+    }
+
+    .date-picker-empty {
+      height: 34px;
+    }
+
+    .date-picker-footer {
+      margin-top: 10px;
+    }
+
     .flag-edit-row {
       display: flex;
       flex-wrap: wrap;
@@ -2695,11 +2830,17 @@
           <div class="schedule-edit-grid">
             <label>
               시작일
-              <input class="text-input" id="editStartDate" type="date">
+              <span class="date-input-shell">
+                <input class="text-input date-picker-input" id="editStartDate" type="text" placeholder="연도-월-일" autocomplete="off" inputmode="numeric">
+                <button class="date-picker-trigger" type="button" data-date-input="editStartDate" aria-label="시작일 달력 열기">📅</button>
+              </span>
             </label>
             <label>
               마감일
-              <input class="text-input" id="editDueDate" type="date">
+              <span class="date-input-shell">
+                <input class="text-input date-picker-input" id="editDueDate" type="text" placeholder="연도-월-일" autocomplete="off" inputmode="numeric">
+                <button class="date-picker-trigger" type="button" data-date-input="editDueDate" aria-label="마감일 달력 열기">📅</button>
+              </span>
             </label>
             <label>
               상태
@@ -2739,6 +2880,22 @@
         <button class="modal-button primary" id="saveEditButton" type="button">저장</button>
       </footer>
     </section>
+  </div>
+
+  <div class="date-picker-popover" id="datePickerPopover" hidden>
+    <div class="date-picker-header">
+      <button class="date-picker-nav" id="datePickerPrevMonth" type="button" aria-label="이전 달">‹</button>
+      <div class="date-picker-title" id="datePickerTitle"></div>
+      <button class="date-picker-nav" id="datePickerNextMonth" type="button" aria-label="다음 달">›</button>
+    </div>
+    <div class="date-picker-weekdays" aria-hidden="true">
+      <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+    </div>
+    <div class="date-picker-grid" id="datePickerGrid"></div>
+    <div class="date-picker-footer">
+      <button class="date-picker-action" id="datePickerTodayButton" type="button">오늘</button>
+      <button class="date-picker-action" id="datePickerClearButton" type="button">비우기</button>
+    </div>
   </div>
 
   <div class="modal-backdrop" id="linkModal" role="dialog" aria-modal="true" aria-labelledby="linkModalTitle">
@@ -2952,6 +3109,11 @@
         editImages: [],
         editHtmlFiles: [],
         htmlPreviewFile: null,
+        datePicker: {
+          input: null,
+          year: 0,
+          month: 0
+        },
         innerDiagram: {
           blockId: null,
           data: createEmptyInnerDiagram(),
@@ -3064,6 +3226,13 @@
         els.editTool = document.getElementById("editTool");
         els.editStartDate = document.getElementById("editStartDate");
         els.editDueDate = document.getElementById("editDueDate");
+        els.datePickerPopover = document.getElementById("datePickerPopover");
+        els.datePickerTitle = document.getElementById("datePickerTitle");
+        els.datePickerGrid = document.getElementById("datePickerGrid");
+        els.datePickerPrevMonth = document.getElementById("datePickerPrevMonth");
+        els.datePickerNextMonth = document.getElementById("datePickerNextMonth");
+        els.datePickerTodayButton = document.getElementById("datePickerTodayButton");
+        els.datePickerClearButton = document.getElementById("datePickerClearButton");
         els.editStatus = document.getElementById("editStatus");
         els.editDone = document.getElementById("editDone");
         els.editHighlight = document.getElementById("editHighlight");
@@ -3189,6 +3358,22 @@
         els.addToolTagButton.addEventListener("click", registerToolTagsFromInput);
         els.toolTagRegisterInput.addEventListener("keydown", handleToolTagRegisterKeyDown);
         els.editTool.addEventListener("input", handleToolInput);
+        els.editStartDate.addEventListener("focus", handleDateInputOpen);
+        els.editStartDate.addEventListener("click", handleDateInputOpen);
+        els.editDueDate.addEventListener("focus", handleDateInputOpen);
+        els.editDueDate.addEventListener("click", handleDateInputOpen);
+        document.querySelectorAll(".date-picker-trigger").forEach(function (button) {
+          button.addEventListener("click", handleDateTriggerClick);
+        });
+        els.datePickerPrevMonth.addEventListener("click", function () {
+          shiftDatePickerMonth(-1);
+        });
+        els.datePickerNextMonth.addEventListener("click", function () {
+          shiftDatePickerMonth(1);
+        });
+        els.datePickerTodayButton.addEventListener("click", selectTodayInDatePicker);
+        els.datePickerClearButton.addEventListener("click", clearDatePickerInput);
+        els.datePickerGrid.addEventListener("click", handleDatePickerDayClick);
         els.openInnerDiagramButton.addEventListener("click", openInnerDiagramFromEdit);
         els.deleteEditButton.addEventListener("click", deleteEditedBlock);
         els.saveEditButton.addEventListener("click", saveEditedBlock);
@@ -3230,6 +3415,7 @@
         els.viewport.addEventListener("pointerdown", startCanvasInteraction);
         els.viewport.addEventListener("dblclick", handleCanvasDoubleClick);
         els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
+        document.addEventListener("pointerdown", handleDatePickerOutsidePointerDown);
         document.addEventListener("pointermove", handlePointerMove);
         document.addEventListener("pointerup", handlePointerUp);
         document.addEventListener("pointercancel", handlePointerUp);
@@ -4362,6 +4548,7 @@
         store.editBlockId = null;
         store.editImages = [];
         store.editHtmlFiles = [];
+        closeDatePicker();
         if (els.editImageDropZone) {
           els.editImageDropZone.classList.remove("is-drop-target");
         }
@@ -6318,6 +6505,11 @@
         if (event.key !== "Escape") {
           return;
         }
+        if (isDatePickerOpen()) {
+          closeDatePicker();
+          event.preventDefault();
+          return;
+        }
         var modalWasOpen = false;
         if (els.innerBlockEditModal.classList.contains("is-open")) {
           closeInnerBlockEditModal();
@@ -6988,6 +7180,178 @@
           return "#f59e0b";
         }
         return "#3b82f6";
+      }
+
+      function handleDateInputOpen(event) {
+        openDatePicker(event.currentTarget);
+      }
+
+      function handleDateTriggerClick(event) {
+        var targetId = event.currentTarget.dataset.dateInput;
+        var input = targetId ? document.getElementById(targetId) : null;
+        event.preventDefault();
+        event.stopPropagation();
+        if (input) {
+          input.focus();
+          openDatePicker(input);
+        }
+      }
+
+      function openDatePicker(input) {
+        var selected = parseDatePickerValue(input && input.value);
+        var baseDate = selected || new Date();
+        if (!input || !els.datePickerPopover) {
+          return;
+        }
+        store.datePicker.input = input;
+        store.datePicker.year = baseDate.getFullYear();
+        store.datePicker.month = baseDate.getMonth();
+        els.datePickerPopover.hidden = false;
+        renderDatePicker();
+        positionDatePicker(input);
+      }
+
+      function closeDatePicker() {
+        if (!els.datePickerPopover) {
+          return;
+        }
+        els.datePickerPopover.hidden = true;
+        store.datePicker.input = null;
+      }
+
+      function isDatePickerOpen() {
+        return Boolean(els.datePickerPopover && !els.datePickerPopover.hidden);
+      }
+
+      function handleDatePickerOutsidePointerDown(event) {
+        if (!isDatePickerOpen()) {
+          return;
+        }
+        if (els.datePickerPopover.contains(event.target)) {
+          return;
+        }
+        if (event.target === store.datePicker.input || (event.target.closest && event.target.closest(".date-picker-trigger"))) {
+          return;
+        }
+        closeDatePicker();
+      }
+
+      function shiftDatePickerMonth(delta) {
+        var date = new Date(store.datePicker.year, store.datePicker.month + delta, 1);
+        store.datePicker.year = date.getFullYear();
+        store.datePicker.month = date.getMonth();
+        renderDatePicker();
+        if (store.datePicker.input) {
+          positionDatePicker(store.datePicker.input);
+        }
+      }
+
+      function renderDatePicker() {
+        var year = store.datePicker.year;
+        var month = store.datePicker.month;
+        var selectedValue = normalizeDateString(store.datePicker.input && store.datePicker.input.value);
+        var todayValue = formatDatePickerValue(new Date());
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var fragment = document.createDocumentFragment();
+        var index;
+        var day;
+        if (!els.datePickerGrid || !els.datePickerTitle) {
+          return;
+        }
+        els.datePickerTitle.textContent = year + "년 " + (month + 1) + "월";
+        for (index = 0; index < firstDay; index += 1) {
+          var empty = document.createElement("span");
+          empty.className = "date-picker-empty";
+          fragment.append(empty);
+        }
+        for (day = 1; day <= daysInMonth; day += 1) {
+          var dateValue = year + "-" + padDatePart(month + 1) + "-" + padDatePart(day);
+          var button = document.createElement("button");
+          button.type = "button";
+          button.className = "date-picker-day";
+          button.dataset.date = dateValue;
+          button.textContent = String(day);
+          if (dateValue === todayValue) {
+            button.classList.add("is-today");
+          }
+          if (dateValue === selectedValue) {
+            button.classList.add("is-selected");
+          }
+          fragment.append(button);
+        }
+        els.datePickerGrid.replaceChildren(fragment);
+      }
+
+      function positionDatePicker(input) {
+        var rect = input.getBoundingClientRect();
+        var popover = els.datePickerPopover;
+        var margin = 12;
+        var left;
+        var top;
+        if (!popover) {
+          return;
+        }
+        left = Math.min(Math.max(rect.left, margin), Math.max(margin, window.innerWidth - popover.offsetWidth - margin));
+        top = rect.bottom + 8;
+        if (top + popover.offsetHeight > window.innerHeight - margin) {
+          top = rect.top - popover.offsetHeight - 8;
+        }
+        top = Math.min(Math.max(top, margin), Math.max(margin, window.innerHeight - popover.offsetHeight - margin));
+        popover.style.left = Math.round(left) + "px";
+        popover.style.top = Math.round(top) + "px";
+      }
+
+      function handleDatePickerDayClick(event) {
+        var button = event.target.closest ? event.target.closest(".date-picker-day") : null;
+        if (!button || !button.dataset.date || !store.datePicker.input) {
+          return;
+        }
+        store.datePicker.input.value = button.dataset.date;
+        store.datePicker.input.dispatchEvent(new Event("input", { bubbles: true }));
+        closeDatePicker();
+      }
+
+      function selectTodayInDatePicker(event) {
+        if (event) {
+          event.preventDefault();
+        }
+        if (!store.datePicker.input) {
+          return;
+        }
+        store.datePicker.input.value = formatDatePickerValue(new Date());
+        store.datePicker.input.dispatchEvent(new Event("input", { bubbles: true }));
+        closeDatePicker();
+      }
+
+      function clearDatePickerInput(event) {
+        if (event) {
+          event.preventDefault();
+        }
+        if (!store.datePicker.input) {
+          return;
+        }
+        store.datePicker.input.value = "";
+        store.datePicker.input.dispatchEvent(new Event("input", { bubbles: true }));
+        closeDatePicker();
+      }
+
+      function parseDatePickerValue(value) {
+        var normalized = normalizeDateString(value);
+        var parts;
+        if (!normalized) {
+          return null;
+        }
+        parts = normalized.split("-").map(Number);
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+      }
+
+      function formatDatePickerValue(date) {
+        return date.getFullYear() + "-" + padDatePart(date.getMonth() + 1) + "-" + padDatePart(date.getDate());
+      }
+
+      function padDatePart(value) {
+        return String(value).padStart(2, "0");
       }
 
       function normalizeDateString(value) {
