@@ -998,11 +998,16 @@
       padding-right: 108px;
     }
 
-    .block-card.has-tool .block-top {
+    .block-card.has-tool .block-top,
+    .block-card.has-assignees .block-top {
       padding-bottom: 28px;
     }
 
-    .block-tool-badge {
+    .block-card.has-tool.has-assignees .block-top {
+      padding-bottom: 52px;
+    }
+
+    .block-assignee-badge {
       position: absolute;
       left: 10px;
       bottom: 7px;
@@ -1023,7 +1028,34 @@
       pointer-events: none;
     }
 
-    .block-card.has-tool.has-due .block-tool-badge {
+    .block-tool-badge {
+      --tool-color: var(--accent);
+      position: absolute;
+      left: 10px;
+      bottom: 7px;
+      z-index: 2;
+      max-width: calc(100% - 20px);
+      overflow: hidden;
+      padding: 3px 8px;
+      border: 1px solid color-mix(in srgb, var(--tool-color) 48%, rgba(255,255,255,0.14));
+      border-radius: 999px;
+      color: rgba(255,255,255,0.82);
+      background: color-mix(in srgb, var(--tool-color) 24%, rgba(15,17,21,0.72));
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .block-card.has-tool.has-assignees .block-assignee-badge {
+      bottom: 31px;
+    }
+
+    .block-card.has-tool.has-due .block-tool-badge,
+    .block-card.has-assignees.has-due .block-assignee-badge {
       max-width: calc(100% - 82px);
     }
 
@@ -1677,20 +1709,21 @@
     }
 
     .tool-chip-pill {
+      --tool-chip-color: var(--accent);
       flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.16);
+      border: 1px solid color-mix(in srgb, var(--tool-chip-color) 52%, rgba(255,255,255,0.16));
       border-radius: 999px;
       color: var(--ink);
-      background: rgba(15,17,21,0.72);
+      background: color-mix(in srgb, var(--tool-chip-color) 18%, rgba(15,17,21,0.72));
     }
 
     .tool-chip-pill.is-active {
-      border-color: transparent;
-      color: var(--accent-ink);
-      background: var(--accent);
+      border-color: var(--tool-chip-color);
+      color: var(--ink);
+      background: color-mix(in srgb, var(--tool-chip-color) 34%, rgba(15,17,21,0.72));
     }
 
     .tool-chip-button {
@@ -1706,6 +1739,23 @@
 
     .tool-chip-button:hover {
       background: rgba(61,220,151,0.12);
+    }
+
+    .tool-chip-color-button {
+      align-self: stretch;
+      min-width: 28px;
+      border: 0;
+      border-left: 1px solid rgba(255,255,255,0.12);
+      background:
+        radial-gradient(circle at center, var(--tool-chip-color) 0 44%, transparent 46%),
+        rgba(255,255,255,0.04);
+      cursor: pointer;
+    }
+
+    .tool-chip-color-button:hover {
+      background:
+        radial-gradient(circle at center, var(--tool-chip-color) 0 50%, transparent 52%),
+        rgba(255,255,255,0.10);
     }
 
     .tool-chip-delete-button {
@@ -1727,10 +1777,11 @@
     .subtitle-field {
       min-height: max-content;
       height: max-content;
-      grid-template-rows: auto auto max-content;
+      grid-template-rows: auto auto;
     }
 
-    #editModal .subtitle-field {
+    #editModal .subtitle-field,
+    #editModal .assignee-field {
       flex: 0 0 auto;
       height: auto;
       min-height: max-content;
@@ -1822,6 +1873,25 @@
 
     .subtitle-tag-delete-button:hover {
       background: rgba(0,0,0,0.16);
+    }
+
+    .assignee-field .subtitle-tag-pill {
+      border-radius: 8px;
+      background: rgba(37,43,53,0.82);
+    }
+
+    .assignee-field .subtitle-tag-pill.is-active {
+      background: rgba(61,220,151,0.92);
+    }
+
+    .assignee-field .subtitle-tag-button {
+      min-height: 30px;
+      padding: 5px 10px;
+      font-size: 13px;
+    }
+
+    .assignee-field .subtitle-tag-delete-button {
+      min-height: 30px;
     }
 
     .json-file-row {
@@ -2791,7 +2861,10 @@
         <div class="field subtitle-field">
           <label for="editSubtitle">서브타이틀</label>
           <input class="text-input" id="editSubtitle" type="text">
-          <span class="field-hint">담당자 태그</span>
+        </div>
+        <div class="field assignee-field">
+          <label for="editAssignees">담당자 블록</label>
+          <input class="text-input" id="editAssignees" type="text" placeholder="한나, 소영, 파멜라...">
           <div class="tag-register-row">
             <input class="text-input" id="subtitleTagRegisterInput" type="text" placeholder="등록할 담당자 태그">
             <button class="tag-register-button" id="addSubtitleTagButton" type="button">등록</button>
@@ -3076,6 +3149,7 @@
       var SUBTITLE_TAG_HIDDEN_STORAGE_KEY = "thinkingCanvasSubtitleHiddenTags.v1";
       var TOOL_TAG_STORAGE_KEY = "thinkingCanvasToolTags.v1";
       var TOOL_TAG_HIDDEN_STORAGE_KEY = "thinkingCanvasToolHiddenTags.v1";
+      var TOOL_TAG_COLOR_STORAGE_KEY = "thinkingCanvasToolTagColors.v1";
       var AUTO_SAVE_DELAY = 250;
       var UNDO_LIMIT = 80;
       var CONNECTION_STYLE_DEFAULT = "curve";
@@ -3156,6 +3230,7 @@
         subtitleHiddenTagKeys: [],
         toolTags: [],
         toolHiddenTagKeys: [],
+        toolTagColors: {},
         timelineOpen: false,
         timelineFilter: "all",
         highlightOnly: false,
@@ -3177,6 +3252,7 @@
         store.subtitleHiddenTagKeys = loadSubtitleHiddenTagKeys();
         store.toolTags = loadToolTagMemory();
         store.toolHiddenTagKeys = loadToolHiddenTagKeys();
+        store.toolTagColors = loadToolTagColorMemory();
         bindEvents();
         renderAll();
         updateTransform();
@@ -3225,6 +3301,7 @@
         els.editModal = document.getElementById("editModal");
         els.editTitle = document.getElementById("editTitle");
         els.editSubtitle = document.getElementById("editSubtitle");
+        els.editAssignees = document.getElementById("editAssignees");
         els.subtitleTagRegisterInput = document.getElementById("subtitleTagRegisterInput");
         els.addSubtitleTagButton = document.getElementById("addSubtitleTagButton");
         els.subtitleTagButtons = document.getElementById("subtitleTagButtons");
@@ -3362,7 +3439,11 @@
         els.jsonText.addEventListener("drop", handleJsonDrop);
         els.copyJsonButton.addEventListener("click", copyJsonText);
         els.editBlockTypeToggle.addEventListener("click", handleBlockTypeButtonClick);
-        els.editSubtitle.addEventListener("input", renderSubtitleTags);
+        els.editSubtitle.addEventListener("input", previewEditedBlockVisual);
+        els.editAssignees.addEventListener("input", function () {
+          renderSubtitleTags();
+          previewEditedBlockVisual();
+        });
         els.addSubtitleTagButton.addEventListener("click", registerSubtitleTagsFromInput);
         els.subtitleTagRegisterInput.addEventListener("keydown", handleSubtitleTagRegisterKeyDown);
         els.subtitleTagButtons.addEventListener("click", handleSubtitleTagClick);
@@ -3450,6 +3531,7 @@
           title: "생각블록 캔버스",
           categories: {},
           connectionStyle: CONNECTION_STYLE_DEFAULT,
+          toolColors: {},
           blocks: [],
           connections: []
         };
@@ -4356,6 +4438,7 @@
             id: block.id,
             title: block.title,
             subtitle: block.subtitle,
+            assignees: block.assignees,
             detail: block.detail,
             link: block.link,
             tool: block.tool,
@@ -4442,13 +4525,16 @@
           var category = categories[block.category] || {};
           var color = validColor(block.color) ? block.color : (category && validColor(category.color) ? category.color : FALLBACK_COLOR);
           var summary = getBlockSubtitle(block);
+          var assignees = getBlockAssigneeLabel(block);
           var link = isValidLink(block.link) ? String(block.link).trim() : "";
           var tool = getBlockToolLabel(block);
+          var toolColor = tool ? getToolTagColor(parseToolTags(tool)[0] || tool) : "#3DDC97";
           var type = normalizeBlockType(block.type);
-          return '<article class="card' + (tool ? ' has-tool' : '') + (type === "group" ? ' is-group' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+          return '<article class="card' + (assignees ? ' has-assignees' : '') + (tool ? ' has-tool' : '') + (type === "group" ? ' is-group' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';--tool-color:' + toolColor + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
             '          <strong>' + escapeHtml(block.title || "제목 없음") + '</strong>\n' +
             (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
             (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
+            (assignees ? '          <em class="assignee-badge">👤 ' + escapeHtml(assignees) + '</em>\n' : "") +
             (tool ? '          <em class="tool-badge">🛠 ' + escapeHtml(tool) + '</em>\n' : "") +
             '        </article>';
         }).join("\n        ");
@@ -4462,6 +4548,7 @@
           return '<section class="memo-item">\n' +
             '          <h2>' + escapeHtml(block.title || "제목 없음") + '</h2>\n' +
             (block.subtitle ? '          <p>' + escapeHtml(block.subtitle) + '</p>\n' : "") +
+            (block.assignees ? '          <p>담당자: ' + escapeHtml(getBlockAssigneeLabel(block)) + '</p>\n' : "") +
             (link ? '          <p><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">자료 링크</a></p>\n' : "") +
             '          <pre>' + escapeHtml(block.detail || "") + '</pre>\n' +
             (imageMarkup ? '          <div class="memo-images">' + imageMarkup + '</div>\n' : "") +
@@ -4487,12 +4574,12 @@
           '    .conn-label{box-sizing:border-box;max-width:none;display:inline-flex;align-items:center;gap:6px;overflow:hidden;padding:4px 8px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(28,33,41,0.92);color:#e8ebf0;font-size:12px;font-weight:700;line-height:1.25;text-align:center;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,0.28);}.conn-label.is-input{border-color:rgba(255,83,96,.72);background:rgba(92,26,35,.94);color:#ffe5e8;}.conn-label.is-output{border-color:rgba(58,134,255,.72);background:rgba(20,45,92,.94);color:#e6f0ff;}.conn-type{flex:0 0 auto;padding:2px 5px;border-radius:999px;color:#fff;font-size:9px;font-weight:900;line-height:1;letter-spacing:.02em;}.conn-label.is-input .conn-type{background:#ff5360;}.conn-label.is-output .conn-type{background:#3a86ff;}.conn-text{min-width:0;overflow:visible;text-overflow:clip;white-space:nowrap;}\n' +
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
           '    .card.is-group{border:2px solid color-mix(in srgb,var(--color) 72%,rgba(255,255,255,.28));border-left-width:2px;background:linear-gradient(180deg,color-mix(in srgb,var(--color) 34%,transparent),rgba(37,43,53,.58)),rgba(37,43,53,.68);box-shadow:0 14px 34px rgba(0,0,0,.36);}.card.is-group strong{display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:var(--color);font-size:22px;text-align:center;}.card.is-group span{display:none;}\n' +
-          '    .card.has-tool{padding-bottom:28px;}\n' +
+          '    .card.has-tool,.card.has-assignees{padding-bottom:28px;}.card.has-tool.has-assignees{padding-bottom:52px;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
           '    .card strong{font-size:13px;line-height:1.3;} .card span{margin-top:4px;color:rgba(255,255,255,0.58);font-size:12px;line-height:1.25;}\n' +
           '    .card a{position:absolute;right:8px;top:8px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.16);border-radius:7px;background:rgba(15,17,21,0.72);text-decoration:none;font-size:13px;line-height:1;}\n' +
-          '    .tool-badge{position:absolute;left:10px;bottom:7px;max-width:calc(100% - 20px);overflow:hidden;padding:3px 8px;border:1px solid rgba(255,255,255,0.14);border-radius:999px;color:rgba(255,255,255,0.82);background:rgba(15,17,21,0.66);font-size:11px;font-weight:800;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;font-style:normal;}\n' +
+          '    .assignee-badge,.tool-badge{position:absolute;left:10px;bottom:7px;max-width:calc(100% - 20px);overflow:hidden;padding:3px 8px;border:1px solid rgba(255,255,255,0.14);border-radius:999px;color:rgba(255,255,255,0.82);background:rgba(15,17,21,0.66);font-size:11px;font-weight:800;line-height:1.15;text-overflow:ellipsis;white-space:nowrap;font-style:normal;}.card.has-tool.has-assignees .assignee-badge{bottom:31px;}.tool-badge{border-color:color-mix(in srgb,var(--tool-color) 48%,rgba(255,255,255,0.14));background:color-mix(in srgb,var(--tool-color) 24%,rgba(15,17,21,0.72));}\n' +
           '    .memos{margin-top:22px;display:grid;gap:10px;max-width:900px;} .memo-item{border:1px solid rgba(255,255,255,0.10);border-radius:8px;background:#1c2129;padding:12px 14px;}\n' +
           '    .memo-item h2{margin:0 0 6px;color:#e8ebf0;font-size:15px;} .memo-item p{margin:0 0 8px;color:rgba(255,255,255,0.5);font-size:13px;} .memo-item pre{margin:0;white-space:pre-wrap;color:#c8cdd6;font-family:inherit;font-size:13px;line-height:1.5;}\n' +
           '    .memo-images{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:10px;} .memo-images figure{margin:0;border:1px solid rgba(255,255,255,0.10);border-radius:8px;overflow:hidden;background:#0f1115;} .memo-images img{display:block;width:100%;height:140px;object-fit:cover;} .memo-images figcaption{padding:7px 8px;color:rgba(255,255,255,0.58);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -4537,6 +4624,7 @@
         setSelection([blockId]);
         els.editTitle.value = block.title;
         els.editSubtitle.value = block.subtitle || "";
+        els.editAssignees.value = formatSubtitleTags(block.assignees || "");
         els.subtitleTagRegisterInput.value = "";
         renderSubtitleTags();
         setEditBlockTypeValue(block.type);
@@ -4588,16 +4676,19 @@
         var undoSnapshot = createUndoSnapshot();
         var nextTitle = els.editTitle.value;
         var nextSubtitle = els.editSubtitle.value;
+        var nextAssignees = formatSubtitleTags(els.editAssignees.value);
         var nextType = normalizeBlockType(els.editBlockType.value);
         var nextLink = String(els.editLink.value || "").trim();
         var nextTool = formatToolTags(els.editTool.value);
         var shouldResetSize = nextTitle !== block.title ||
           nextSubtitle !== String(block.subtitle || "") ||
+          nextAssignees !== formatSubtitleTags(block.assignees || "") ||
           nextType !== normalizeBlockType(block.type) ||
           nextLink !== String(block.link || "") ||
           nextTool !== formatToolTags(block.tool);
         block.title = nextTitle;
         block.subtitle = nextSubtitle;
+        block.assignees = nextAssignees;
         if (shouldResetSize) {
           clearBlockManualSize(block);
         }
@@ -4632,28 +4723,44 @@
         getToolTagOptions().forEach(function (tool) {
           var pill = document.createElement("span");
           var button = document.createElement("button");
+          var colorButton = document.createElement("button");
           var deleteButton = document.createElement("button");
           var isActive = toolSelectionHasTool(selectedTool, tool);
+          var toolColor = getToolTagColor(tool);
           pill.className = "tool-chip-pill" + (isActive ? " is-active" : "");
           pill.dataset.tool = tool;
+          pill.style.setProperty("--tool-chip-color", toolColor);
           button.className = "tool-chip-button";
           button.type = "button";
           button.dataset.tool = tool;
           button.textContent = tool;
           button.title = tool + " 선택";
+          colorButton.className = "tool-chip-color-button";
+          colorButton.type = "button";
+          colorButton.dataset.tool = tool;
+          colorButton.title = tool + " 색상 변경";
+          colorButton.setAttribute("aria-label", tool + " TOOL 색상 변경");
+          colorButton.style.setProperty("--tool-chip-color", toolColor);
           deleteButton.className = "tool-chip-delete-button";
           deleteButton.type = "button";
           deleteButton.dataset.tool = tool;
           deleteButton.textContent = "×";
           deleteButton.title = tool + " 삭제";
           deleteButton.setAttribute("aria-label", tool + " TOOL 태그 삭제");
-          pill.append(button, deleteButton);
+          pill.append(button, colorButton, deleteButton);
           els.editToolChips.append(pill);
         });
         updateToolChipSelection(selectedTool);
       }
 
       function handleToolChipClick(event) {
+        var colorButton = event.target.closest(".tool-chip-color-button");
+        if (colorButton) {
+          event.preventDefault();
+          event.stopPropagation();
+          cycleToolTagColor(colorButton.dataset.tool || "");
+          return;
+        }
         var deleteButton = event.target.closest(".tool-chip-delete-button");
         if (deleteButton) {
           event.preventDefault();
@@ -4770,10 +4877,15 @@
         if (store.toolHiddenTagKeys.indexOf(key) === -1) {
           store.toolHiddenTagKeys.push(key);
         }
+        delete store.toolTagColors[key];
+        if (store.data.toolColors) {
+          delete store.data.toolColors[key];
+        }
         removeToolFromInput(safeTool);
         previewEditedBlockVisual();
         saveToolTagMemory();
         saveToolHiddenTagKeys();
+        saveToolTagColorMemory();
         renderToolChips(els.editTool.value);
         els.editTool.focus();
       }
@@ -4833,6 +4945,100 @@
         } catch (error) {
           console.warn("Tool hidden tags could not be saved.", error);
         }
+      }
+
+      function loadToolTagColorMemory() {
+        var result = {};
+        try {
+          var raw = JSON.parse(localStorage.getItem(TOOL_TAG_COLOR_STORAGE_KEY) || "{}");
+          if (!isPlainObject(raw)) {
+            return result;
+          }
+          Object.keys(raw).forEach(function (key) {
+            var safeKey = normalizeToolKey(key);
+            var color = validColor(raw[key]) ? raw[key].toUpperCase() : "";
+            if (safeKey && color) {
+              result[safeKey] = color;
+            }
+          });
+          return result;
+        } catch (error) {
+          return result;
+        }
+      }
+
+      function saveToolTagColorMemory() {
+        try {
+          localStorage.setItem(TOOL_TAG_COLOR_STORAGE_KEY, JSON.stringify(store.toolTagColors || {}));
+        } catch (error) {
+          console.warn("Tool tag colors could not be saved.", error);
+        }
+      }
+
+      function getToolTagColor(tool) {
+        var key = normalizeToolKey(tool);
+        var presetIndex;
+        if (!key) {
+          return "#3DDC97";
+        }
+        if (store.data && store.data.toolColors && validColor(store.data.toolColors[key])) {
+          return store.data.toolColors[key].toUpperCase();
+        }
+        if (store.toolTagColors && validColor(store.toolTagColors[key])) {
+          return store.toolTagColors[key].toUpperCase();
+        }
+        presetIndex = Math.max(0, getToolTagOptions().findIndex(function (item) {
+          return normalizeToolKey(item) === key;
+        }));
+        return COLOR_CHIP_PRESETS[presetIndex % COLOR_CHIP_PRESETS.length].toUpperCase();
+      }
+
+      function cycleToolTagColor(tool) {
+        var safeTool = normalizeTool(tool);
+        var key = normalizeToolKey(safeTool);
+        var currentColor = getToolTagColor(safeTool);
+        var colors = COLOR_CHIP_PRESETS.map(function (color) {
+          return color.toUpperCase();
+        });
+        var nextIndex;
+        if (!key) {
+          return;
+        }
+        nextIndex = colors.indexOf(currentColor.toUpperCase()) + 1;
+        store.toolTagColors[key] = colors[nextIndex % colors.length];
+        if (!store.data.toolColors) {
+          store.data.toolColors = {};
+        }
+        store.data.toolColors[key] = store.toolTagColors[key];
+        saveToolTagColorMemory();
+        saveLocalState();
+        renderToolChips(els.editTool.value);
+        renderAll();
+        previewEditedBlockVisual();
+        showToast(safeTool + " 색상을 변경했습니다.");
+      }
+
+      function normalizeToolColorMap(input) {
+        var result = {};
+        if (!isPlainObject(input)) {
+          return result;
+        }
+        Object.keys(input).forEach(function (key) {
+          var safeKey = normalizeToolKey(key);
+          var color = validColor(input[key]) ? input[key].toUpperCase() : "";
+          if (safeKey && color) {
+            result[safeKey] = color;
+          }
+        });
+        return result;
+      }
+
+      function getMergedToolColorMap() {
+        return Object.assign(
+          {},
+          normalizeToolColorMap(store.toolTagColors),
+          normalizeToolColorMap(store.data && store.data.toolColors)
+        );
       }
 
       function parseToolTags(value) {
@@ -4901,7 +5107,7 @@
         if (!els.subtitleTagButtons) {
           return;
         }
-        var currentTags = parseSubtitleTags(els.editSubtitle.value);
+        var currentTags = parseSubtitleTags(els.editAssignees.value);
         var currentSet = new Set(currentTags.map(normalizeSubtitleTagKey));
         var tags = getSubtitleTagOptions();
         els.subtitleTagButtons.replaceChildren();
@@ -4959,14 +5165,15 @@
         if (!safeTag) {
           return;
         }
-        var tags = parseSubtitleTags(els.editSubtitle.value);
+        var tags = parseSubtitleTags(els.editAssignees.value);
         var existing = new Set(tags.map(normalizeSubtitleTagKey));
         if (!existing.has(normalizeSubtitleTagKey(safeTag))) {
           tags.push(safeTag);
-          els.editSubtitle.value = tags.join(", ");
+          els.editAssignees.value = formatSubtitleTags(tags);
         }
         renderSubtitleTags();
-        els.editSubtitle.focus();
+        previewEditedBlockVisual();
+        els.editAssignees.focus();
       }
 
       function handleSubtitleTagRegisterKeyDown(event) {
@@ -5007,15 +5214,16 @@
         saveSubtitleTagMemory();
         saveSubtitleHiddenTagKeys();
         renderSubtitleTags();
-        els.editSubtitle.focus();
+        previewEditedBlockVisual();
+        els.editAssignees.focus();
       }
 
       function removeSubtitleTagFromInput(tag) {
         var key = normalizeSubtitleTagKey(tag);
-        var tags = parseSubtitleTags(els.editSubtitle.value).filter(function (item) {
+        var tags = parseSubtitleTags(els.editAssignees.value).filter(function (item) {
           return normalizeSubtitleTagKey(item) !== key;
         });
-        els.editSubtitle.value = tags.join(", ");
+        els.editAssignees.value = formatSubtitleTags(tags);
       }
 
       function getSubtitleTagOptions() {
@@ -5040,6 +5248,20 @@
           .split(/[,;|/＋+·ㆍ\n\r]+/g)
           .map(normalizeSubtitleTag)
           .filter(Boolean);
+      }
+
+      function formatSubtitleTags(value) {
+        var result = [];
+        var seen = new Set();
+        parseSubtitleTags(Array.isArray(value) ? value.join(", ") : value).forEach(function (tag) {
+          var key = normalizeSubtitleTagKey(tag);
+          if (!key || seen.has(key)) {
+            return;
+          }
+          seen.add(key);
+          result.push(tag);
+        });
+        return result.join(", ");
       }
 
       function normalizeSubtitleTag(tag) {
@@ -5176,6 +5398,7 @@
           color: validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category),
           inheritColor: els.editColorInherited.value === "true",
           category: block.category,
+          assignees: formatSubtitleTags(els.editAssignees.value),
           tool: normalizeTool(els.editTool.value)
         };
         applyBlockVisual(card, previewBlock);
@@ -5653,6 +5876,7 @@
             id: outerId,
             title: innerBlock.title || "내부 블록",
             subtitle: "",
+            assignees: "",
             detail: "",
             link: "",
             tool: "",
@@ -6637,6 +6861,7 @@
         var deleteButton = document.createElement("button");
         var doneToggle = document.createElement("button");
         var dueBadge = createDdayBadge(block);
+        var assigneeBadge = createAssigneeBadge(block);
         var toolBadge = createToolBadge(block);
         var highlightStar = null;
         var handle = document.createElement("button");
@@ -6685,6 +6910,9 @@
         }
         if (toolBadge) {
           card.classList.add("has-tool");
+        }
+        if (assigneeBadge) {
+          card.classList.add("has-assignees");
         }
         if (hasInnerDiagram(block)) {
           card.classList.add("has-inner");
@@ -6986,6 +7214,9 @@
         if (dueBadge) {
           card.append(dueBadge);
         }
+        if (assigneeBadge) {
+          card.append(assigneeBadge);
+        }
         if (toolBadge) {
           card.append(toolBadge);
         }
@@ -7144,6 +7375,23 @@
         return subtitle || getDetailFirstLine(block && block.detail);
       }
 
+      function getBlockAssigneeLabel(block) {
+        return formatSubtitleTags(block && block.assignees);
+      }
+
+      function createAssigneeBadge(block) {
+        var assignees = getBlockAssigneeLabel(block);
+        var badge;
+        if (!assignees) {
+          return null;
+        }
+        badge = document.createElement("span");
+        badge.className = "block-assignee-badge";
+        badge.textContent = "👤 " + assignees;
+        badge.title = "담당자: " + assignees;
+        return badge;
+      }
+
       function normalizeTool(value) {
         return String(value || "").replace(/\s+/g, " ").trim();
       }
@@ -7164,6 +7412,7 @@
         }
         badge = document.createElement("span");
         badge.className = "block-tool-badge";
+        badge.style.setProperty("--tool-color", getToolTagColor(parseToolTags(tool)[0] || tool));
         badge.textContent = "🛠 " + tool;
         badge.title = "TOOL: " + tool;
         return badge;
@@ -8393,6 +8642,7 @@
           id: createUniqueBlockId(),
           title: options.title || "새 블록",
           subtitle: "",
+          assignees: "",
           detail: "",
           link: "",
           tool: "",
@@ -9059,6 +9309,7 @@
           id: createUniqueBlockId(),
           title: source.title,
           subtitle: source.subtitle || "",
+          assignees: formatSubtitleTags(source.assignees || ""),
           detail: source.detail,
           link: String(source.link || ""),
           tool: normalizeTool(source.tool),
@@ -9133,6 +9384,7 @@
             id: createUniqueBlockId(),
             title: source.title,
             subtitle: source.subtitle || "",
+            assignees: formatSubtitleTags(source.assignees || ""),
             detail: source.detail,
             link: String(source.link || ""),
             tool: normalizeTool(source.tool),
@@ -9187,6 +9439,7 @@
           id: block.id,
           title: String(block.title || ""),
           subtitle: String(block.subtitle || ""),
+          assignees: formatSubtitleTags(block.assignees || ""),
           detail: String(block.detail || ""),
           link: String(block.link || ""),
           tool: normalizeTool(block.tool),
@@ -9223,6 +9476,7 @@
           id: createUniqueBlockId(),
           title: blockType === "group" ? "그룹블록" : "새 블록",
           subtitle: "",
+          assignees: "",
           detail: "",
           link: "",
           tool: "",
@@ -10445,10 +10699,11 @@
         var isMiddle = blockType === "middle";
         var title = String(block && block.title || "제목 없음");
         var summary = getBlockSubtitle(block);
+        var assignees = getBlockAssigneeLabel(block);
         var tool = getBlockToolLabel(block);
         var titleFontSize = isMain ? 26 : (isMiddle ? 18 : 14);
         var summaryFontSize = 12;
-        var toolFontSize = 11;
+        var badgeFontSize = 11;
         var linkSpace = isOpenableLink(block && block.link) ? 34 : 0;
         var innerSpace = hasInnerDiagram(block) ? 34 : 0;
         var imageSpace = getBlockImages(block).length ? 34 : 0;
@@ -10456,8 +10711,9 @@
         var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace + innerSpace + imageSpace + htmlSpace;
         var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
-        var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, toolFontSize) + padding) : 0;
-        return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth, toolWidth);
+        var assigneeWidth = assignees ? Math.ceil(estimateTextWidth("👤 " + assignees, badgeFontSize) + padding) : 0;
+        var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, badgeFontSize) + padding) : 0;
+        return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth, assigneeWidth, toolWidth);
       }
 
       function getGroupBlockWidth(block) {
@@ -10498,19 +10754,19 @@
 
       function getNaturalBlockHeight(block) {
         var type = normalizeBlockType(block && block.type);
-        var toolExtra = getBlockToolLabel(block) ? 22 : 0;
+        var badgeExtra = getBlockBadgeExtraHeight(block);
         if (type === "group") {
           return getGroupBlockHeight(block);
         }
         if (type === "main") {
-          return MAIN_CARD_HEIGHT + toolExtra;
+          return MAIN_CARD_HEIGHT + badgeExtra;
         }
-        return (type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT) + toolExtra;
+        return (type === "middle" ? MIDDLE_CARD_HEIGHT : CARD_HEIGHT) + badgeExtra;
       }
 
       function getBlockResizeMinimum(block) {
         var type = normalizeBlockType(block && block.type);
-        var toolExtra = getBlockToolLabel(block) ? 22 : 0;
+        var badgeExtra = getBlockBadgeExtraHeight(block);
         if (type === "group") {
           return {
             width: getGroupBlockWidth(block),
@@ -10520,13 +10776,24 @@
         if (type === "main") {
           return {
             width: BLOCK_RESIZE_MIN_WIDTH,
-            height: MAIN_CARD_HEIGHT + toolExtra
+            height: MAIN_CARD_HEIGHT + badgeExtra
           };
         }
         return {
           width: BLOCK_RESIZE_MIN_WIDTH,
-          height: (type === "middle" ? MIDDLE_CARD_HEIGHT : Math.max(BLOCK_RESIZE_MIN_HEIGHT, CARD_HEIGHT)) + toolExtra
+          height: (type === "middle" ? MIDDLE_CARD_HEIGHT : Math.max(BLOCK_RESIZE_MIN_HEIGHT, CARD_HEIGHT)) + badgeExtra
         };
+      }
+
+      function getBlockBadgeExtraHeight(block) {
+        var rows = 0;
+        if (getBlockAssigneeLabel(block)) {
+          rows += 1;
+        }
+        if (getBlockToolLabel(block)) {
+          rows += 1;
+        }
+        return rows * 22;
       }
 
       function getGroupBlockHeight(block) {
@@ -11564,11 +11831,13 @@
           title: String(store.data.title || ""),
           categories: cloneCategories(store.data.categories),
           connectionStyle: normalizeConnectionStyle(store.data.connectionStyle),
+          toolColors: getMergedToolColorMap(),
           blocks: store.data.blocks.map(function (block) {
             return {
               id: String(block.id),
               title: String(block.title || ""),
               subtitle: String(block.subtitle || ""),
+              assignees: formatSubtitleTags(block.assignees || ""),
               detail: String(block.detail || ""),
               link: String(block.link || ""),
               tool: normalizeTool(block.tool),
@@ -11622,6 +11891,7 @@
           title: typeof source.title === "string" ? source.title : String(source.title || ""),
           categories: {},
           connectionStyle: normalizeConnectionStyle(source.connectionStyle),
+          toolColors: normalizeToolColorMap(source.toolColors || source.toolTagColors),
           blocks: [],
           connections: []
         };
@@ -11663,6 +11933,7 @@
               id: id,
               title: typeof raw.title === "string" ? raw.title : String(raw.title || ""),
               subtitle: typeof raw.subtitle === "string" ? raw.subtitle : String(raw.subtitle || ""),
+              assignees: typeof raw.assignees === "string" ? formatSubtitleTags(raw.assignees) : formatSubtitleTags(raw.assignees || ""),
               detail: typeof raw.detail === "string" ? raw.detail : String(raw.detail || ""),
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
               tool: typeof raw.tool === "string" ? normalizeTool(raw.tool) : normalizeTool(raw.tool || ""),
