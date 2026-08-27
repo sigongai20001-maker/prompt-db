@@ -4535,7 +4535,7 @@
             (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
             (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
             (assignees ? '          <em class="assignee-badge">👤 ' + escapeHtml(assignees) + '</em>\n' : "") +
-            (tool ? '          <em class="tool-badge">🛠 ' + escapeHtml(tool) + '</em>\n' : "") +
+            (tool ? '          <em class="tool-badge">' + escapeHtml(tool) + '</em>\n' : "") +
             '        </article>';
         }).join("\n        ");
 
@@ -7413,7 +7413,7 @@
         badge = document.createElement("span");
         badge.className = "block-tool-badge";
         badge.style.setProperty("--tool-color", getToolTagColor(parseToolTags(tool)[0] || tool));
-        badge.textContent = "🛠 " + tool;
+        badge.textContent = tool;
         badge.title = "TOOL: " + tool;
         return badge;
       }
@@ -10712,7 +10712,7 @@
         var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
         var assigneeWidth = assignees ? Math.ceil(estimateTextWidth("👤 " + assignees, badgeFontSize) + padding) : 0;
-        var toolWidth = tool ? Math.ceil(estimateTextWidth("🛠 " + tool, badgeFontSize) + padding) : 0;
+        var toolWidth = tool ? Math.ceil(estimateTextWidth(tool, badgeFontSize) + padding) : 0;
         return Math.max(CARD_MIN_WIDTH, CARD_WIDTH, titleWidth, summaryWidth, assigneeWidth, toolWidth);
       }
 
