@@ -466,6 +466,44 @@
       user-select: none;
     }
 
+    .block-card.has-embedded-icon .block-top {
+      padding-left: 56px;
+    }
+
+    .block-card.is-main.has-embedded-icon .block-top {
+      padding-left: 72px;
+    }
+
+    .block-embedded-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      width: 38px;
+      height: 38px;
+      transform: translateY(-50%);
+      border-radius: 50%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .block-card.is-main .block-embedded-icon {
+      left: 12px;
+      width: 52px;
+      height: 52px;
+    }
+
+    .block-card.has-assignees .block-embedded-icon,
+    .block-card.has-tool .block-embedded-icon {
+      top: 10px;
+      transform: none;
+    }
+
+    .block-card.is-icon .block-embedded-icon,
+    .block-card.is-group .block-embedded-icon {
+      display: none;
+    }
+
     .block-card.is-group .block-top {
       position: absolute;
       left: 12px;
@@ -1532,6 +1570,20 @@
       width: 54px;
       height: 54px;
       object-fit: contain;
+      pointer-events: none;
+    }
+
+    .icon-picker-empty-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      border: 1px dashed rgba(255,255,255,0.26);
+      border-radius: 50%;
+      color: rgba(255,255,255,0.56);
+      font-size: 20px;
+      font-weight: 900;
       pointer-events: none;
     }
 
@@ -3055,7 +3107,7 @@
           </div>
         </div>
         <div class="field icon-picker-field" id="editIconField" hidden>
-          <label for="editIcon">아이콘 선택</label>
+          <label for="editIcon">블록 아이콘</label>
           <input id="editIcon" type="hidden" value="">
           <div class="icon-picker-grid" id="editIconPicker" role="listbox" aria-label="아이콘 선택"></div>
         </div>
@@ -3356,6 +3408,7 @@
       var ICON_BLOCK_MIN_SIZE = 68;
       var ICON_BLOCK_LEGACY_SIZE = 132;
       var ICON_BLOCK_LEGACY_MIN_SIZE = 112;
+      var ICON_BLOCK_ORIGINAL_SIZE_IDS = ["google-drive", "notion"];
       var INNER_WORLD_WIDTH = 1800;
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
@@ -4804,12 +4857,14 @@
           var toolColor = tool ? getToolTagColor(parseToolTags(tool)[0] || tool) : "#3DDC97";
           var type = normalizeBlockType(block.type);
           var iconAsset = type === "icon" ? getIconBlockAsset(block.icon) : null;
+          var embeddedIconAsset = type !== "icon" && type !== "group" ? getOptionalIconBlockAsset(block.icon) : null;
           if (iconAsset) {
             return '<article class="card is-icon" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;" title="' + escapeHtml(block.title || iconAsset.label) + '">\n' +
               '          <img src="' + escapeHtml(iconAsset.src) + '" alt="' + escapeHtml(iconAsset.label) + ' 아이콘">\n' +
               '        </article>';
           }
-          return '<article class="card' + (assignees ? ' has-assignees' : '') + (tool ? ' has-tool' : '') + (type === "group" ? ' is-group' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';--tool-color:' + toolColor + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+          return '<article class="card' + (type === "main" ? ' is-main' : '') + (assignees ? ' has-assignees' : '') + (tool ? ' has-tool' : '') + (embeddedIconAsset ? ' has-embedded-icon' : '') + (type === "group" ? ' is-group' : '') + '" style="left:' + block.x + 'px;top:' + block.y + 'px;width:' + getBlockWidth(block) + 'px;height:' + getBlockHeight(block) + 'px;--color:' + color + ';--tool-color:' + toolColor + ';" title="' + escapeHtml(block.title || "제목 없음") + '">\n' +
+            (embeddedIconAsset ? '          <img class="embedded-icon" src="' + escapeHtml(embeddedIconAsset.src) + '" alt="' + escapeHtml(embeddedIconAsset.label) + ' 아이콘">\n' : "") +
             '          <strong>' + escapeHtml(block.title || "제목 없음") + '</strong>\n' +
             (summary ? '          <span>' + escapeHtml(summary) + '</span>\n' : "") +
             (link ? '          <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">🔗</a>\n' : "") +
@@ -4854,6 +4909,7 @@
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
           '    .card.is-group{border:2px solid color-mix(in srgb,var(--color) 72%,rgba(255,255,255,.28));border-left-width:2px;background:linear-gradient(180deg,color-mix(in srgb,var(--color) 34%,transparent),rgba(37,43,53,.58)),rgba(37,43,53,.68);box-shadow:0 14px 34px rgba(0,0,0,.36);}.card.is-group strong{display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:var(--color);font-size:22px;text-align:center;}.card.is-group span{display:none;}\n' +
           '    .card.is-icon{min-width:68px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;overflow:visible;}.card.is-icon img{display:block;width:100%;height:100%;border-radius:50%;object-fit:contain;}\n' +
+          '    .card.has-embedded-icon{padding-left:58px;}.card.has-embedded-icon .embedded-icon{position:absolute;left:10px;top:50%;width:38px;height:38px;transform:translateY(-50%);border-radius:50%;object-fit:contain;}.card.is-main.has-embedded-icon{padding-left:72px;}.card.is-main.has-embedded-icon .embedded-icon{left:12px;width:52px;height:52px;}\n' +
           '    .card.has-tool,.card.has-assignees{padding-bottom:28px;}.card.has-tool.has-assignees{padding-bottom:52px;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -4909,11 +4965,46 @@
         return getDefaultIconBlockAssetId();
       }
 
+      function normalizeOptionalIconBlockId(value) {
+        var iconId = String(value || "").trim();
+        if (!iconId) {
+          return "";
+        }
+        if (ICON_BLOCK_ASSETS.some(function (asset) {
+          return asset.id === iconId;
+        })) {
+          return iconId;
+        }
+        return "";
+      }
+
       function getIconBlockAsset(iconId) {
         var safeIconId = normalizeIconBlockId(iconId);
         return ICON_BLOCK_ASSETS.find(function (asset) {
           return asset.id === safeIconId;
         }) || ICON_BLOCK_ASSETS[0] || null;
+      }
+
+      function getOptionalIconBlockAsset(iconId) {
+        var safeIconId = normalizeOptionalIconBlockId(iconId);
+        if (!safeIconId) {
+          return null;
+        }
+        return ICON_BLOCK_ASSETS.find(function (asset) {
+          return asset.id === safeIconId;
+        }) || null;
+      }
+
+      function isOriginalSizeIconBlock(iconId) {
+        return ICON_BLOCK_ORIGINAL_SIZE_IDS.indexOf(normalizeOptionalIconBlockId(iconId)) !== -1;
+      }
+
+      function getIconBlockSize(iconId) {
+        return isOriginalSizeIconBlock(iconId) ? ICON_BLOCK_LEGACY_SIZE : ICON_BLOCK_SIZE;
+      }
+
+      function getIconBlockMinSize(iconId) {
+        return isOriginalSizeIconBlock(iconId) ? ICON_BLOCK_LEGACY_MIN_SIZE : ICON_BLOCK_MIN_SIZE;
       }
 
       function createIconBlockImage(block) {
@@ -4923,6 +5014,23 @@
         image.src = asset ? asset.src : "";
         image.alt = (asset ? asset.label : "아이콘") + " 아이콘";
         return image;
+      }
+
+      function createEmbeddedIconImage(block) {
+        var asset = getOptionalIconBlockAsset(block && block.icon);
+        if (!asset) {
+          return null;
+        }
+        var image = document.createElement("img");
+        image.className = "block-embedded-icon";
+        image.src = asset.src;
+        image.alt = asset.label + " 아이콘";
+        return image;
+      }
+
+      function hasEmbeddedBlockIcon(block) {
+        var type = normalizeBlockType(block && block.type);
+        return Boolean(type !== "icon" && type !== "group" && getOptionalIconBlockAsset(block && block.icon));
       }
 
       function createIconPickerButton(asset, selectedId) {
@@ -4944,19 +5052,41 @@
         return button;
       }
 
-      function renderIconPicker(container, selectedId) {
-        var safeSelectedId = normalizeIconBlockId(selectedId);
+      function createEmptyIconPickerButton(selectedId) {
+        var button = document.createElement("button");
+        var mark = document.createElement("span");
+        var label = document.createElement("span");
+        var isSelected = !selectedId;
+        button.className = "icon-picker-button is-empty" + (isSelected ? " is-selected" : "");
+        button.type = "button";
+        button.dataset.iconId = "";
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", isSelected ? "true" : "false");
+        button.title = "아이콘 없음";
+        mark.className = "icon-picker-empty-mark";
+        mark.textContent = "×";
+        label.className = "icon-picker-label";
+        label.textContent = "없음";
+        button.append(mark, label);
+        return button;
+      }
+
+      function renderIconPicker(container, selectedId, allowEmpty) {
+        var safeSelectedId = selectedId ? normalizeIconBlockId(selectedId) : "";
         if (!container) {
           return;
         }
         container.replaceChildren();
+        if (allowEmpty) {
+          container.append(createEmptyIconPickerButton(safeSelectedId));
+        }
         ICON_BLOCK_ASSETS.forEach(function (asset) {
           container.append(createIconPickerButton(asset, safeSelectedId));
         });
       }
 
       function updateIconPickerSelection(container, selectedId) {
-        var safeSelectedId = normalizeIconBlockId(selectedId);
+        var safeSelectedId = selectedId ? normalizeIconBlockId(selectedId) : "";
         if (!container) {
           return;
         }
@@ -4968,7 +5098,8 @@
       }
 
       function setEditIconValue(iconId) {
-        var safeIconId = normalizeIconBlockId(iconId);
+        var isIconType = normalizeBlockType(els.editBlockType.value) === "icon";
+        var safeIconId = iconId ? normalizeIconBlockId(iconId) : (isIconType ? getDefaultIconBlockAssetId() : "");
         els.editIcon.value = safeIconId;
         updateIconPickerSelection(els.editIconPicker, safeIconId);
         previewEditedBlockVisual();
@@ -4976,10 +5107,11 @@
 
       function updateEditIconFieldVisibility() {
         var isIconType = normalizeBlockType(els.editBlockType.value) === "icon";
-        els.editIconField.hidden = !isIconType;
-        if (isIconType && !els.editIconPicker.children.length) {
-          renderIconPicker(els.editIconPicker, els.editIcon.value || getDefaultIconBlockAssetId());
+        els.editIconField.hidden = false;
+        if (isIconType && !normalizeOptionalIconBlockId(els.editIcon.value)) {
+          els.editIcon.value = getDefaultIconBlockAssetId();
         }
+        renderIconPicker(els.editIconPicker, els.editIcon.value, !isIconType);
       }
 
       function handleEditIconPickerClick(event) {
@@ -5005,8 +5137,8 @@
         els.subtitleTagRegisterInput.value = "";
         renderSubtitleTags();
         setEditBlockTypeValue(block.type);
-        els.editIcon.value = normalizeIconBlockId(block.icon);
-        renderIconPicker(els.editIconPicker, els.editIcon.value);
+        els.editIcon.value = normalizeBlockType(block.type) === "icon" ? normalizeIconBlockId(block.icon) : normalizeOptionalIconBlockId(block.icon);
+        renderIconPicker(els.editIconPicker, els.editIcon.value, normalizeBlockType(block.type) !== "icon");
         updateEditIconFieldVisibility();
         renderColorChips(getBlockColor(block));
         setEditColorValue(getBlockColor(block));
@@ -5058,14 +5190,17 @@
         var nextSubtitle = els.editSubtitle.value;
         var nextAssignees = formatSubtitleTags(els.editAssignees.value);
         var nextType = normalizeBlockType(els.editBlockType.value);
-        var nextIcon = normalizeIconBlockId(els.editIcon.value);
+        var nextIcon = normalizeOptionalIconBlockId(els.editIcon.value);
+        if (nextType === "icon" && !nextIcon) {
+          nextIcon = getDefaultIconBlockAssetId();
+        }
         var nextLink = String(els.editLink.value || "").trim();
         var nextTool = formatToolTags(els.editTool.value);
         var shouldResetSize = nextTitle !== block.title ||
           nextSubtitle !== String(block.subtitle || "") ||
           nextAssignees !== formatSubtitleTags(block.assignees || "") ||
           nextType !== normalizeBlockType(block.type) ||
-          (nextType === "icon" && nextIcon !== normalizeIconBlockId(block.icon)) ||
+          nextIcon !== normalizeOptionalIconBlockId(block.icon) ||
           nextLink !== String(block.link || "") ||
           nextTool !== formatToolTags(block.tool);
         block.title = nextTitle;
@@ -5075,7 +5210,7 @@
           clearBlockManualSize(block);
         }
         block.type = nextType;
-        block.icon = nextType === "icon" ? nextIcon : "";
+        block.icon = nextIcon;
         block.color = validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category);
         block.inheritColor = normalizeBlockType(block.type) !== "main" && normalizeBlockType(block.type) !== "group" && els.editColorInherited.value === "true";
         block.detail = els.editDetail.value;
@@ -5776,11 +5911,16 @@
         if (!block || !card) {
           return;
         }
+        var previewType = normalizeBlockType(els.editBlockType.value);
+        var previewIcon = normalizeOptionalIconBlockId(els.editIcon.value);
+        if (previewType === "icon" && !previewIcon) {
+          previewIcon = getDefaultIconBlockAssetId();
+        }
         previewBlock = {
           title: els.editTitle.value || block.title,
           subtitle: els.editSubtitle.value || "",
           detail: els.editDetail.value || "",
-          type: normalizeBlockType(els.editBlockType.value),
+          type: previewType,
           color: validColor(els.editBlockColor.value) ? els.editBlockColor.value : getCategoryColor(block.category),
           inheritColor: els.editColorInherited.value === "true",
           category: block.category,
@@ -5789,12 +5929,16 @@
           link: els.editLink.value || "",
           images: cloneBlockImages(store.editImages),
           htmlFiles: cloneBlockHtmlFiles(store.editHtmlFiles),
-          icon: normalizeIconBlockId(els.editIcon.value)
+          icon: previewIcon
         };
         applyBlockVisual(card, previewBlock);
         if (normalizeBlockType(previewBlock.type) === "icon") {
           var image = card.querySelector(".block-icon-image");
           var asset = getIconBlockAsset(previewBlock.icon);
+          var embeddedImage = card.querySelector(".block-embedded-icon");
+          if (embeddedImage) {
+            embeddedImage.remove();
+          }
           if (!image) {
             image = createIconBlockImage(previewBlock);
             card.insertBefore(image, card.firstChild);
@@ -5807,6 +5951,18 @@
           var existingImage = card.querySelector(".block-icon-image");
           if (existingImage) {
             existingImage.remove();
+          }
+          var existingEmbeddedImage = card.querySelector(".block-embedded-icon");
+          var embeddedAsset = getOptionalIconBlockAsset(previewBlock.icon);
+          if (embeddedAsset) {
+            if (!existingEmbeddedImage) {
+              existingEmbeddedImage = createEmbeddedIconImage(previewBlock);
+              card.insertBefore(existingEmbeddedImage, card.firstChild);
+            }
+            existingEmbeddedImage.src = embeddedAsset.src;
+            existingEmbeddedImage.alt = embeddedAsset.label + " 아이콘";
+          } else if (existingEmbeddedImage) {
+            existingEmbeddedImage.remove();
           }
         }
         card.style.setProperty("--card-width", getBlockWidth(previewBlock) + "px");
@@ -7299,6 +7455,7 @@
         var selectedCount = getSelectedBlockIds().length;
         var blockType = normalizeBlockType(block.type);
         var iconImage = blockType === "icon" ? createIconBlockImage(block) : null;
+        var embeddedIconImage = hasEmbeddedBlockIcon(block) ? createEmbeddedIconImage(block) : null;
         var groupChildren = blockType === "group" ? getGroupChildBlocks(block.id) : [];
         var groupDropZone = null;
         var groupPlaceholder = null;
@@ -7330,6 +7487,9 @@
         }
         if (hasInnerDiagram(block)) {
           card.classList.add("has-inner");
+        }
+        if (embeddedIconImage) {
+          card.classList.add("has-embedded-icon");
         }
         if (blockImages.length) {
           card.classList.add("has-images");
@@ -7626,6 +7786,9 @@
         }
         if (iconImage) {
           card.append(iconImage);
+        }
+        if (embeddedIconImage) {
+          card.append(embeddedIconImage);
         }
         card.append(doneToggle, top, handle, resizeHandle);
         if (dueBadge) {
@@ -8257,6 +8420,7 @@
         card.classList.toggle("is-middle", isMiddle);
         card.classList.toggle("is-icon", isIcon);
         card.classList.toggle("is-group", isGroup);
+        card.classList.toggle("has-embedded-icon", hasEmbeddedBlockIcon(block));
         card.style.setProperty("--block-color", color);
         card.style.setProperty("--block-ink", ink);
         card.style.setProperty("--block-muted", muted);
@@ -8468,10 +8632,6 @@
             block.icon = getDefaultIconBlockAssetId();
             changed = true;
           }
-          if (safeType !== "icon" && block.icon) {
-            block.icon = "";
-            changed = true;
-          }
           if ((safeType === "main" || safeType === "group") && block.inheritColor !== false) {
             block.inheritColor = false;
             changed = true;
@@ -8659,7 +8819,11 @@
         undoSnapshot = createUndoSnapshot();
         block.type = nextType;
         clearBlockManualSize(block);
-        block.icon = nextType === "icon" ? normalizeIconBlockId(block.icon) : "";
+        if (nextType === "icon" && !normalizeOptionalIconBlockId(block.icon)) {
+          block.icon = getDefaultIconBlockAssetId();
+        } else {
+          block.icon = normalizeOptionalIconBlockId(block.icon);
+        }
         if (nextType === "main" || nextType === "group") {
           block.inheritColor = false;
         }
@@ -9863,7 +10027,7 @@
           detail: source.detail,
           link: String(source.link || ""),
           tool: normalizeTool(source.tool),
-          icon: normalizeBlockType(source.type) === "icon" ? normalizeIconBlockId(source.icon) : "",
+          icon: normalizeOptionalIconBlockId(source.icon),
           images: getBlockImages(source),
           htmlFiles: getBlockHtmlFiles(source),
           innerDiagram: cloneInnerDiagram(source.innerDiagram),
@@ -9939,7 +10103,7 @@
             detail: source.detail,
             link: String(source.link || ""),
             tool: normalizeTool(source.tool),
-            icon: normalizeBlockType(source.type) === "icon" ? normalizeIconBlockId(source.icon) : "",
+            icon: normalizeOptionalIconBlockId(source.icon),
             images: cloneBlockImages(source.images),
             htmlFiles: cloneBlockHtmlFiles(source.htmlFiles),
             innerDiagram: cloneInnerDiagram(source.innerDiagram),
@@ -9995,7 +10159,7 @@
           detail: String(block.detail || ""),
           link: String(block.link || ""),
           tool: normalizeTool(block.tool),
-          icon: normalizeBlockType(block.type) === "icon" ? normalizeIconBlockId(block.icon) : "",
+          icon: normalizeOptionalIconBlockId(block.icon),
           images: getBlockImages(block),
           htmlFiles: getBlockHtmlFiles(block),
           innerDiagram: cloneInnerDiagram(block.innerDiagram),
@@ -11246,7 +11410,7 @@
           return getGroupBlockWidth(block);
         }
         if (type === "icon") {
-          return ICON_BLOCK_SIZE;
+          return getIconBlockSize(block && block.icon);
         }
         return getStandardBlockWidth(block);
       }
@@ -11266,7 +11430,8 @@
         var innerSpace = hasInnerDiagram(block) ? 34 : 0;
         var imageSpace = getBlockImages(block).length ? 34 : 0;
         var htmlSpace = getBlockHtmlFiles(block).length ? 34 : 0;
-        var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + linkSpace + innerSpace + imageSpace + htmlSpace;
+        var embeddedIconSpace = hasEmbeddedBlockIcon(block) ? (isMain ? 66 : 50) : 0;
+        var padding = (isMain ? 48 : (isMiddle ? 52 : 46)) + embeddedIconSpace + linkSpace + innerSpace + imageSpace + htmlSpace;
         var titleWidth = Math.ceil(estimateTextWidth(title, titleFontSize) + padding);
         var summaryWidth = summary ? Math.ceil(estimateTextWidth(summary, summaryFontSize) + padding) : 0;
         var assigneeWidth = assignees ? Math.ceil(estimateTextWidth("👤 " + assignees, badgeFontSize) + padding) : 0;
@@ -11317,7 +11482,7 @@
           return getGroupBlockHeight(block);
         }
         if (type === "icon") {
-          return ICON_BLOCK_SIZE;
+          return getIconBlockSize(block && block.icon);
         }
         if (type === "main") {
           return MAIN_CARD_HEIGHT + badgeExtra;
@@ -11342,8 +11507,8 @@
         }
         if (type === "icon") {
           return {
-            width: ICON_BLOCK_MIN_SIZE,
-            height: ICON_BLOCK_MIN_SIZE
+            width: getIconBlockMinSize(block && block.icon),
+            height: getIconBlockMinSize(block && block.icon)
           };
         }
         return {
@@ -12411,7 +12576,7 @@
               detail: String(block.detail || ""),
               link: String(block.link || ""),
               tool: normalizeTool(block.tool),
-              icon: normalizeBlockType(block.type) === "icon" ? normalizeIconBlockId(block.icon) : "",
+              icon: normalizeOptionalIconBlockId(block.icon),
               images: getBlockImages(block),
               htmlFiles: getBlockHtmlFiles(block),
               innerDiagram: cloneInnerDiagram(block.innerDiagram),
@@ -12497,6 +12662,7 @@
             var id = typeof raw.id === "string" && raw.id ? raw.id : createUniqueBlockId();
             var category = typeof raw.category === "string" ? raw.category : String(raw.category || "");
             var rawType = normalizeBlockType(raw.type || raw.blockType);
+            var rawIcon = rawType === "icon" ? normalizeIconBlockId(raw.icon || raw.iconId || raw.iconAsset) : normalizeOptionalIconBlockId(raw.icon || raw.iconId || raw.iconAsset);
             while (usedIds.has(id)) {
               id = createUniqueBlockId();
             }
@@ -12509,7 +12675,7 @@
               detail: typeof raw.detail === "string" ? raw.detail : String(raw.detail || ""),
               link: typeof raw.link === "string" ? raw.link : String(raw.link || ""),
               tool: typeof raw.tool === "string" ? normalizeTool(raw.tool) : normalizeTool(raw.tool || ""),
-              icon: rawType === "icon" ? normalizeIconBlockId(raw.icon || raw.iconId || raw.iconAsset) : "",
+              icon: rawIcon,
               images: cloneBlockImages(raw.images),
               htmlFiles: cloneBlockHtmlFiles(raw.htmlFiles),
               innerDiagram: cloneInnerDiagram(raw.innerDiagram),
@@ -12526,8 +12692,8 @@
               }).filter(Boolean) : [],
               inheritColor: raw.inheritColor === false ? false : (rawType !== "main" && rawType !== "group"),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
-              width: normalizeBlockDimension(raw.width, rawType),
-              height: normalizeBlockDimension(raw.height, rawType),
+              width: normalizeBlockDimension(raw.width, rawType, rawIcon),
+              height: normalizeBlockDimension(raw.height, rawType, rawIcon),
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
               y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
             });
@@ -12591,12 +12757,21 @@
         return result;
       }
 
-      function normalizeBlockDimension(value, rawType) {
+      function normalizeBlockDimension(value, rawType, iconId) {
         if (!finiteNumber(value) || value <= 0) {
           return undefined;
         }
         var dimension = Number(value);
         if (rawType === "icon") {
+          if (isOriginalSizeIconBlock(iconId)) {
+            if (Math.abs(dimension - ICON_BLOCK_SIZE) < 0.5 || Math.abs(dimension - ICON_BLOCK_LEGACY_SIZE) < 0.5) {
+              return ICON_BLOCK_LEGACY_SIZE;
+            }
+            if (Math.abs(dimension - ICON_BLOCK_MIN_SIZE) < 0.5 || Math.abs(dimension - ICON_BLOCK_LEGACY_MIN_SIZE) < 0.5) {
+              return ICON_BLOCK_LEGACY_MIN_SIZE;
+            }
+            return dimension;
+          }
           if (Math.abs(dimension - ICON_BLOCK_LEGACY_SIZE) < 0.5) {
             return ICON_BLOCK_SIZE;
           }
