@@ -422,6 +422,56 @@
       z-index: 0;
     }
 
+    .block-card.is-icon {
+      align-items: center;
+      justify-content: center;
+      width: var(--card-width, 132px);
+      min-width: 112px;
+      height: var(--card-height, 132px);
+      border: 2px solid color-mix(in srgb, var(--block-color, var(--fallback)) 70%, rgba(255,255,255,0.22));
+      border-left-width: 2px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.09), transparent 58%),
+        #111827;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.42), 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .block-card.is-icon .block-top {
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .block-card.is-icon .block-title {
+      max-width: 100%;
+      color: #f8fafc;
+      font-size: 16px;
+      text-align: center;
+      white-space: normal;
+    }
+
+    .block-card.is-icon .block-summary {
+      display: none;
+    }
+
+    .block-card.is-icon .block-title::before {
+      content: "AI";
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 7px;
+      border-radius: 50%;
+      color: #0f1115;
+      background: var(--block-color, var(--accent));
+      font-size: 14px;
+      font-weight: 900;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.34);
+    }
+
     .block-card.is-group .block-top {
       position: absolute;
       left: 12px;
@@ -1378,6 +1428,53 @@
     .connect-handle:hover {
       opacity: 1;
       transform: translateY(-50%) scale(1.12);
+    }
+
+    .create-type-popover {
+      position: fixed;
+      z-index: 24;
+      display: none;
+      min-width: 260px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px;
+      background: rgba(28,33,41,0.98);
+      box-shadow: 0 18px 44px rgba(0,0,0,0.48);
+    }
+
+    .create-type-popover.is-open {
+      display: block;
+    }
+
+    .create-type-title {
+      margin: 0 0 10px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .create-type-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .create-type-option {
+      min-height: 42px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 9px;
+      color: var(--ink);
+      background: rgba(15,17,21,0.72);
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .create-type-option:hover,
+    .create-type-option:focus-visible {
+      border-color: var(--accent);
+      background: rgba(61,220,151,0.15);
+      outline: none;
     }
 
     .modal-backdrop {
@@ -2790,6 +2887,7 @@
           <button class="bulk-type-button" type="button" data-type="sub" aria-pressed="false">서브</button>
           <button class="bulk-type-button" type="button" data-type="middle" aria-pressed="false">중간</button>
           <button class="bulk-type-button" type="button" data-type="main" aria-pressed="false">메인</button>
+          <button class="bulk-type-button" type="button" data-type="icon" aria-pressed="false">아이콘</button>
           <button class="bulk-type-button" type="button" data-type="group" aria-pressed="false">그룹</button>
         </div>
       </div>
@@ -2887,6 +2985,7 @@
             <button class="block-type-button" type="button" data-type="sub" aria-pressed="true">서브</button>
             <button class="block-type-button" type="button" data-type="middle" aria-pressed="false">중간</button>
             <button class="block-type-button" type="button" data-type="main" aria-pressed="false">메인</button>
+            <button class="block-type-button" type="button" data-type="icon" aria-pressed="false">아이콘</button>
             <button class="block-type-button" type="button" data-type="group" aria-pressed="false">그룹</button>
           </div>
         </div>
@@ -3134,6 +3233,16 @@
     </section>
   </div>
 
+  <div class="create-type-popover" id="createTypePopover" role="dialog" aria-label="새 블록 종류 선택">
+    <p class="create-type-title">생성할 블록 종류</p>
+    <div class="create-type-options">
+      <button class="create-type-option" type="button" data-create-type="sub">서브</button>
+      <button class="create-type-option" type="button" data-create-type="middle">중간</button>
+      <button class="create-type-option" type="button" data-create-type="main">메인</button>
+      <button class="create-type-option" type="button" data-create-type="icon">아이콘</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast" aria-live="polite"></div>
   <script>
 (function () {
@@ -3226,6 +3335,7 @@
         clipboard: null,
         focusTitleBlockId: null,
         createMenuBlockId: null,
+        pendingCreatePoint: null,
         subtitleTags: [],
         subtitleHiddenTagKeys: [],
         toolTags: [],
@@ -3392,6 +3502,7 @@
         els.timelinePanel = document.getElementById("timelinePanel");
         els.timelineFilters = document.getElementById("timelineFilters");
         els.timelineList = document.getElementById("timelineList");
+        els.createTypePopover = document.getElementById("createTypePopover");
         els.toast = document.getElementById("toast");
       }
 
@@ -3405,7 +3516,7 @@
         els.exportButton.addEventListener("click", function () {
           exportJsonFile();
         });
-        els.addBlockButton.addEventListener("click", addBlockAtViewportCenter);
+        els.addBlockButton.addEventListener("click", openCreateTypePickerAtViewportCenter);
         els.addGroupBlockButton.addEventListener("click", addGroupBlockAtViewportCenter);
         els.timelineButton.addEventListener("click", toggleTimelinePanel);
         els.highlightOnlyButton.addEventListener("click", toggleHighlightOnly);
@@ -3502,6 +3613,7 @@
         els.cancelConnectionEditButton.addEventListener("click", closeConnectionEditModal);
         els.cancelConnectionEditTopButton.addEventListener("click", closeConnectionEditModal);
         els.saveConnectionEditButton.addEventListener("click", saveConnectionEditModal);
+        els.createTypePopover.addEventListener("click", handleCreateTypeChoice);
         els.timelineFilters.addEventListener("click", handleTimelineFilterClick);
         els.timelineList.addEventListener("click", handleTimelineRowClick);
         els.innerDiagramStage.addEventListener("pointerdown", handleInnerStagePointerDown);
@@ -3517,6 +3629,7 @@
         els.viewport.addEventListener("dblclick", handleCanvasDoubleClick);
         els.viewport.addEventListener("wheel", zoomCanvas, { passive: false });
         document.addEventListener("pointerdown", handleDatePickerOutsidePointerDown);
+        document.addEventListener("pointerdown", closeCreateTypePickerWhenOutside);
         document.addEventListener("pointermove", handlePointerMove);
         document.addEventListener("pointerup", handlePointerUp);
         document.addEventListener("pointercancel", handlePointerUp);
@@ -6754,6 +6867,11 @@
           event.preventDefault();
           return;
         }
+        if (els.createTypePopover && els.createTypePopover.classList.contains("is-open")) {
+          closeCreateTypePicker();
+          event.preventDefault();
+          return;
+        }
         var modalWasOpen = false;
         if (els.innerBlockEditModal.classList.contains("is-open")) {
           closeInnerBlockEditModal();
@@ -7831,12 +7949,14 @@
         var blockType = normalizeBlockType(block.type);
         var isMain = blockType === "main";
         var isMiddle = blockType === "middle";
+        var isIcon = blockType === "icon";
         var isGroup = blockType === "group";
-        var ink = (isMain || isGroup) ? getReadableTextColor(color) : "var(--ink)";
+        var ink = (isMain || isGroup) ? getReadableTextColor(color) : (isIcon ? "#f8fafc" : "var(--ink)");
         var muted = isMain ? (ink === "#ffffff" ? "rgba(255,255,255,0.78)" : "rgba(40,39,33,0.68)") : "#777268";
 
         card.classList.toggle("is-main", isMain);
         card.classList.toggle("is-middle", isMiddle);
+        card.classList.toggle("is-icon", isIcon);
         card.classList.toggle("is-group", isGroup);
         card.style.setProperty("--block-color", color);
         card.style.setProperty("--block-ink", ink);
@@ -8191,7 +8311,7 @@
         if (value === "normal") {
           return "sub";
         }
-        if (value === "main" || value === "middle" || value === "group") {
+        if (value === "main" || value === "middle" || value === "icon" || value === "group") {
           return value;
         }
         return "sub";
@@ -8208,11 +8328,14 @@
         if (safeType === "group") {
           return "그룹";
         }
+        if (safeType === "icon") {
+          return "아이콘";
+        }
         return "서브";
       }
 
       function getNextBlockType(type) {
-        var types = ["sub", "middle", "main", "group"];
+        var types = ["sub", "middle", "main", "icon", "group"];
         var index = types.indexOf(normalizeBlockType(type));
         return types[(index + 1) % types.length];
       }
@@ -8621,6 +8744,77 @@
         var rect = els.viewport.getBoundingClientRect();
         var center = screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
         addBlockAtWorldPoint(center.x, center.y);
+      }
+
+      function openCreateTypePickerAtViewportCenter() {
+        var rect = els.viewport.getBoundingClientRect();
+        var clientX = rect.left + rect.width / 2;
+        var clientY = rect.top + rect.height / 2;
+        var center = screenToWorld(clientX, clientY);
+        openCreateTypePicker(center, clientX, clientY);
+      }
+
+      function openCreateTypePicker(worldPoint, clientX, clientY) {
+        if (!els.createTypePopover) {
+          addBlockAtWorldPoint(worldPoint.x, worldPoint.y, {
+            select: true,
+            focusTitle: true
+          });
+          return;
+        }
+        store.pendingCreatePoint = {
+          x: worldPoint.x,
+          y: worldPoint.y
+        };
+        els.createTypePopover.classList.add("is-open");
+        positionCreateTypePopover(clientX, clientY);
+      }
+
+      function positionCreateTypePopover(clientX, clientY) {
+        var popover = els.createTypePopover;
+        var margin = 12;
+        var width = popover.offsetWidth || 260;
+        var height = popover.offsetHeight || 140;
+        var left = Math.min(Math.max(margin, clientX + 14), window.innerWidth - width - margin);
+        var top = Math.min(Math.max(margin, clientY + 14), window.innerHeight - height - margin);
+        popover.style.left = left + "px";
+        popover.style.top = top + "px";
+      }
+
+      function closeCreateTypePicker() {
+        store.pendingCreatePoint = null;
+        if (els.createTypePopover) {
+          els.createTypePopover.classList.remove("is-open");
+        }
+      }
+
+      function closeCreateTypePickerWhenOutside(event) {
+        if (!els.createTypePopover || !els.createTypePopover.classList.contains("is-open")) {
+          return;
+        }
+        if (event.target.closest && event.target.closest(".create-type-popover")) {
+          return;
+        }
+        closeCreateTypePicker();
+      }
+
+      function handleCreateTypeChoice(event) {
+        var button = event.target.closest && event.target.closest("[data-create-type]");
+        var point = store.pendingCreatePoint;
+        var type;
+        if (!button || !els.createTypePopover.contains(button) || !point) {
+          return;
+        }
+        type = normalizeBlockType(button.dataset.createType);
+        addBlockAtWorldPoint(point.x, point.y, {
+          type: type,
+          title: type === "icon" ? "AI 아이콘" : "새 블록",
+          select: true,
+          focusTitle: true
+        });
+        closeCreateTypePicker();
+        event.preventDefault();
+        event.stopPropagation();
       }
 
       function addGroupBlockAtViewportCenter() {
@@ -9905,10 +10099,7 @@
           return;
         }
         worldPoint = screenToWorld(event.clientX, event.clientY);
-        addBlockAtWorldPoint(worldPoint.x, worldPoint.y, {
-          select: true,
-          focusTitle: true
-        });
+        openCreateTypePicker(worldPoint, event.clientX, event.clientY);
         event.preventDefault();
         event.stopPropagation();
       }
@@ -10690,7 +10881,14 @@
       }
 
       function getNaturalBlockWidth(block) {
-        return normalizeBlockType(block && block.type) === "group" ? getGroupBlockWidth(block) : getStandardBlockWidth(block);
+        var type = normalizeBlockType(block && block.type);
+        if (type === "group") {
+          return getGroupBlockWidth(block);
+        }
+        if (type === "icon") {
+          return 132;
+        }
+        return getStandardBlockWidth(block);
       }
 
       function getStandardBlockWidth(block) {
@@ -10758,6 +10956,9 @@
         if (type === "group") {
           return getGroupBlockHeight(block);
         }
+        if (type === "icon") {
+          return 132 + badgeExtra;
+        }
         if (type === "main") {
           return MAIN_CARD_HEIGHT + badgeExtra;
         }
@@ -10777,6 +10978,12 @@
           return {
             width: BLOCK_RESIZE_MIN_WIDTH,
             height: MAIN_CARD_HEIGHT + badgeExtra
+          };
+        }
+        if (type === "icon") {
+          return {
+            width: 112,
+            height: 112 + badgeExtra
           };
         }
         return {
@@ -12190,6 +12397,7 @@
         return Boolean(
           target.closest(".block-card") ||
           target.closest(".block-create-menu") ||
+          target.closest(".create-type-popover") ||
           target.closest(".bulk-color-bar") ||
           target.closest(".connection-hit") ||
           target.closest("button, select, input, textarea")
