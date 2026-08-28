@@ -426,9 +426,9 @@
     .block-card.is-icon {
       align-items: center;
       justify-content: center;
-      width: var(--card-width, 132px);
-      min-width: 112px;
-      height: var(--card-height, 132px);
+      width: var(--card-width, 80px);
+      min-width: 68px;
+      height: var(--card-height, 80px);
       padding: 0;
       border: 0;
       border-radius: 50%;
@@ -3352,6 +3352,10 @@
       var GROUP_CHILD_GAP = 12;
       var BLOCK_RESIZE_MIN_WIDTH = 160;
       var BLOCK_RESIZE_MIN_HEIGHT = 48;
+      var ICON_BLOCK_SIZE = 80;
+      var ICON_BLOCK_MIN_SIZE = 68;
+      var ICON_BLOCK_LEGACY_SIZE = 132;
+      var ICON_BLOCK_LEGACY_MIN_SIZE = 112;
       var INNER_WORLD_WIDTH = 1800;
       var INNER_WORLD_HEIGHT = 1000;
       var INNER_BLOCK_WIDTH = 170;
@@ -4849,7 +4853,7 @@
           '    .conn-label{box-sizing:border-box;max-width:none;display:inline-flex;align-items:center;gap:6px;overflow:hidden;padding:4px 8px;border:1px solid rgba(255,255,255,0.16);border-radius:999px;background:rgba(28,33,41,0.92);color:#e8ebf0;font-size:12px;font-weight:700;line-height:1.25;text-align:center;white-space:nowrap;box-shadow:0 6px 16px rgba(0,0,0,0.28);}.conn-label.is-input{border-color:rgba(255,83,96,.72);background:rgba(92,26,35,.94);color:#ffe5e8;}.conn-label.is-output{border-color:rgba(58,134,255,.72);background:rgba(20,45,92,.94);color:#e6f0ff;}.conn-type{flex:0 0 auto;padding:2px 5px;border-radius:999px;color:#fff;font-size:9px;font-weight:900;line-height:1;letter-spacing:.02em;}.conn-label.is-input .conn-type{background:#ff5360;}.conn-label.is-output .conn-type{background:#3a86ff;}.conn-text{min-width:0;overflow:visible;text-overflow:clip;white-space:nowrap;}\n' +
           '    .card{position:absolute;box-sizing:border-box;min-width:' + CARD_MIN_WIDTH + 'px;height:' + CARD_HEIGHT + 'px;padding:8px 12px 7px 10px;border:1px solid rgba(255,255,255,0.16);border-left:8px solid var(--color);border-radius:8px;background:#252b35;box-shadow:0 8px 24px rgba(0,0,0,0.45);overflow:hidden;}\n' +
           '    .card.is-group{border:2px solid color-mix(in srgb,var(--color) 72%,rgba(255,255,255,.28));border-left-width:2px;background:linear-gradient(180deg,color-mix(in srgb,var(--color) 34%,transparent),rgba(37,43,53,.58)),rgba(37,43,53,.68);box-shadow:0 14px 34px rgba(0,0,0,.36);}.card.is-group strong{display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:var(--color);font-size:22px;text-align:center;}.card.is-group span{display:none;}\n' +
-          '    .card.is-icon{min-width:112px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;overflow:visible;}.card.is-icon img{display:block;width:100%;height:100%;border-radius:50%;object-fit:contain;}\n' +
+          '    .card.is-icon{min-width:68px;padding:0;border:0;border-radius:50%;background:transparent;box-shadow:none;overflow:visible;}.card.is-icon img{display:block;width:100%;height:100%;border-radius:50%;object-fit:contain;}\n' +
           '    .card.has-tool,.card.has-assignees{padding-bottom:28px;}.card.has-tool.has-assignees{padding-bottom:52px;}\n' +
           '    .card strong,.card span{display:block;white-space:nowrap;}\n' +
           '    .card span{overflow:hidden;text-overflow:ellipsis;}\n' +
@@ -11242,7 +11246,7 @@
           return getGroupBlockWidth(block);
         }
         if (type === "icon") {
-          return 132;
+          return ICON_BLOCK_SIZE;
         }
         return getStandardBlockWidth(block);
       }
@@ -11313,7 +11317,7 @@
           return getGroupBlockHeight(block);
         }
         if (type === "icon") {
-          return 132;
+          return ICON_BLOCK_SIZE;
         }
         if (type === "main") {
           return MAIN_CARD_HEIGHT + badgeExtra;
@@ -11338,8 +11342,8 @@
         }
         if (type === "icon") {
           return {
-            width: 112,
-            height: 112
+            width: ICON_BLOCK_MIN_SIZE,
+            height: ICON_BLOCK_MIN_SIZE
           };
         }
         return {
@@ -12522,8 +12526,8 @@
               }).filter(Boolean) : [],
               inheritColor: raw.inheritColor === false ? false : (rawType !== "main" && rawType !== "group"),
               color: validColor(raw.color) ? raw.color : getCategoryColorFromMap(result.categories, category),
-              width: finiteNumber(raw.width) && raw.width > 0 ? Number(raw.width) : undefined,
-              height: finiteNumber(raw.height) && raw.height > 0 ? Number(raw.height) : undefined,
+              width: normalizeBlockDimension(raw.width, rawType),
+              height: normalizeBlockDimension(raw.height, rawType),
               x: finiteNumber(raw.x) ? Number(raw.x) : 80 + index * 36,
               y: finiteNumber(raw.y) ? Number(raw.y) : 80 + index * 36
             });
@@ -12585,6 +12589,22 @@
         }
 
         return result;
+      }
+
+      function normalizeBlockDimension(value, rawType) {
+        if (!finiteNumber(value) || value <= 0) {
+          return undefined;
+        }
+        var dimension = Number(value);
+        if (rawType === "icon") {
+          if (Math.abs(dimension - ICON_BLOCK_LEGACY_SIZE) < 0.5) {
+            return ICON_BLOCK_SIZE;
+          }
+          if (Math.abs(dimension - ICON_BLOCK_LEGACY_MIN_SIZE) < 0.5) {
+            return ICON_BLOCK_MIN_SIZE;
+          }
+        }
+        return dimension;
       }
 
       function normalizeDiagramParentIds(diagram) {
