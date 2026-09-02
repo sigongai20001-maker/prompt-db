@@ -836,7 +836,7 @@ kbd {
 .quick-step em { color: var(--minor); font-style: normal; }
 .quick-step + .quick-step::before { content: "›"; margin-right: 2px; color: #a8b0bd; font-size: 16px; }
 .quick-autosave { margin-left: auto; color: #39785a; font-size: 9px; font-weight: 800; }
-.quick-export-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.quick-export-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 body.quick-mode #workflow-readiness,
 body.quick-mode .export-dock > .export-buttons,
 body.quick-mode #export-reply-btn,
@@ -976,7 +976,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
           <span class="quick-step done"><b>1</b> PDF 첨부</span>
           <span class="quick-step done"><b>2</b> 페이지 확인</span>
           <span id="quick-mark-step" class="quick-step"><b>3</b> 마킹·내용 <em>0</em></span>
-          <span class="quick-step"><b>4</b> KR·CN PDF 저장</span>
+          <span class="quick-step"><b>4</b> KR·CN·병기 PDF 저장</span>
           <span class="quick-autosave" title="같은 PC·브라우저 프로필에서 같은 PDF를 다시 선택하면 복원됩니다.">동일 브라우저에 자동 저장</span>
         </div>
         <div class="review-toolbar">
@@ -1129,6 +1129,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
               <div id="quick-export-buttons" class="quick-export-buttons" hidden>
                 <button id="quick-export-kr" class="button export primary" type="button">한글 PDF 다운로드</button>
                 <button id="quick-export-cn" class="button export" type="button">중문 PDF 다운로드</button>
+                <button id="quick-export-krcn" class="button export" type="button">한·중 병기 PDF</button>
               </div>
               <div class="export-buttons">
                 <button class="button export primary" type="button" data-export-mode="KR" disabled>내보내기 KR</button>
@@ -4787,10 +4788,12 @@ function renderVerdict() {
 function renderGate() {
   const pending = state.comments.filter((comment) => comment.status === "pending").length;
   const confirmed = state.comments.filter((comment) => comment.status === "confirmed");
+  const quickIncluded = state.comments.filter((comment) => comment.status !== "dropped");
   const imageCount = state.imageOverlays.filter(imageMatchesActivePdf).length;
-  const quickHasOutput = confirmed.length > 0 || imageCount > 0;
+  const quickHasOutput = quickIncluded.length > 0 || imageCount > 0;
+  const quickHasSource = Boolean(state.activePdf);
   const unreviewed = confirmed.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim() || comment.cn_status !== "reviewed").length;
-  const quickCnMissing = confirmed.filter((comment) => {
+  const quickCnMissing = quickIncluded.filter((comment) => {
     const kr = String(comment.kr || "").trim();
     const part = String(comment.part || "").trim();
     return (kr && !String(comment.cn || "").trim()) || (part && !String(comment.part_cn || "").trim());
@@ -4803,20 +4806,26 @@ function renderGate() {
   const replyButton = $("#export-reply-btn");
   const quickKrButton = $("#quick-export-kr");
   const quickCnButton = $("#quick-export-cn");
+  const quickKrcnButton = $("#quick-export-krcn");
   krButton.disabled = pending > 0;
   cnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   krcnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   replyButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
-  if (quickKrButton) quickKrButton.disabled = pending > 0 || !quickHasOutput;
+  if (quickKrButton) {
+    quickKrButton.disabled = !quickHasSource;
+    quickKrButton.title = quickHasOutput ? "내용 유무와 관계없이 한글 PDF를 저장합니다." : "표시 없이 원본 PDF를 저장합니다.";
+  }
   if (quickCnButton) {
-    quickCnButton.disabled = pending > 0 || !quickHasOutput;
-    quickCnButton.title = pending
-      ? "내용이 비어 있는 표시를 입력하거나 삭제해 주세요."
-      : (!quickHasOutput
-        ? "도형 또는 이미지를 추가해 주세요."
-        : (quickCnMissing && noApiKey
-          ? "클릭하면 OpenAI API 키 설정창을 엽니다."
-          : (quickCnMissing ? "클릭하면 자동번역 후 중문 PDF를 바로 저장합니다." : "중문 PDF를 바로 저장합니다.")));
+    quickCnButton.disabled = !quickHasSource;
+    quickCnButton.title = quickCnMissing
+      ? (noApiKey ? "중문이 없는 표시는 도형만 포함해 저장합니다." : "자동번역을 시도한 뒤, 비어 있는 내용은 도형만 포함해 저장합니다.")
+      : (quickHasOutput ? "중문 PDF를 바로 저장합니다." : "표시 없이 원본 PDF를 저장합니다.");
+  }
+  if (quickKrcnButton) {
+    quickKrcnButton.disabled = !quickHasSource;
+    quickKrcnButton.title = quickCnMissing
+      ? (noApiKey ? "중문이 없으면 한국어만 넣어 병기 PDF를 저장합니다." : "자동번역을 시도한 뒤 한·중 병기 PDF를 저장합니다.")
+      : (quickHasOutput ? "한국어와 중국어를 함께 넣어 저장합니다." : "표시 없이 원본 PDF를 저장합니다.");
   }
   const cnReason = pending
     ? "pending 코멘트를 모두 정리해야 합니다."
@@ -4835,13 +4844,13 @@ function renderGate() {
   else if (unreviewed) warning.textContent = `번역 검수 미완료 ${unreviewed}건 · KR 통합 내보내기만 가능`;
   else warning.textContent = confirmed.length ? "내보내기 준비 완료" : "확정 코멘트 없이 빈 산출물이 생성됩니다.";
   if (state.quickMode) {
-    warning.classList.toggle("alert", pending > 0 || (quickCnMissing > 0 && noApiKey));
-    if (pending) warning.textContent = `내용이 비어 있는 표시 ${pending}건이 있습니다. 내용을 입력하거나 삭제해 주세요.`;
-    else if (!quickHasOutput) warning.textContent = "도형 또는 이미지를 추가해 주세요.";
-    else if (!confirmed.length && imageCount) warning.textContent = `붙여넣은 이미지 ${imageCount}개를 포함해 한글·중문 PDF를 저장할 수 있습니다.`;
-    else if (quickCnMissing && noApiKey) warning.textContent = "한글 PDF 즉시 저장 가능 · 중문 버튼을 누르면 API 키 설정을 안내합니다.";
-    else if (quickCnMissing) warning.textContent = `한글 PDF 즉시 저장 가능 · 중문 버튼을 누르면 ${quickCnMissing}건 자동번역 후 저장합니다.`;
-    else warning.textContent = "한글·중문 PDF 다운로드 준비 완료";
+    warning.classList.remove("alert");
+    if (pending) warning.textContent = `내용이 비어 있는 표시 ${pending}건도 도형만 포함해 PDF로 저장됩니다.`;
+    else if (!quickHasOutput) warning.textContent = "표시가 없어도 원본 PDF를 그대로 저장할 수 있습니다.";
+    else if (!quickIncluded.length && imageCount) warning.textContent = `붙여넣은 이미지 ${imageCount}개를 포함해 한글·중문·병기 PDF를 저장할 수 있습니다.`;
+    else if (quickCnMissing && noApiKey) warning.textContent = "모든 PDF 저장 가능 · 중문이 없는 표시는 도형만, 병기본에는 한국어만 포함됩니다.";
+    else if (quickCnMissing) warning.textContent = `모든 PDF 저장 가능 · 중문 저장 시 ${quickCnMissing}건 자동번역을 먼저 시도합니다.`;
+    else warning.textContent = "한글·중문·한중 병기 PDF 다운로드 준비 완료";
   }
   const imageNote = $("#image-export-note");
   if (imageNote) imageNote.hidden = imageCount === 0;
@@ -5687,6 +5696,7 @@ function bindEvents() {
   }));
   $("#quick-export-kr")?.addEventListener("click", () => window.staticQuickExportPdf?.("KR"));
   $("#quick-export-cn")?.addEventListener("click", () => window.staticQuickExportPdf?.("CN"));
+  $("#quick-export-krcn")?.addEventListener("click", () => window.staticQuickExportPdf?.("KRCN"));
   $("#export-reply-btn").addEventListener("click", exportReply);
   bindDropZone($("#reply-drop-zone"), $("#reply-file-input"), importReply);
   window.addEventListener("keydown", handleKeyboard);
@@ -8001,6 +8011,18 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return changed;
   }
 
+  function quickExportComments(ledger) {
+    return (ledger?.comments || []).filter((comment) => comment.status !== "dropped");
+  }
+
+  function quickCommentBody(comment, mode) {
+    const kr = String(comment?.kr || "").trim();
+    const cn = String(comment?.cn || "").trim();
+    if (mode === "CN") return cn;
+    if (mode === "KRCN") return [kr, cn].filter(Boolean).join("\n");
+    return kr;
+  }
+
   function quickCnMissing(comments) {
     return (comments || []).filter((comment) => {
       const kr = String(comment.kr || "").trim();
@@ -8194,16 +8216,13 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
   }
 
   async function createQuickReviewPdf(language) {
-    const mode = language === "CN" ? "CN" : "KR";
+    const requestedMode = String(language || "KR").toUpperCase();
+    const mode = ["CN", "KRCN"].includes(requestedMode) ? requestedMode : "KR";
     if (!STATIC_RUNTIME.quickMode) throw new StaticApiError("간편 PDF 모드에서만 사용할 수 있습니다.", 409, "quick_mode_required");
     await flushPendingCommentSaves();
     const ledger = await staticLoadLedger();
     if (quickAutoIncludeCompleted(ledger)) await staticSaveLedger(ledger);
-    const confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
-    const pending = ledger.comments.filter((comment) => comment.status === "pending");
-    if (pending.length) throw new StaticApiError(`내용이 비어 있는 표시 ${pending.length}건을 입력하거나 삭제해 주세요.`, 409, "pending_comments", { count: pending.length });
-    const missingCn = mode === "CN" ? quickCnMissing(confirmed) : [];
-    if (missingCn.length) throw new StaticApiError(`중문 번역이 필요한 지적 ${missingCn.length}건이 남아 있습니다.`, 409, "translation_missing", { count: missingCn.length });
+    const included = quickExportComments(ledger);
     const sourceName = String(ledger.source_pdf || "");
     const source = await staticSourceFile(sourceName);
     const sourceBytes = new Uint8Array(await source.arrayBuffer());
@@ -8212,14 +8231,13 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const pages = pdf.getPages();
     const imageRecords = await global.staticImageOverlayRuntime?.embedIntoPdf(pdf, pages, PDFLib, { pdfName: "" }) || [];
     let font = null;
-    if (confirmed.length) {
-      const fontBytes = await quickEnsureFont(mode);
+    if (included.some((comment) => quickCommentBody(comment, mode))) {
+      const fontBytes = await quickEnsureFont(mode === "CN" ? "CN" : "KR");
       pdf.registerFontkit(global.fontkit);
       font = await pdf.embedFont(fontBytes, { subset: false });
     }
-    if (!confirmed.length && !imageRecords.length) throw new StaticApiError("도형 또는 이미지를 추가해 주세요.", 409, "output_empty");
 
-    for (const comment of confirmed) {
+    for (const comment of included) {
       const pageIndex = Math.trunc(Number(comment.page || 1)) - 1;
       if (pageIndex < 0 || pageIndex >= pages.length) continue;
       const page = pages[pageIndex];
@@ -8245,39 +8263,45 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         page.drawRectangle({ ...nativeRect, color: PDFLib.rgb(...QUICK_FILL_RGB), opacity: .24, borderColor: color, borderOpacity: 1, borderWidth: 1.5, borderDashArray });
       }
 
-      const preferredTextRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
-        ? comment.text_rect.map(Number)
-        : quickDefaultTextRect(box, media);
-      const body = mode === "CN" ? String(comment.cn || "") : String(comment.kr || "");
-      const textRect = quickCompactTextRect(font, body, preferredTextRect, media);
-      const textNative = global.toPdfLibRect(textRect, media.height);
-      textNative.x += media.x;
-      textNative.y += media.y;
-      const markCenter = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
-      const textCenter = [(textRect[0] + textRect[2]) / 2, (textRect[1] + textRect[3]) / 2];
-      const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
-      const textWidth = Math.max(textRect[2] - textRect[0], .1);
-      const textHeight = Math.max(textRect[3] - textRect[1], .1);
-      const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / (textWidth / 2), Math.abs(towardMark[1]) / (textHeight / 2), 1);
-      const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
-      page.drawLine({ start: quickPointToNative(markCenter, media), end: quickPointToNative(textEdge, media), color, thickness: .85, opacity: .8 });
-      page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, .902, 0), opacity: .97, borderColor: PDFLib.rgb(.77, .57, 0), borderWidth: 1.1 });
-      const display = global.staticPdfDisplayRect(textRect, media.width, media.height, rotation);
-      quickDisplayText(page, font, body, display, info, PDFLib.rgb(.04, .04, .04), PDFLib, comment.no);
+      const body = quickCommentBody(comment, mode);
+      if (body && font) {
+        const preferredTextRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
+          ? comment.text_rect.map(Number)
+          : quickDefaultTextRect(box, media);
+        const textRect = quickCompactTextRect(font, body, preferredTextRect, media);
+        const textNative = global.toPdfLibRect(textRect, media.height);
+        textNative.x += media.x;
+        textNative.y += media.y;
+        const markCenter = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+        const textCenter = [(textRect[0] + textRect[2]) / 2, (textRect[1] + textRect[3]) / 2];
+        const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
+        const textWidth = Math.max(textRect[2] - textRect[0], .1);
+        const textHeight = Math.max(textRect[3] - textRect[1], .1);
+        const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / (textWidth / 2), Math.abs(towardMark[1]) / (textHeight / 2), 1);
+        const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
+        page.drawLine({ start: quickPointToNative(markCenter, media), end: quickPointToNative(textEdge, media), color, thickness: .85, opacity: .8 });
+        page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, .902, 0), opacity: .97, borderColor: PDFLib.rgb(.77, .57, 0), borderWidth: 1.1 });
+        const display = global.staticPdfDisplayRect(textRect, media.width, media.height, rotation);
+        quickDisplayText(page, font, body, display, info, PDFLib.rgb(.04, .04, .04), PDFLib, comment.no);
+      }
     }
 
-    const output = new Uint8Array(await pdf.save());
+    const output = !included.length && !imageRecords.length
+      ? sourceBytes.slice()
+      : new Uint8Array(await pdf.save());
     const outputDirectory = await staticGetDirectory(STATIC_RUNTIME.rootHandle, ["03_마크업"], { create: true });
     const stem = `${quickSafeStem(sourceName)}_${mode}_REVIEW`;
     const version = await global.staticNextVersion(outputDirectory, stem, ".pdf");
     await staticWriteBinary(outputDirectory, [version.filename], output);
     quickDownload(output, version.filename);
-    return { filename: version.filename, bytes: output.byteLength, comments: confirmed.length, images: imageRecords.length, image_records: imageRecords, language: mode };
+    return { filename: version.filename, bytes: output.byteLength, comments: included.length, images: imageRecords.length, image_records: imageRecords, language: mode };
   }
 
   async function staticQuickExportPdf(language) {
-    const mode = language === "CN" ? "CN" : "KR";
-    const button = document.querySelector(mode === "CN" ? "#quick-export-cn" : "#quick-export-kr");
+    const requestedMode = String(language || "KR").toUpperCase();
+    const mode = ["CN", "KRCN"].includes(requestedMode) ? requestedMode : "KR";
+    const modeLabel = mode === "CN" ? "중문" : mode === "KRCN" ? "한·중 병기" : "한글";
+    const button = document.querySelector(mode === "CN" ? "#quick-export-cn" : mode === "KRCN" ? "#quick-export-krcn" : "#quick-export-kr");
     if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
@@ -8287,27 +8311,35 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         await staticSaveLedger(ledger);
         if (typeof adoptLedger === "function") adoptLedger(ledger);
       }
-      if (mode === "CN") {
-        let confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
-        let missing = quickCnMissing(confirmed);
+      if (mode === "CN" || mode === "KRCN") {
+        let included = quickExportComments(ledger);
+        let missing = quickCnMissing(included);
         if (missing.length) {
-          if (!staticGetApiKey()) throw new StaticApiError(`중문 PDF에 필요한 자동번역이 ${missing.length}건 남아 있습니다. API 키를 설정한 뒤 다시 눌러 주세요. 저장된 한글 내용은 유지됩니다.`, 409, "api_key_missing", { count: missing.length });
-          staticToast("중문 자동번역 중", `${missing.length}건을 번역한 뒤 PDF를 바로 저장합니다.`, "info", 5000);
-          const translated = await staticRunTranslation();
-          if (translated.failures?.length) throw new StaticApiError(translated.failures.map((item) => item.message).join(" / "), 502, "translation_failed");
-          ledger = await staticLoadLedger();
-          confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
-          missing = quickCnMissing(confirmed);
-          if (missing.length) throw new StaticApiError(`자동번역 후에도 중문 내용이 비어 있는 지적 ${missing.length}건이 있습니다.`, 422, "translation_missing", { count: missing.length });
-          if (typeof adoptLedger === "function") adoptLedger(ledger);
-          if (typeof renderDerivedUI === "function") renderDerivedUI();
+          if (staticGetApiKey()) {
+            staticToast("중문 자동번역 중", `${missing.length}건을 번역한 뒤 PDF를 바로 저장합니다.`, "info", 5000);
+            try {
+              const translated = await staticRunTranslation();
+              ledger = await staticLoadLedger();
+              included = quickExportComments(ledger);
+              missing = quickCnMissing(included);
+              if (typeof adoptLedger === "function") adoptLedger(ledger);
+              if (typeof renderDerivedUI === "function") renderDerivedUI();
+              if (translated.failures?.length || missing.length) {
+                staticToast("일부 중문 없이 저장", `번역되지 않은 ${missing.length}건은 도형만 포함합니다.`, "info", 6500);
+              }
+            } catch (error) {
+              staticToast("자동번역 생략", `${error.message} · 중문이 없는 표시는 도형만 포함합니다.`, "info", 6500);
+            }
+          } else {
+            const detail = mode === "KRCN" ? "중문이 없는 표시는 한국어만 넣습니다." : "중문이 없는 표시는 도형만 넣습니다.";
+            staticToast("API 키 없이 PDF 저장", detail, "info", 5500);
+          }
         }
       }
       const result = await createQuickReviewPdf(mode);
-      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 완료`, `${result.filename} · 코멘트 ${result.comments}건 · 이미지 ${result.images}개`, "success", 9000);
+      staticToast(`${modeLabel} PDF 저장 완료`, `${result.filename} · 표시 ${result.comments}건 · 이미지 ${result.images}개`, "success", 9000);
     } catch (error) {
-      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 실패`, error.message, "error", 8000);
-      if (error?.code === "api_key_missing" && typeof showSettings === "function") showSettings();
+      staticToast(`${modeLabel} PDF 저장 실패`, error.message, "error", 8000);
     } finally {
       if (typeof renderGate === "function") renderGate();
     }
