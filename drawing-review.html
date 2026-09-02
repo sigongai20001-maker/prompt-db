@@ -1321,6 +1321,7 @@ const state = {
   draft: null,
   gesture: null,
   interactionMode: "select",
+  repeatEntryActive: false,
   activeTool: localStorage.getItem("drawing-review-tool") || "rect",
   commentTemplateLinks: new Map(),
   filters: { statuses: new Set(), axes: new Set(), severities: new Set(), drawings: new Set(), query: "" },
@@ -1524,6 +1525,7 @@ async function openSubmission(path, create = false, file = "") {
     state.relatedDrawingWarningsConfirmed.clear();
     state.activePdf = data.ledger.source_pdf || state.pdfs[0]?.name || "";
     state.selectedNo = null;
+    state.repeatEntryActive = false;
     state.replyImportResult = null;
     state.page = 1;
     state.fitWidth = true;
@@ -2895,6 +2897,40 @@ function supportsExtendedMarkup() {
   return Boolean(window.staticPortCore);
 }
 
+async function finishOverlayTextEntry(editor, comment, field) {
+  if (!editor || !comment?.no || editor.dataset.committing === "true") return false;
+  const value = editor.innerText.replace(/\n$/, "");
+  if (!value.trim()) {
+    toast("내용을 입력해 주세요", "수정 내용을 입력한 뒤 Enter를 누르면 같은 도형으로 다음 영역을 표시할 수 있습니다.", "error");
+    editor.focus({ preventScroll: true });
+    return false;
+  }
+
+  editor.dataset.committing = "true";
+  comment[field] = value;
+  if (field === "cn") comment.cn_status = comment.cn.trim() && String(comment.part_cn || "").trim() ? "reviewed" : "empty";
+  scheduleSave(comment);
+  editor.blur();
+
+  const saved = await saveSelectedComment(true);
+  if (!saved) {
+    const currentEditor = $(`.annotation-group[data-no="${comment.no}"] .annotation-text-editor`);
+    currentEditor?.focus({ preventScroll: true });
+    return false;
+  }
+
+  if (state.repeatEntryActive) {
+    state.selectedNo = null;
+    startRepeatEntry({ announce: false });
+    requestAnimationFrame(() => $("#annotation-layer")?.focus({ preventScroll: true }));
+    const toolName = { rect: "사각형", circle: "원", polygon: "폴리곤", freehand: "자유연필" }[state.activeTool] || state.activeTool;
+    announce(`내용을 저장했습니다. ${toolName}으로 다음 영역을 표시하세요.`);
+  } else {
+    announce(`코멘트 ${comment.no}번 내용을 저장했습니다.`);
+  }
+  return true;
+}
+
 function appendTextBoxOverlay(group, comment, markRect) {
   if (!comment.no) return;
   const language = state.overlayLanguage === "CN" ? "CN" : "KR";
@@ -2941,7 +2977,16 @@ function appendTextBoxOverlay(group, comment, markRect) {
   });
   editor.addEventListener("keydown", (event) => {
     event.stopPropagation();
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") editor.blur();
+    if (event.key === "Escape" && !event.isComposing) {
+      event.preventDefault();
+      editor.blur();
+      stopRepeatEntry({ announce: false });
+      announce("반복 영역 표시를 종료했습니다.");
+      return;
+    }
+    if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    void finishOverlayTextEntry(editor, comment, field);
   });
   editor.addEventListener("input", () => {
     comment[field] = editor.innerText.replace(/\n$/, "");
@@ -3055,6 +3100,18 @@ function setInteractionMode(mode, { announce: shouldAnnounce = true, render = tr
   layer?.classList.toggle("mode-draw", mode === "draw");
   if (render && state.viewport) renderOverlay();
   if (shouldAnnounce) announce(mode === "draw" ? "그리기 모드" : "선택 모드");
+}
+
+function startRepeatEntry({ announce: shouldAnnounce = true } = {}) {
+  state.repeatEntryActive = true;
+  setInteractionMode("draw", { announce: false });
+  if (shouldAnnounce) announce("반복 영역 표시를 시작했습니다.");
+}
+
+function stopRepeatEntry({ announce: shouldAnnounce = true } = {}) {
+  state.repeatEntryActive = false;
+  setInteractionMode("select", { announce: false });
+  if (shouldAnnounce) announce("반복 영역 표시를 종료했습니다.");
 }
 
 function beginDrawGesture(event) {
@@ -3570,7 +3627,20 @@ async function createComment(comment) {
     state.relatedDrawingWarningsConfirmed.delete("draft");
     if (relatedDrawingWarningConfirmed) state.relatedDrawingWarningsConfirmed.add(commentTemplateKey(data.comment));
     renderDerivedUI();
-    requestAnimationFrame(() => $("#annotation-layer")?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => {
+      const editor = $(`.annotation-group[data-no="${data.comment.no}"] .annotation-text-editor`);
+      if (editor) {
+        editor.focus({ preventScroll: true });
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      } else {
+        $("#annotation-layer")?.focus({ preventScroll: true });
+      }
+    });
     setSaveState(state.pendingCommentSaves.size ? "saving" : "saved", state.pendingCommentSaves.size ? "변경사항 저장 중" : "모든 변경 저장됨");
     announce("코멘트 " + data.comment.no + "번이 만들어졌습니다.");
     return true;
@@ -3780,6 +3850,8 @@ function selectComment(number, navigate = true) {
   const comment = state.comments.find((item) => Number(item.no) === Number(number));
   if (!comment) return;
   state.selectedNo = Number(number);
+  state.repeatEntryActive = false;
+  setInteractionMode("select", { announce: false, render: false });
   state.commentTemplateLinks.delete("draft");
   state.draft = null;
   const finish = () => {
@@ -3804,7 +3876,7 @@ function setTool(tool, { enterDraw = true } = {}) {
     button?.classList.toggle("active", tool === name);
     button?.setAttribute("aria-pressed", String(tool === name));
   });
-  if (enterDraw) setInteractionMode("draw", { announce: false });
+  if (enterDraw) startRepeatEntry({ announce: false });
   announce(`${{ rect: "사각형", circle: "원", polygon: "폴리곤", freehand: "자유연필" }[tool] || tool} 도구`);
 }
 
@@ -4863,7 +4935,7 @@ function handleKeyboard(event) {
     state.selectedNo = null;
     state.commentTemplateLinks.delete("draft");
     state.draft = null;
-    setInteractionMode("select", { announce: false });
+    stopRepeatEntry({ announce: false });
     renderDerivedUI();
     announce("선택을 해제했습니다.");
   }
@@ -4930,8 +5002,8 @@ function bindEvents() {
   $("#freehand-tool-btn")?.addEventListener("click", () => setTool("freehand"));
   $("#overlay-language-kr")?.addEventListener("click", () => setOverlayLanguage("KR"));
   $("#overlay-language-cn")?.addEventListener("click", () => setOverlayLanguage("CN"));
-  $("#select-mode-btn").addEventListener("click", () => setInteractionMode("select"));
-  $("#draw-mode-btn").addEventListener("click", () => setInteractionMode("draw"));
+  $("#select-mode-btn").addEventListener("click", () => stopRepeatEntry());
+  $("#draw-mode-btn").addEventListener("click", () => startRepeatEntry());
   $("#annotation-layer").addEventListener("pointerdown", beginDrawGesture);
   $("#annotation-layer").addEventListener("pointermove", handlePointerMove);
   $("#annotation-layer").addEventListener("pointerup", handlePointerEnd);
