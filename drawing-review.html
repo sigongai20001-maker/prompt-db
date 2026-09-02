@@ -777,6 +777,65 @@ kbd {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
 
+/* Folder-free quick review */
+.quick-open-card { gap: 12px; }
+.quick-drop-zone {
+  display: grid; min-height: 150px; place-items: center; gap: 8px; padding: 22px;
+  text-align: center; color: var(--ink-600); background: linear-gradient(145deg, #f8fbff, #fff);
+  border: 2px dashed #9eb4d3; border-radius: 12px; cursor: pointer; transition: .16s ease;
+}
+.quick-drop-zone:hover, .quick-drop-zone.dragging { color: var(--minor); background: #eef5ff; border-color: var(--minor); transform: translateY(-1px); }
+.quick-drop-zone strong { color: var(--ink-950); font-size: 17px; }
+.quick-drop-zone small { max-width: 330px; line-height: 1.55; }
+.quick-drop-icon { font-size: 32px; line-height: 1; }
+.quick-or { display: flex; align-items: center; gap: 9px; color: var(--ink-500); font-size: 10px; font-weight: 800; }
+.quick-or::before, .quick-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.legacy-folder-help { margin: 0; padding: 10px; background: var(--surface-2); border-radius: 8px; }
+.quick-workflow {
+  display: flex; align-items: center; gap: 8px; min-height: 43px; padding: 7px 12px;
+  color: var(--ink-600); background: #f7f9fc; border-bottom: 1px solid var(--line);
+}
+.quick-step { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 10px; font-weight: 800; }
+.quick-step b { display: grid; width: 20px; height: 20px; place-items: center; color: white; background: #9ba6b7; border-radius: 50%; }
+.quick-step.done b { background: var(--minor); }
+.quick-step em { color: var(--minor); font-style: normal; }
+.quick-step + .quick-step::before { content: "›"; margin-right: 2px; color: #a8b0bd; font-size: 16px; }
+.quick-autosave { margin-left: auto; color: #39785a; font-size: 9px; font-weight: 800; }
+.quick-export-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+body.quick-mode #workflow-readiness,
+body.quick-mode .export-dock > .export-buttons,
+body.quick-mode #export-reply-btn,
+body.quick-mode #reply-drop-zone,
+body.quick-mode #reply-import-result { display: none !important; }
+body.quick-mode #quick-workflow { display: flex; }
+body.quick-mode #quick-export-buttons { display: grid; }
+body.quick-mode #export-warning { margin-bottom: 6px; }
+.annotation-shape.shape-polygon, .annotation-shape.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.annotation-shape.shape-freehand { stroke-width: 2.8; }
+.annotation-hit.shape-polygon, .annotation-hit.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.annotation-text-link { pointer-events: none; stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .85; }
+.annotation-textbox { cursor: default; filter: drop-shadow(0 2px 5px rgba(15, 24, 39, .18)); }
+.annotation-textbox .textbox-shell { fill: rgba(255,255,255,.96); stroke-width: 1.4; }
+.annotation-textbox .textbox-grip { cursor: move; opacity: .96; }
+.annotation-textbox .textbox-grip-label { fill: white; font-size: 9px; font-weight: 800; pointer-events: none; }
+.annotation-textbox foreignObject { overflow: visible; }
+.annotation-text-editor {
+  width: 100%; height: 100%; box-sizing: border-box; overflow: auto; padding: 7px 8px;
+  color: #182235; background: rgba(255,255,255,.96); border: 0; outline: none;
+  font: 11px/1.42 "Noto Sans KR", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
+}
+.annotation-text-editor:empty::before { content: attr(data-placeholder); color: #8791a1; pointer-events: none; }
+.annotation-text-editor:focus { box-shadow: inset 0 0 0 2px rgba(47,111,208,.28); }
+.annotation-group.selected .annotation-textbox .textbox-shell { stroke-width: 2.2; }
+.polygon-preview { fill: none; stroke-dasharray: 5 4; opacity: .8; pointer-events: none; }
+@media (max-width: 1180px) {
+  .overlay-language-controls .tool-button { font-size: 0; }
+  .overlay-language-controls .tool-button::after { font-size: 10px; }
+  #overlay-language-kr::after { content: "KR"; }
+  #overlay-language-cn::after { content: "CN"; }
+  .quick-autosave { display: none; }
+}
+
 </style>
   <meta name="application-name" content="도면검토 정적판">
 </head>
@@ -800,7 +859,7 @@ kbd {
       <span id="save-indicator" class="save-indicator" role="status">
         <span class="status-dot" aria-hidden="true"></span> 준비됨
       </span>
-      <button id="change-folder-btn" class="button ghost" type="button" hidden>폴더 변경</button>
+      <button id="change-folder-btn" class="button ghost" type="button" hidden>PDF / 프로젝트 변경</button>
       <button id="settings-btn" class="icon-button" type="button" aria-label="설정 열기" title="설정" hidden>⚙</button>
     </div>
   </header>
@@ -813,27 +872,34 @@ kbd {
         <p>중국팀 제출 실시설계 PDF에 편집 가능한 지적 도형을 만들고, 번역 검수와 PDF·XLSX 회신본까지 로컬에서 관리합니다.</p>
         <div class="privacy-note">
           <span aria-hidden="true">⌂</span>
-          <span><strong>브라우저 로컬 처리</strong> 선택한 폴더의 원본 도면은 업로드하지 않으며 수정하지 않습니다.</span>
+          <span><strong>브라우저 로컬 처리</strong> PDF는 외부 서버에 업로드하지 않으며 원본 파일을 수정하지 않습니다.</span>
         </div>
       </div>
       <div class="open-card">
-        <div class="step-label"><span>01</span> 제출건 열기</div>
+        <div class="step-label"><span>01</span> 원본 PDF 첨부</div>
         <div id="browser-compat-warning" class="coordinate-warning" role="alert" hidden>
           <strong>Chrome 또는 Edge에서 열어주세요.</strong>
-          <span>폴더 읽기·쓰기에 File System Access API가 필요합니다.</span>
+          <span>브라우저 로컬 파일 처리 기능이 필요합니다.</span>
         </div>
         <input id="folder-input" type="hidden" value="">
-        <button id="open-folder-btn" class="button primary wide" type="button">
-          <span aria-hidden="true">▣</span> 폴더 선택 다이얼로그 열기
+        <label id="quick-pdf-drop-zone" class="quick-drop-zone" for="quick-pdf-input">
+          <input id="quick-pdf-input" type="file" accept="application/pdf,.pdf" hidden>
+          <span class="quick-drop-icon" aria-hidden="true">＋</span>
+          <strong>PDF를 여기에 놓거나 클릭해 선택</strong>
+          <small>폴더를 만들 필요 없이 페이지 보기·마킹·텍스트 작성·KR/CN PDF 저장까지 이 화면에서 처리합니다.</small>
+        </label>
+        <div class="quick-or">기존 자료를 이어서 검토하는 경우</div>
+        <button id="open-folder-btn" class="button secondary wide" type="button">
+          <span aria-hidden="true">▣</span> 기존 프로젝트 폴더 열기
         </button>
-        <p class="field-help">브라우저의 폴더 선택 창과 아래 최근 폴더 목록만 사용합니다. 선택한 폴더 핸들은 이 브라우저의 IndexedDB에 저장됩니다.</p>
+        <p class="field-help legacy-folder-help">기존 comments.json과 산출물 폴더가 있는 작업만 이 버튼을 사용하세요.</p>
       </div>
 
       <section class="recent-section" aria-labelledby="recent-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">RECENT</p>
-            <h2 id="recent-title">최근 검토 폴더</h2>
+            <h2 id="recent-title">최근 작업</h2>
           </div>
           <button id="refresh-recent-btn" class="button text" type="button">새로고침</button>
         </div>
@@ -861,6 +927,13 @@ kbd {
           <span id="readiness-comments" class="readiness-item">이전 검토 기록 확인 중</span>
           <span id="readiness-mode-copy" class="readiness-mode-copy"></span>
           <button id="kr-only-btn" class="button secondary compact" type="button" hidden>번역 없이 진행</button>
+        </div>
+        <div id="quick-workflow" class="quick-workflow" role="status" aria-live="polite" hidden>
+          <span class="quick-step done"><b>1</b> PDF 첨부</span>
+          <span class="quick-step done"><b>2</b> 페이지 확인</span>
+          <span id="quick-mark-step" class="quick-step"><b>3</b> 마킹·내용 <em>0</em></span>
+          <span class="quick-step"><b>4</b> KR·CN PDF 저장</span>
+          <span class="quick-autosave" title="같은 PC·브라우저 프로필에서 같은 PDF를 다시 선택하면 복원됩니다.">동일 브라우저에 자동 저장</span>
         </div>
         <div class="review-toolbar">
           <div class="toolbar-group source-controls">
@@ -890,6 +963,13 @@ kbd {
           <div class="toolbar-group draw-tools" aria-label="도형 도구">
             <button id="rect-tool-btn" class="tool-button active" type="button" aria-pressed="true" title="사각형 (R)"><span class="rect-icon" aria-hidden="true"></span> 사각형</button>
             <button id="circle-tool-btn" class="tool-button" type="button" aria-pressed="false" title="원 (C)"><span class="circle-icon" aria-hidden="true"></span> 원</button>
+            <button id="polygon-tool-btn" class="tool-button" type="button" aria-pressed="false" title="폴리곤 (P) — 점을 찍고 Enter 또는 더블클릭으로 완료">⌁ 폴리곤</button>
+            <button id="freehand-tool-btn" class="tool-button" type="button" aria-pressed="false" title="자유연필 (L) — 드래그하여 그리기">✎ 연필</button>
+          </div>
+          <div class="toolbar-divider" aria-hidden="true"></div>
+          <div class="toolbar-group overlay-language-controls" aria-label="텍스트 박스 언어">
+            <button id="overlay-language-kr" class="tool-button active" type="button" aria-pressed="true">텍스트 KR</button>
+            <button id="overlay-language-cn" class="tool-button" type="button" aria-pressed="false">文本 CN</button>
           </div>
           <div class="toolbar-spacer"></div>
           <button id="toggle-filters-btn" class="button secondary compact" type="button" aria-expanded="false" aria-controls="filter-drawer">필터 <span id="active-filter-count" class="filter-count">0</span></button>
@@ -928,7 +1008,7 @@ kbd {
             <div id="viewer-empty" class="viewer-empty">
               <span class="empty-icon" aria-hidden="true">⌗</span>
               <h2>원본 PDF를 기다리는 중</h2>
-              <p><code>00_수신원본</code> 폴더에 PDF를 넣은 뒤 폴더를 다시 열어 주세요.</p>
+              <p>첫 화면에서 PDF를 놓거나 선택해 주세요.</p>
             </div>
             <div id="pdf-stage" class="pdf-stage" hidden>
               <div id="page-surface" class="page-surface">
@@ -937,7 +1017,7 @@ kbd {
               </div>
             </div>
             <div id="viewer-loading" class="viewer-loading" hidden role="status"><span class="spinner"></span><span id="viewer-loading-text">페이지 렌더링 중</span></div>
-            <div class="viewer-hint"><kbd>R</kbd>/<kbd>C</kbd> 도형 · <kbd>F</kbd><kbd>D</kbd><kbd>J</kbd><kbd>S</kbd><kbd>U</kbd><kbd>M</kbd> 축 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 중요도 · <kbd>Space</kbd> 상태</div>
+            <div class="viewer-hint"><kbd>R</kbd> 사각 · <kbd>C</kbd> 원 · <kbd>P</kbd> 폴리곤 · <kbd>L</kbd> 연필 · <kbd>Enter</kbd> 폴리곤 완료 · <kbd>Esc</kbd> 취소</div>
           </section>
 
           <aside class="inspector" aria-label="코멘트 편집기">
@@ -959,7 +1039,7 @@ kbd {
                   </div>
                   <span id="selected-status-chip" class="status-chip pending" hidden>pending</span>
                 </div>
-                <div id="editor-empty" class="editor-empty">도면 위를 드래그해 사각형 또는 원을 만들거나, 아래 목록에서 코멘트를 선택하세요.</div>
+                <div id="editor-empty" class="editor-empty">마킹 도구로 수정 부위를 표시하면 이동·편집 가능한 텍스트 박스가 자동으로 붙습니다.</div>
                 <form id="comment-form" hidden autocomplete="off">
                   <div id="dynamic-fields" class="dynamic-fields"></div>
                   <div class="editor-actions">
@@ -981,6 +1061,10 @@ kbd {
 
             <div class="export-dock">
               <div id="export-warning" class="gate-warning">확정할 코멘트를 추가해 주세요.</div>
+              <div id="quick-export-buttons" class="quick-export-buttons" hidden>
+                <button id="quick-export-kr" class="button export primary" type="button">한글 PDF 다운로드</button>
+                <button id="quick-export-cn" class="button export" type="button">중문 PDF 다운로드</button>
+              </div>
               <div class="export-buttons">
                 <button class="button export primary" type="button" data-export-mode="KR" disabled>내보내기 KR</button>
                 <button class="button export" type="button" data-export-mode="CN" disabled>내보내기 CN</button>
@@ -1258,6 +1342,8 @@ const state = {
   krOnlyMode: false,
   replyImportResult: null,
   relatedDrawingWarningsConfirmed: new Set(),
+  quickMode: false,
+  overlayLanguage: "KR",
 };
 
 function announce(message) {
@@ -1431,6 +1517,8 @@ async function openSubmission(path, create = false, file = "") {
     state.fields = data.fields;
     state.config = null;
     state.readiness = data.readiness || null;
+    state.quickMode = Boolean(data.quick_mode);
+    document.body.classList.toggle("quick-mode", state.quickMode);
     state.krOnlyMode = false;
     state.commentTemplateLinks.clear();
     state.relatedDrawingWarningsConfirmed.clear();
@@ -1445,14 +1533,18 @@ async function openSubmission(path, create = false, file = "") {
     $("#project-crumb").hidden = false;
     $("#change-folder-btn").hidden = false;
     $("#settings-btn").hidden = false;
-    $("#current-folder-name").textContent = folderName(data.folder);
-    $("#current-folder-path").textContent = data.folder;
+    $("#current-folder-name").textContent = state.quickMode ? (state.activePdf || "빠른 PDF 검토") : folderName(data.folder);
+    $("#current-folder-path").textContent = state.quickMode ? "폴더 없이 브라우저에서 처리 중" : data.folder;
     $("#folder-input").value = data.folder;
     renderPdfSelect();
     renderChecklist();
     renderFilters();
     setInteractionMode("select", { announce: false, render: false });
     renderWorkflowReadiness();
+    const quickWorkflow = $("#quick-workflow");
+    if (quickWorkflow) quickWorkflow.hidden = !state.quickMode;
+    const quickExports = $("#quick-export-buttons");
+    if (quickExports) quickExports.hidden = !state.quickMode;
     renderDerivedUI();
     const supportPromise = Promise.allSettled([loadGlossary(), loadConfig()]);
     if (data.needs_zone || data.needs_submit_date) showMetadataDialog(data.needs_zone, data.needs_submit_date);
@@ -2447,6 +2539,79 @@ function viewportRectToFitz(rect) {
   ].map((value) => Math.round(value * 100) / 100);
 }
 
+function roundPagePoint(point) {
+  return [Math.round(Number(point[0]) * 100) / 100, Math.round(Number(point[1]) * 100) / 100];
+}
+
+function fitzPointsBounds(points, minimum = .5) {
+  const clean = (Array.isArray(points) ? points : [])
+    .filter((point) => Array.isArray(point) && point.length === 2 && point.every(Number.isFinite));
+  if (!clean.length) return [0, 0, minimum, minimum];
+  const xs = clean.map((point) => point[0]);
+  const ys = clean.map((point) => point[1]);
+  const meta = currentPageMeta();
+  const pageWidth = Number(meta?.unrotated_width || meta?.width || Math.max(...xs) + minimum);
+  const pageHeight = Number(meta?.unrotated_height || meta?.height || Math.max(...ys) + minimum);
+  let x0 = Math.max(0, Math.min(pageWidth, Math.min(...xs)));
+  let y0 = Math.max(0, Math.min(pageHeight, Math.min(...ys)));
+  let x1 = Math.max(0, Math.min(pageWidth, Math.max(...xs)));
+  let y1 = Math.max(0, Math.min(pageHeight, Math.max(...ys)));
+  if (x1 - x0 < minimum) x1 = Math.min(pageWidth, x0 + minimum);
+  if (y1 - y0 < minimum) y1 = Math.min(pageHeight, y0 + minimum);
+  return [x0, y0, x1, y1].map((value) => Math.round(value * 100) / 100);
+}
+
+function pointLineDistance(point, start, end) {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  if (!dx && !dy) return Math.hypot(point[0] - start[0], point[1] - start[1]);
+  const amount = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / (dx * dx + dy * dy)));
+  return Math.hypot(point[0] - (start[0] + amount * dx), point[1] - (start[1] + amount * dy));
+}
+
+function simplifyFreehandPoints(points, tolerance = .55) {
+  const source = (Array.isArray(points) ? points : []).map(roundPagePoint);
+  if (source.length <= 2) return source;
+  let farthest = 0;
+  let index = 0;
+  for (let cursor = 1; cursor < source.length - 1; cursor += 1) {
+    const distance = pointLineDistance(source[cursor], source[0], source.at(-1));
+    if (distance > farthest) { farthest = distance; index = cursor; }
+  }
+  if (farthest <= tolerance) return [source[0], source.at(-1)];
+  return [
+    ...simplifyFreehandPoints(source.slice(0, index + 1), tolerance).slice(0, -1),
+    ...simplifyFreehandPoints(source.slice(index), tolerance),
+  ];
+}
+
+function defaultTextRect(markRect) {
+  if (!state.viewport) {
+    const meta = currentPageMeta();
+    const pageWidth = Number(meta?.unrotated_width || meta?.width || 1000);
+    const pageHeight = Number(meta?.unrotated_height || meta?.height || 1000);
+    const width = Math.min(190, pageWidth * .38);
+    const height = Math.min(76, pageHeight * .22);
+    const x0 = markRect[2] + 12 + width <= pageWidth ? markRect[2] + 12 : Math.max(0, markRect[0] - width - 12);
+    const y0 = Math.max(0, Math.min(pageHeight - height, markRect[1]));
+    return [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
+  }
+  const [x0, y0, x1, y1] = rectToViewport(markRect);
+  const width = Math.max(130, Math.min(230, state.viewport.width * .34));
+  const height = Math.max(62, Math.min(96, state.viewport.height * .2));
+  let left = x1 + 14;
+  let top = y0;
+  if (left + width > state.viewport.width - 8) left = Math.max(8, x0 - width - 14);
+  if (top + height > state.viewport.height - 8) top = Math.max(8, state.viewport.height - height - 8);
+  return viewportRectToFitz([left, top, left + width, top + height]);
+}
+
+function resolvedTextRect(comment) {
+  return Array.isArray(comment?.text_rect) && comment.text_rect.length === 4
+    ? comment.text_rect.map(Number)
+    : defaultTextRect(comment.rect);
+}
+
 function captureGestureFrame(layer) {
   const bounds = layer.getBoundingClientRect();
   const viewer = $("#viewer-pane");
@@ -2718,6 +2883,81 @@ function overlayBadgeLayout(drawable) {
   return result;
 }
 
+function commentViewportPoints(comment) {
+  const points = Array.isArray(comment?.points) ? comment.points.map(fitzToViewport) : [];
+  if (comment === state.draft && state.gesture?.mode === "polygon" && Array.isArray(state.gesture.previewFitz)) {
+    points.push(fitzToViewport(state.gesture.previewFitz));
+  }
+  return points;
+}
+
+function supportsExtendedMarkup() {
+  return Boolean(window.staticPortCore);
+}
+
+function appendTextBoxOverlay(group, comment, markRect) {
+  if (!comment.no) return;
+  const language = state.overlayLanguage === "CN" ? "CN" : "KR";
+  const field = language === "CN" ? "cn" : "kr";
+  const [tx0, ty0, tx1, ty1] = rectToViewport(resolvedTextRect(comment));
+  const width = Math.max(82, tx1 - tx0);
+  const height = Math.max(42, ty1 - ty0);
+  const markCenter = [(markRect[0] + markRect[2]) / 2, (markRect[1] + markRect[3]) / 2];
+  const textCenter = [tx0 + width / 2, ty0 + height / 2];
+  const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
+  const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
+  const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
+  group.append(svgElement("line", {
+    x1: markCenter[0], y1: markCenter[1], x2: textEdge[0], y2: textEdge[1],
+    class: "annotation-text-link", stroke: severityColor(comment.severity),
+  }));
+
+  const box = svgElement("g", { class: "annotation-textbox", "data-language": language });
+  box.append(svgElement("rect", {
+    class: "textbox-shell", x: tx0, y: ty0, width, height, rx: 5,
+    stroke: severityColor(comment.severity),
+  }));
+  const grip = svgElement("rect", {
+    class: "textbox-grip", x: tx0, y: ty0, width, height: 17, rx: 5,
+    fill: severityColor(comment.severity), tabindex: 0,
+  });
+  grip.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
+  const gripLabel = svgElement("text", { class: "textbox-grip-label", x: tx0 + 6, y: ty0 + 12 });
+  gripLabel.textContent = `↕ #${comment.no} · ${language}`;
+  box.append(grip, gripLabel);
+
+  const foreign = svgElement("foreignObject", { x: tx0, y: ty0 + 17, width, height: Math.max(24, height - 17) });
+  const editor = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+  editor.className = "annotation-text-editor";
+  editor.contentEditable = "true";
+  editor.setAttribute("role", "textbox");
+  editor.setAttribute("aria-label", `코멘트 ${comment.no} ${language} 내용`);
+  editor.dataset.placeholder = language === "CN" ? "中文内容输入" : "수정 내용을 입력하세요";
+  editor.textContent = String(comment[field] || "");
+  editor.addEventListener("pointerdown", (event) => event.stopPropagation());
+  editor.addEventListener("focus", () => {
+    state.selectedNo = Number(comment.no);
+    renderDynamicForm();
+  });
+  editor.addEventListener("keydown", (event) => {
+    event.stopPropagation();
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") editor.blur();
+  });
+  editor.addEventListener("input", () => {
+    comment[field] = editor.innerText.replace(/\n$/, "");
+    if (field === "cn") comment.cn_status = comment.cn.trim() && String(comment.part_cn || "").trim() ? "reviewed" : "empty";
+    scheduleSave(comment);
+    renderGate();
+  });
+  editor.addEventListener("blur", () => {
+    scheduleSave(comment);
+    renderCommentList();
+  });
+  foreign.append(editor);
+  box.append(foreign);
+  group.append(box);
+}
+
 function renderOverlay() {
   const layer = $("#annotation-layer");
   layer.replaceChildren();
@@ -2733,18 +2973,30 @@ function renderOverlay() {
     const isDraft = comment === state.draft;
     const isSelected = isDraft || Number(comment.no) === Number(state.selectedNo);
     const group = svgElement("g", { class: `annotation-group${isSelected ? " selected" : ""}`, "data-no": comment.no || "draft" });
-    const shapeName = comment.shape === "circle" ? "ellipse" : "rect";
-    const shapeAttrs = shapeName === "ellipse"
-      ? { cx: x0 + width / 2, cy: y0 + height / 2, rx: width / 2, ry: height / 2 }
-      : { x: x0, y: y0, width, height };
-    const hit = svgElement(shapeName, { ...shapeAttrs, class: "annotation-hit" });
+    let shapeName;
+    let shapeAttrs;
+    if (comment.shape === "polygon" || comment.shape === "freehand") {
+      const viewportPoints = commentViewportPoints(comment);
+      if (!viewportPoints.length) return;
+      shapeName = comment.shape === "polygon" ? "polygon" : "polyline";
+      shapeAttrs = { points: viewportPoints.map((point) => point.join(",")).join(" ") };
+    } else {
+      shapeName = comment.shape === "circle" ? "ellipse" : "rect";
+      shapeAttrs = shapeName === "ellipse"
+        ? { cx: x0 + width / 2, cy: y0 + height / 2, rx: width / 2, ry: height / 2 }
+        : { x: x0, y: y0, width, height };
+    }
+    const shapeClass = `shape-${comment.shape || "rect"}`;
+    const hit = svgElement(shapeName, { ...shapeAttrs, class: `annotation-hit ${shapeClass}` });
     const shape = svgElement(shapeName, {
       ...shapeAttrs,
-      class: `annotation-shape severity-${comment.severity || "Major"} status-${comment.status || "pending"}`,
+      class: `annotation-shape ${shapeClass} severity-${comment.severity || "Major"} status-${comment.status || "pending"}${comment === state.draft && comment.shape === "polygon" ? " polygon-preview" : ""}`,
       stroke: severityColor(comment.severity),
     });
-    hit.addEventListener("pointerdown", (event) => beginMoveGesture(event, comment));
-    shape.addEventListener("pointerdown", (event) => beginMoveGesture(event, comment));
+    if (comment.no) {
+      hit.addEventListener("pointerdown", (event) => beginMoveGesture(event, comment));
+      shape.addEventListener("pointerdown", (event) => beginMoveGesture(event, comment));
+    }
     group.append(hit, shape);
     const badge = badgeLayout.get(comment);
     const badgeOffset = badge?.offset || [0, 0];
@@ -2761,7 +3013,8 @@ function renderOverlay() {
     text.textContent = labelText;
     label.append(text);
     group.append(label);
-    if (isSelected && !isDraft) {
+    if (supportsExtendedMarkup()) appendTextBoxOverlay(group, comment, [x0, y0, x1, y1]);
+    if (isSelected && !isDraft && ["rect", "circle"].includes(comment.shape)) {
       [["nw", x0, y0], ["ne", x1, y0], ["se", x1, y1], ["sw", x0, y1]].forEach(([name, x, y]) => {
         const handle = svgElement("rect", { class: "resize-handle", "data-handle": name, x: Number(x) - 5, y: Number(y) - 5, width: 10, height: 10, rx: 2 });
         handle.addEventListener("pointerdown", (event) => beginResizeGesture(event, comment, name));
@@ -2812,7 +3065,7 @@ function beginDrawGesture(event) {
   }
   event.preventDefault();
   const layer = $("#annotation-layer");
-  const frame = captureGestureFrame(layer);
+  const frame = state.gesture?.mode === "polygon" ? state.gesture.frame : captureGestureFrame(layer);
   if (!frame) {
     toast("도형 생성을 시작할 수 없습니다", "페이지 레이아웃을 확인한 뒤 다시 시도해 주세요.", "error");
     setInteractionMode("select");
@@ -2821,6 +3074,21 @@ function beginDrawGesture(event) {
   layer.focus({ preventScroll: true });
   const startViewport = pointerViewportPoint(event, frame);
   const startFitz = viewportToFitz(startViewport);
+  if (state.gesture?.mode === "polygon") {
+    const polygon = state.gesture;
+    if (!gestureFrameIsValid(polygon.frame)) {
+      cancelActiveGesture("coordinate-frame-changed");
+      return;
+    }
+    const point = roundPagePoint(viewportToFitz(pointerViewportPoint(event, polygon.frame)));
+    const previous = polygon.points.at(-1);
+    if (!previous || Math.hypot(point[0] - previous[0], point[1] - previous[1]) >= .5) polygon.points.push(point);
+    polygon.previewFitz = point;
+    state.draft.points = polygon.points.map((item) => item.slice());
+    state.draft.rect = fitzPointsBounds(state.draft.points);
+    renderOverlay();
+    return;
+  }
   const previousSelectedNo = state.selectedNo;
   state.selectedNo = null;
   const retained = state.draft && !state.draft.no ? state.draft : null;
@@ -2840,6 +3108,16 @@ function beginDrawGesture(event) {
       related_drawings: Array.isArray(retained.related_drawings) ? retained.related_drawings.slice() : [],
     } : {}),
   };
+  if (state.activeTool === "polygon") {
+    const point = roundPagePoint(startFitz);
+    state.draft.points = [point];
+    state.draft.rect = fitzPointsBounds(state.draft.points);
+    state.gesture = { mode: "polygon", pointerId: event.pointerId, points: [point], previewFitz: point, frame, previousSelectedNo, moved: false };
+    renderOverlay();
+    announce("폴리곤 시작. 점을 계속 찍고 Enter 또는 더블클릭으로 완료하세요.");
+    return;
+  }
+  if (state.activeTool === "freehand") state.draft.points = [roundPagePoint(startFitz)];
   state.gesture = { mode: "draw", pointerId: event.pointerId, startViewport, frame, previousSelectedNo, moved: false };
   layer.setPointerCapture(event.pointerId);
 }
@@ -2861,6 +3139,8 @@ function beginMoveGesture(event, comment) {
     frame,
     startFitz: viewportToFitz(pointerViewportPoint(event, frame)),
     originalRect: comment.rect.map(Number),
+    originalPoints: Array.isArray(comment.points) ? comment.points.map((point) => point.map(Number)) : null,
+    originalTextRect: Array.isArray(comment.text_rect) ? comment.text_rect.map(Number) : resolvedTextRect(comment),
     moved: false,
   };
   layer.setPointerCapture(event.pointerId);
@@ -2888,6 +3168,27 @@ function beginResizeGesture(event, comment, handle) {
   layer.setPointerCapture(event.pointerId);
 }
 
+function beginTextMoveGesture(event, comment) {
+  if (event.button !== 0 || !comment.no || state.interactionMode !== "select") return;
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedNo = Number(comment.no);
+  const layer = $("#annotation-layer");
+  const frame = captureGestureFrame(layer);
+  if (!frame) return;
+  state.gesture = {
+    mode: "text-move",
+    pointerId: event.pointerId,
+    commentNo: Number(comment.no),
+    frame,
+    startFitz: viewportToFitz(pointerViewportPoint(event, frame)),
+    originalTextRect: resolvedTextRect(comment),
+    moved: false,
+  };
+  layer.setPointerCapture(event.pointerId);
+  renderDynamicForm();
+}
+
 function handlePointerMove(event) {
   const gesture = state.gesture;
   if (!gesture || gesture.pointerId !== event.pointerId) return;
@@ -2897,7 +3198,22 @@ function handlePointerMove(event) {
     return;
   }
   const point = pointerViewportPoint(event, gesture.frame);
-  if (gesture.mode === "draw") {
+  if (gesture.mode === "polygon") {
+    gesture.previewFitz = roundPagePoint(viewportToFitz(point));
+    renderOverlay();
+    return;
+  }
+  if (gesture.mode === "draw" && state.draft?.shape === "freehand") {
+    const next = roundPagePoint(viewportToFitz(point));
+    const points = state.draft.points || (state.draft.points = []);
+    const previous = points.at(-1);
+    const previousViewport = previous ? fitzToViewport(previous) : null;
+    if (!previousViewport || Math.hypot(point[0] - previousViewport[0], point[1] - previousViewport[1]) >= 1.6) {
+      if (points.length < 3000) points.push(next);
+      gesture.moved = points.length >= 2;
+      state.draft.rect = fitzPointsBounds(points);
+    }
+  } else if (gesture.mode === "draw") {
     const dx = point[0] - gesture.startViewport[0];
     const dy = point[1] - gesture.startViewport[1];
     gesture.moved ||= Math.hypot(dx, dy) >= 3;
@@ -2917,6 +3233,34 @@ function handlePointerMove(event) {
     const x0 = Math.max(0, Math.min(maxWidth - width, gesture.originalRect[0] + dx));
     const y0 = Math.max(0, Math.min(maxHeight - height, gesture.originalRect[1] + dy));
     comment.rect = [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
+    const appliedX = comment.rect[0] - gesture.originalRect[0];
+    const appliedY = comment.rect[1] - gesture.originalRect[1];
+    if (Array.isArray(gesture.originalPoints)) {
+      comment.points = gesture.originalPoints.map(([x, y]) => roundPagePoint([x + appliedX, y + appliedY]));
+    }
+    if (Array.isArray(gesture.originalTextRect)) {
+      comment.text_rect = [
+        gesture.originalTextRect[0] + appliedX,
+        gesture.originalTextRect[1] + appliedY,
+        gesture.originalTextRect[2] + appliedX,
+        gesture.originalTextRect[3] + appliedY,
+      ].map((value) => Math.round(value * 100) / 100);
+    }
+  } else if (gesture.mode === "text-move") {
+    const comment = selectedComment();
+    if (!comment) return;
+    const currentFitz = viewportToFitz(point);
+    const dx = currentFitz[0] - gesture.startFitz[0];
+    const dy = currentFitz[1] - gesture.startFitz[1];
+    gesture.moved ||= Math.hypot(dx, dy) >= .8;
+    const meta = currentPageMeta();
+    const maxWidth = Number(meta?.unrotated_width || meta?.width || Infinity);
+    const maxHeight = Number(meta?.unrotated_height || meta?.height || Infinity);
+    const width = gesture.originalTextRect[2] - gesture.originalTextRect[0];
+    const height = gesture.originalTextRect[3] - gesture.originalTextRect[1];
+    const x0 = Math.max(0, Math.min(maxWidth - width, gesture.originalTextRect[0] + dx));
+    const y0 = Math.max(0, Math.min(maxHeight - height, gesture.originalTextRect[1] + dy));
+    comment.text_rect = [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
   } else if (gesture.mode === "resize") {
     const comment = selectedComment();
     if (!comment) return;
@@ -2936,6 +3280,7 @@ function handlePointerMove(event) {
 async function handlePointerEnd(event) {
   const gesture = state.gesture;
   if (!gesture || gesture.pointerId !== event.pointerId) return;
+  if (gesture.mode === "polygon") return;
   const boundaryDelta = gestureBoundaryDelta(gesture.frame);
   if (boundaryDelta.max >= 1) {
     console.warn("제스처 경계 변경으로 저장 차단", {
@@ -2956,12 +3301,17 @@ async function handlePointerEnd(event) {
   if (layer.hasPointerCapture(event.pointerId)) layer.releasePointerCapture(event.pointerId);
   if (gesture.mode === "draw") {
     const draft = state.draft;
+    if (draft?.shape === "freehand" && Array.isArray(draft.points)) {
+      draft.points = simplifyFreehandPoints(draft.points);
+      draft.rect = fitzPointsBounds(draft.points);
+    }
     if (!gesture.moved || !draft || Math.abs(draft.rect[2] - draft.rect[0]) < .5 || Math.abs(draft.rect[3] - draft.rect[1]) < .5) {
       renderDerivedUI();
       setInteractionMode("select", { announce: false });
       toast("도형 생성 실패", "드래그 거리가 너무 짧습니다. 입력 내용은 초안으로 보존했습니다.", "error");
       return;
     }
+    draft.text_rect = defaultTextRect(draft.rect);
     const created = await createComment(draft);
     setInteractionMode("select", { announce: false });
     if (!created) toast("초안을 보존했습니다", "실패 원인을 확인한 뒤 그리기 모드에서 다시 지정해 주세요.", "error");
@@ -2972,21 +3322,52 @@ async function handlePointerEnd(event) {
   }
 }
 
+async function finishPolygonGesture() {
+  const gesture = state.gesture;
+  const draft = state.draft;
+  if (!gesture || gesture.mode !== "polygon" || !draft) return false;
+  if (gestureBoundaryDelta(gesture.frame).max >= 1 || !gestureFrameIsValid(gesture.frame)) {
+    cancelActiveGesture("boundary-shift");
+    toast("위치를 다시 지정해 주세요", "폴리곤 작성 중 페이지 경계가 이동하여 저장하지 않았습니다.", "error", 7000);
+    return false;
+  }
+  const points = [];
+  for (const point of gesture.points.map(roundPagePoint)) {
+    const previous = points.at(-1);
+    if (!previous || Math.hypot(point[0] - previous[0], point[1] - previous[1]) >= .5) points.push(point);
+  }
+  if (points.length > 2 && Math.hypot(points[0][0] - points.at(-1)[0], points[0][1] - points.at(-1)[1]) < .5) points.pop();
+  if (points.length < 3) {
+    toast("폴리곤 점이 부족합니다", "서로 다른 점을 3개 이상 찍어 주세요.", "error");
+    return false;
+  }
+  draft.points = points;
+  draft.rect = fitzPointsBounds(points);
+  draft.text_rect = defaultTextRect(draft.rect);
+  state.gesture = null;
+  const created = await createComment(draft);
+  setInteractionMode("select", { announce: false });
+  if (!created) toast("초안을 보존했습니다", "입력값을 확인한 뒤 폴리곤 위치를 다시 지정해 주세요.", "error");
+  return created;
+}
+
 function cancelActiveGesture(reason = "pointer-cancel", render = true) {
   const gesture = state.gesture;
   if (!gesture) return false;
   state.gesture = null;
   const layer = $("#annotation-layer");
   if (layer.hasPointerCapture?.(gesture.pointerId)) layer.releasePointerCapture(gesture.pointerId);
-  if (gesture.mode === "draw") {
+  if (["draw", "polygon"].includes(gesture.mode)) {
     state.selectedNo = gesture.previousSelectedNo ?? null;
   } else {
     const comment = state.comments.find((item) => Number(item.no) === Number(gesture.commentNo));
     if (comment && Array.isArray(gesture.originalRect)) comment.rect = gesture.originalRect.slice();
+    if (comment && Array.isArray(gesture.originalPoints)) comment.points = gesture.originalPoints.map((point) => point.slice());
+    if (comment && Array.isArray(gesture.originalTextRect)) comment.text_rect = gesture.originalTextRect.slice();
   }
   console.warn("도형 제스처 취소", { reason, page: gesture.frame?.page, mode: gesture.mode });
   setInteractionMode("select", { announce: false, render: false });
-  if (gesture.mode === "draw" && reason !== "escape" && reason !== "boundary-shift") {
+  if (["draw", "polygon"].includes(gesture.mode) && reason !== "escape" && reason !== "boundary-shift") {
     toast("도형 생성이 취소되었습니다", "좌표 기준이 바뀌어 저장하지 않았습니다. 입력 내용은 초안으로 보존했습니다.", "error");
   }
   if (render) renderDerivedUI();
@@ -3150,7 +3531,16 @@ function adoptLedger(ledger) {
 
 function adoptLedgerPreservingPending(ledger) {
   const pending = [...state.pendingCommentSaves.values()].map((entry) => cloneCommentPayload(entry.payload));
-  adoptLedger(ledger);
+  const previous = new Map(state.comments.map((comment) => [Number(comment.no), comment]));
+  const comments = (ledger.comments || []).map((source) => {
+    const existing = previous.get(Number(source.no));
+    if (!existing) return source;
+    Object.keys(existing).forEach((key) => { if (!Object.hasOwn(source, key)) delete existing[key]; });
+    Object.assign(existing, source);
+    return existing;
+  });
+  state.ledger = { ...ledger, comments };
+  state.comments = comments;
   pending.forEach((payload) => {
     const comment = state.comments.find((item) => Number(item.no) === Number(payload.no));
     if (comment) Object.assign(comment, payload);
@@ -3230,7 +3620,16 @@ async function savePendingCommentChanges(quiet = false) {
   setSaveState("saving", "변경사항 저장 중");
   try {
     await flushPendingCommentSaves();
-    renderDerivedUI();
+    const editingOverlayText = document.activeElement?.classList?.contains("annotation-text-editor");
+    if (editingOverlayText) {
+      renderCommentList();
+      renderVerdict();
+      renderGate();
+      renderCounts();
+      updateThumbnailCounts();
+    } else {
+      renderDerivedUI();
+    }
     setSaveState("saved", "모든 변경 저장됨");
     if (!quiet) announce("코멘트 " + numbers.join(", ") + "번을 저장했습니다.");
     return true;
@@ -3393,15 +3792,32 @@ function selectComment(number, navigate = true) {
 }
 
 function setTool(tool, { enterDraw = true } = {}) {
-  if (!state.fields?.shapes?.includes(tool) && !["rect", "circle"].includes(tool)) return;
+  const extended = supportsExtendedMarkup() ? ["polygon", "freehand"] : [];
+  const allowed = new Set(["rect", "circle", ...extended, ...(state.fields?.shapes || []).filter((shape) => extended.includes(shape) || ["rect", "circle"].includes(shape))]);
+  if (!allowed.has(tool)) return;
+  if (state.gesture?.mode === "polygon") cancelActiveGesture("tool-change", false);
   state.activeTool = tool;
   localStorage.setItem("drawing-review-tool", tool);
-  $("#rect-tool-btn").classList.toggle("active", tool === "rect");
-  $("#rect-tool-btn").setAttribute("aria-pressed", String(tool === "rect"));
-  $("#circle-tool-btn").classList.toggle("active", tool === "circle");
-  $("#circle-tool-btn").setAttribute("aria-pressed", String(tool === "circle"));
+  const buttons = { rect: "#rect-tool-btn", circle: "#circle-tool-btn", polygon: "#polygon-tool-btn", freehand: "#freehand-tool-btn" };
+  Object.entries(buttons).forEach(([name, selector]) => {
+    const button = $(selector);
+    button?.classList.toggle("active", tool === name);
+    button?.setAttribute("aria-pressed", String(tool === name));
+  });
   if (enterDraw) setInteractionMode("draw", { announce: false });
-  announce(`${tool === "rect" ? "사각형" : "원"} 도구`);
+  announce(`${{ rect: "사각형", circle: "원", polygon: "폴리곤", freehand: "자유연필" }[tool] || tool} 도구`);
+}
+
+function setOverlayLanguage(language) {
+  state.overlayLanguage = language === "CN" ? "CN" : "KR";
+  const kr = $("#overlay-language-kr");
+  const cn = $("#overlay-language-cn");
+  kr?.classList.toggle("active", state.overlayLanguage === "KR");
+  cn?.classList.toggle("active", state.overlayLanguage === "CN");
+  kr?.setAttribute("aria-pressed", String(state.overlayLanguage === "KR"));
+  cn?.setAttribute("aria-pressed", String(state.overlayLanguage === "CN"));
+  renderOverlay();
+  announce(state.overlayLanguage === "KR" ? "한글 텍스트 박스 표시" : "중문 텍스트 박스 표시");
 }
 
 function appendSelectField(container, comment, key, label, values, full = false) {
@@ -3726,10 +4142,17 @@ function renderGate() {
   const cnButton = $('[data-export-mode="CN"]');
   const krcnButton = $('[data-export-mode="KRCN"]');
   const replyButton = $("#export-reply-btn");
+  const quickKrButton = $("#quick-export-kr");
+  const quickCnButton = $("#quick-export-cn");
   krButton.disabled = pending > 0;
   cnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   krcnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   replyButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
+  if (quickKrButton) quickKrButton.disabled = pending > 0 || confirmed.length === 0;
+  if (quickCnButton) {
+    quickCnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey || confirmed.length === 0;
+    quickCnButton.title = pending ? "pending 코멘트를 모두 정리해야 합니다." : (noApiKey ? "OpenAI API 키를 먼저 설정해야 중문 PDF를 저장할 수 있습니다." : (unreviewed ? "확정 코멘트의 CN·부위 번역을 모두 검수해야 합니다." : ""));
+  }
   const cnReason = pending
     ? "pending 코멘트를 모두 정리해야 합니다."
     : (noApiKey
@@ -3746,6 +4169,14 @@ function renderGate() {
   else if (noApiKey) warning.textContent = "OpenAI API 키 없음 · 번역 없이 KR 산출까지만 가능";
   else if (unreviewed) warning.textContent = `번역 검수 미완료 ${unreviewed}건 · KR 통합 내보내기만 가능`;
   else warning.textContent = confirmed.length ? "내보내기 준비 완료" : "확정 코멘트 없이 빈 산출물이 생성됩니다.";
+  if (state.quickMode) {
+    warning.classList.toggle("alert", pending > 0 || unreviewed > 0 || noApiKey);
+    if (pending) warning.textContent = `미확인 ${pending}건을 확정 또는 제외해야 PDF를 저장할 수 있습니다.`;
+    else if (!confirmed.length) warning.textContent = "마킹을 만들고 내용을 입력해 주세요.";
+    else if (noApiKey) warning.textContent = "한글 PDF 준비 완료 · 중문 PDF는 설정에서 OpenAI API 키를 입력한 뒤 번역·검수해야 합니다.";
+    else if (unreviewed) warning.textContent = `한글 PDF 준비 완료 · 중문 내용/검수 ${unreviewed}건 남음`;
+    else warning.textContent = "한글·중문 PDF 다운로드 준비 완료";
+  }
   $("#translation-tab-count").textContent = String(unreviewed);
   $("#unreviewed-counter").textContent = `미검수 ${unreviewed}건`;
 }
@@ -3813,6 +4244,8 @@ function renderDerivedUI() {
   renderCounts();
   updateThumbnailCounts();
   renderReplyImportResult();
+  const quickMarkCount = $("#quick-mark-step em");
+  if (quickMarkCount) quickMarkCount.textContent = String(state.comments.filter((comment) => comment.status !== "dropped").length);
   if (!$("#translation-panel").hidden) renderTranslationTable();
 }
 
@@ -4386,6 +4819,11 @@ function updateShortcutField(key, value) {
 function handleKeyboard(event) {
   if ($("#workspace-view").hidden || shortcutTargetBlocked(event)) return;
   const command = event.code;
+  if (command === "Enter" && state.gesture?.mode === "polygon") {
+    event.preventDefault();
+    void finishPolygonGesture();
+    return;
+  }
   if ((event.ctrlKey || event.metaKey) && command === "KeyS") {
     event.preventDefault();
     saveSelectedComment(false);
@@ -4393,6 +4831,8 @@ function handleKeyboard(event) {
   }
   if (command === "KeyR") { event.preventDefault(); setTool("rect"); return; }
   if (command === "KeyC") { event.preventDefault(); setTool("circle"); return; }
+  if (command === "KeyP") { event.preventDefault(); setTool("polygon"); return; }
+  if (command === "KeyL") { event.preventDefault(); setTool("freehand"); return; }
   const axis = { KeyF: "F", KeyD: "D", KeyJ: "J", KeyS: "S", KeyU: "U", KeyM: "M" }[command];
   if (axis && state.fields?.axes?.some((item) => item.code === axis)) {
     event.preventDefault();
@@ -4450,6 +4890,10 @@ function bindDropZone(element, input, handler) {
 }
 
 function bindEvents() {
+  const extendedMarkup = supportsExtendedMarkup();
+  $("#polygon-tool-btn")?.toggleAttribute("hidden", !extendedMarkup);
+  $("#freehand-tool-btn")?.toggleAttribute("hidden", !extendedMarkup);
+  $(".overlay-language-controls")?.toggleAttribute("hidden", !extendedMarkup);
   $("#session-memory-reload-btn").addEventListener("click", handleMemoryWatchdogReload);
   $("#open-folder-btn").addEventListener("click", async () => {
     try {
@@ -4482,12 +4926,21 @@ function bindEvents() {
   $("#zoom-label").addEventListener("click", () => { state.fitWidth = true; renderPage(state.page); });
   $("#rect-tool-btn").addEventListener("click", () => setTool("rect"));
   $("#circle-tool-btn").addEventListener("click", () => setTool("circle"));
+  $("#polygon-tool-btn")?.addEventListener("click", () => setTool("polygon"));
+  $("#freehand-tool-btn")?.addEventListener("click", () => setTool("freehand"));
+  $("#overlay-language-kr")?.addEventListener("click", () => setOverlayLanguage("KR"));
+  $("#overlay-language-cn")?.addEventListener("click", () => setOverlayLanguage("CN"));
   $("#select-mode-btn").addEventListener("click", () => setInteractionMode("select"));
   $("#draw-mode-btn").addEventListener("click", () => setInteractionMode("draw"));
   $("#annotation-layer").addEventListener("pointerdown", beginDrawGesture);
   $("#annotation-layer").addEventListener("pointermove", handlePointerMove);
   $("#annotation-layer").addEventListener("pointerup", handlePointerEnd);
   $("#annotation-layer").addEventListener("pointercancel", handlePointerCancel);
+  $("#annotation-layer").addEventListener("dblclick", (event) => {
+    if (state.gesture?.mode !== "polygon") return;
+    event.preventDefault();
+    void finishPolygonGesture();
+  });
   $("#comment-form").addEventListener("submit", (event) => { event.preventDefault(); saveSelectedComment(false); });
   $("#cycle-status-btn").addEventListener("click", cycleSelectedStatus);
   $("#delete-comment-btn").addEventListener("click", deleteSelectedComment);
@@ -4518,6 +4971,8 @@ function bindEvents() {
   $$(".button.export[data-export-mode]").forEach((button) => button.addEventListener("click", () => {
     exportReview(button.dataset.exportMode || "KR");
   }));
+  $("#quick-export-kr")?.addEventListener("click", () => window.staticQuickExportPdf?.("KR"));
+  $("#quick-export-cn")?.addEventListener("click", () => window.staticQuickExportPdf?.("CN"));
   $("#export-reply-btn").addEventListener("click", exportReply);
   bindDropZone($("#reply-drop-zone"), $("#reply-file-input"), importReply);
   window.addEventListener("keydown", handleKeyboard);
@@ -4550,7 +5005,7 @@ const STATIC_AXES = [
   { code:"J",label:"결합·고정" }, { code:"S",label:"안전·구조" },
   { code:"U",label:"사용성·체험" }, { code:"M",label:"표준·운영" },
 ];
-const STATIC_FIELDS = { axes:STATIC_AXES, severities:["Critical","Major","Minor"], statuses:["pending","confirmed","dropped"], shapes:["rect","circle"], fields:["part","kr","cn","related_drawings"] };
+const STATIC_FIELDS = { axes:STATIC_AXES, severities:["Critical","Major","Minor"], statuses:["pending","confirmed","dropped"], shapes:["rect","circle","polygon","freehand"], fields:["part","kr","cn","related_drawings"] };
 const STATIC_CONFIG = { provider:"openai",model:"gpt-4o",batch_size:20,temperature:0.2 };
 const STATIC_COMMENT_DEFAULTS = {
   drawing_no:"미상",related_drawings:[],page:1,shape:"rect",rect:[0,0,0,0],axis:"F",severity:"Major",
@@ -4571,7 +5026,7 @@ const STATIC_GLOSSARY = {
   "체험":"体验","미니PC":"迷你PC","설계 보완":"设计完善","라이트박스":"灯箱","소프트 라이트박스":"软膜灯箱","스크류":"螺丝",
   "레버":"拉杆","회전":"旋转","부착":"固定","노출":"外露","확인 필요":"需要确认","설치 필요":"需要设置","우려":"需进一步确认",
 };
-const STATIC_RUNTIME = { rootHandle:null,rootId:"",db:null,pageMeta:new Map(),pdfScans:new Map(),warnedUserUnit:false,apiKey:"" };
+const STATIC_RUNTIME = { rootHandle:null,rootId:"",db:null,pageMeta:new Map(),pdfScans:new Map(),warnedUserUnit:false,apiKey:"",quickMode:false,quickProjectId:"" };
 
 class StaticApiError extends Error {
   constructor(message,status=400,code="bad_request",extra={}) { super(message); this.name="StaticApiError"; this.status=status; this.code=code; this.data={error:message,code,...extra}; Object.assign(this,extra); }
@@ -4586,7 +5041,7 @@ function staticTxDone(tx) { return new Promise((resolve,reject)=>{tx.oncomplete=
 async function staticDb() { if(STATIC_RUNTIME.db)return STATIC_RUNTIME.db; STATIC_RUNTIME.db=await new Promise((resolve,reject)=>{const r=indexedDB.open("drawing-review-static",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("recentFolders"))r.result.createObjectStore("recentFolders",{keyPath:"id"});};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});return STATIC_RUNTIME.db; }
 async function staticListRecent() { const db=await staticDb(),tx=db.transaction("recentFolders","readonly"),values=await staticRequest(tx.objectStore("recentFolders").getAll());await staticTxDone(tx);return values.sort((a,b)=>String(b.opened_at||"").localeCompare(String(a.opened_at||""))).slice(0,10); }
 async function staticGetRecent(id) { const db=await staticDb(),tx=db.transaction("recentFolders","readonly"),value=await staticRequest(tx.objectStore("recentFolders").get(id));await staticTxDone(tx);return value||null; }
-async function staticRememberRecent(handle,ledger) { let same=null;for(const r of await staticListRecent()){try{if(await handle.isSameEntry(r.handle)){same=r;break;}}catch{}}const record={id:same?.id||crypto.randomUUID(),name:handle.name,handle,zone:ledger.zone||"미지정",opened_at:staticNowIso(),comment_count:ledger.comments?.length||0},db=await staticDb(),tx=db.transaction("recentFolders","readwrite");tx.objectStore("recentFolders").put(record);await staticTxDone(tx);STATIC_RUNTIME.rootId=record.id;return record; }
+async function staticRememberRecent(handle,ledger) { let same=null;for(const r of await staticListRecent()){try{if(await handle.isSameEntry(r.handle)){same=r;break;}}catch{}}const record={id:same?.id||crypto.randomUUID(),name:STATIC_RUNTIME.quickMode?(ledger.source_pdf||handle.name):handle.name,handle,zone:ledger.zone||"미지정",opened_at:staticNowIso(),comment_count:ledger.comments?.length||0,quick_mode:Boolean(STATIC_RUNTIME.quickMode)},db=await staticDb(),tx=db.transaction("recentFolders","readwrite");tx.objectStore("recentFolders").put(record);await staticTxDone(tx);STATIC_RUNTIME.rootId=record.id;return record; }
 function staticParts(path) { return (Array.isArray(path)?path:String(path||"").split(/[\\/]+/)).map((v)=>String(v).trim()).filter(Boolean); }
 async function staticGetDirectory(root,path,{create=false}={}) { let current=root;for(const part of staticParts(path))current=await current.getDirectoryHandle(part,{create});return current; }
 async function staticDirectoryExists(root,path) { try{await staticGetDirectory(root,path);return true;}catch(e){if(e.name==="NotFoundError")return false;throw e;} }
@@ -4597,7 +5052,7 @@ async function staticWriteBinary(root,path,value) { const h=await staticGetFileH
 async function staticReadJson(root,path,fallback,{required=false}={}) { try{return JSON.parse((await(await staticGetFileHandle(root,path)).getFile().then((f)=>f.text())).replace(/^\uFEFF/,""));}catch(e){if(e.name==="NotFoundError"&&!required)return staticClone(fallback);if(e instanceof SyntaxError)throw new StaticApiError(`${staticParts(path).at(-1)} 파일을 읽을 수 없습니다.`,500,"invalid_json");throw e;} }
 async function staticWriteJson(root,path,value) { return staticWriteBinary(root,path,new TextEncoder().encode(JSON.stringify(value,null,2)+"\n")); }
 async function staticMissingDirs(handle) { const missing=[];for(const name of STATIC_REQUIRED_DIRS)if(!await staticDirectoryExists(handle,name))missing.push(name);return missing; }
-function staticNormalizedFields(value) { const result={...staticClone(STATIC_FIELDS),...(value&&typeof value==="object"?staticClone(value):{})};result.axes=staticClone(STATIC_AXES);return result; }
+function staticNormalizedFields(value) { const result={...staticClone(STATIC_FIELDS),...(value&&typeof value==="object"?staticClone(value):{})};result.axes=staticClone(STATIC_AXES);result.shapes=[...new Set([...STATIC_FIELDS.shapes,...(Array.isArray(result.shapes)?result.shapes:[])])];return result; }
 function staticGetApiKey() { return STATIC_RUNTIME.apiKey; }
 function staticSetApiKey(value) { STATIC_RUNTIME.apiKey=String(value||"").trim(); }
 
@@ -4615,8 +5070,10 @@ function staticNormalizeLedger(value) { const ledger=value&&typeof value==="obje
 async function staticLoadLedger(handle=STATIC_RUNTIME.rootHandle) { if(!handle)throw new StaticApiError("먼저 검토 폴더를 열어 주세요.",409,"folder_not_open");return staticNormalizeLedger(await staticReadJson(handle,["_review","comments.json"],null,{required:true})); }
 async function staticSaveLedger(ledger,handle=STATIC_RUNTIME.rootHandle) { if(!handle)throw new StaticApiError("먼저 검토 폴더를 열어 주세요.",409,"folder_not_open");await staticWriteJson(handle,["_review","comments.json"],ledger);return ledger; }
 function staticRect(value) { if(!Array.isArray(value)||value.length!==4)throw new StaticApiError("rect는 숫자 4개의 배열이어야 합니다.");const n=value.map((v)=>Math.round(Number(v)*1e4)/1e4);if(!n.every(Number.isFinite))throw new StaticApiError("rect 좌표가 올바르지 않습니다.");const r=[Math.min(n[0],n[2]),Math.min(n[1],n[3]),Math.max(n[0],n[2]),Math.max(n[1],n[3])];if(r[2]-r[0]<.5||r[3]-r[1]<.5)throw new StaticApiError("도형의 크기가 너무 작습니다.");return r; }
+function staticPoints(value,minCount) { if(!Array.isArray(value)||value.length<minCount)throw new StaticApiError(`도형 점은 최소 ${minCount}개가 필요합니다.`);const points=value.map((point)=>{if(!Array.isArray(point)||point.length!==2)throw new StaticApiError("도형 점 좌표가 올바르지 않습니다.");const pair=point.map((item)=>Math.round(Number(item)*1e4)/1e4);if(!pair.every(Number.isFinite))throw new StaticApiError("도형 점 좌표가 올바르지 않습니다.");return pair;});return points; }
+function staticPointsRect(points) { const xs=points.map((point)=>point[0]),ys=points.map((point)=>point[1]);let x0=Math.min(...xs),y0=Math.min(...ys),x1=Math.max(...xs),y1=Math.max(...ys);if(x1-x0<.5){x0=Math.max(0,x0-.25);x1=x0+.5;}if(y1-y0<.5){y0=Math.max(0,y0-.25);y1=y0+.5;}return staticRect([x0,y0,x1,y1]); }
 function staticCommentPayload(payload,fields,existing=null) {
-  const c=existing?staticClone(existing):staticClone(STATIC_COMMENT_DEFAULTS),editable=Object.keys(STATIC_COMMENT_DEFAULTS).filter((k)=>!["reply_status","reply_text"].includes(k));for(const key of editable)if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);c.page=Math.max(1,Math.trunc(Number(c.page||1)));c.rect=staticRect(c.rect);if(!new Set(fields.axes.map((a)=>a.code)).has(c.axis)||!fields.severities.includes(c.severity)||!fields.statuses.includes(c.status)||!fields.shapes.includes(c.shape))throw new StaticApiError("fields.json에 없는 코멘트 값입니다.");c.related_drawings=staticRelated(c.related_drawings);for(const key of["drawing_no","part","part_cn","kr","cn","action","due","reply_status","reply_text"])c[key]=String(c[key]??"");const unresolved={};for(const key of["part","kr"]){const found=c[key].match(/\{[^{}]+\}/g)||[];if(found.length)unresolved[key]=found;}if(Object.keys(unresolved).length)throw new StaticApiError("미치환 플레이스홀더가 남아 있습니다. 값을 모두 입력해 주세요.",422,"unresolved_placeholder",{fields:Object.keys(unresolved),placeholders:unresolved});if(existing&&["cn","part_cn"].some((k)=>Object.hasOwn(payload,k)&&c[k]!==String(existing[k]??"")))c.cn_status=c.cn.trim()&&c.part_cn.trim()?"reviewed":"empty";if(!["empty","auto","reviewed"].includes(c.cn_status))c.cn_status="empty";return c;
+  const c=existing?staticClone(existing):staticClone(STATIC_COMMENT_DEFAULTS),editable=Object.keys(STATIC_COMMENT_DEFAULTS).filter((k)=>!["reply_status","reply_text"].includes(k));for(const key of editable)if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);for(const key of["points","text_rect"])if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);c.page=Math.max(1,Math.trunc(Number(c.page||1)));if(!new Set(fields.axes.map((a)=>a.code)).has(c.axis)||!fields.severities.includes(c.severity)||!fields.statuses.includes(c.status)||!fields.shapes.includes(c.shape))throw new StaticApiError("fields.json에 없는 코멘트 값입니다.");if(c.shape==="polygon"||c.shape==="freehand"){c.points=staticPoints(c.points,c.shape==="polygon"?3:2);c.rect=staticPointsRect(c.points);}else c.rect=staticRect(c.rect);if(c.text_rect!=null)c.text_rect=staticRect(c.text_rect);c.related_drawings=staticRelated(c.related_drawings);for(const key of["drawing_no","part","part_cn","kr","cn","action","due","reply_status","reply_text"])c[key]=String(c[key]??"");const unresolved={};for(const key of["part","kr"]){const found=c[key].match(/\{[^{}]+\}/g)||[];if(found.length)unresolved[key]=found;}if(Object.keys(unresolved).length)throw new StaticApiError("미치환 플레이스홀더가 남아 있습니다. 값을 모두 입력해 주세요.",422,"unresolved_placeholder",{fields:Object.keys(unresolved),placeholders:unresolved});if(existing&&["cn","part_cn"].some((k)=>Object.hasOwn(payload,k)&&c[k]!==String(existing[k]??"")))c.cn_status=c.cn.trim()&&c.part_cn.trim()?"reviewed":"empty";if(!["empty","auto","reviewed"].includes(c.cn_status))c.cn_status="empty";return c;
 }
 function staticVerdict(ledger) { const severity={Critical:0,Major:0,Minor:0},axes={};for(const c of ledger.comments.filter((x)=>x.status==="confirmed")){if(Object.hasOwn(severity,c.severity))severity[c.severity]++;axes[c.axis]=(axes[c.axis]||0)+1;}const grade=severity.Critical>=1||severity.Major>=4?"C":severity.Major>=1?"B":"A";return{grade,label:{A:"승인",B:"조건부승인",C:"재제출"}[grade],severity,axes}; }
 function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["KR","CN","KRCN"].includes(mode))throw new StaticApiError("내보내기 모드가 올바르지 않습니다.");const pending=ledger.comments.filter((c)=>c.status==="pending");if(pending.length)throw new StaticApiError(`미확인 ${pending.length}건 남음`,409,"pending_comments",{count:pending.length});if(mode!=="KR"){const un=ledger.comments.filter((c)=>c.status==="confirmed"&&(!String(c.cn||"").trim()||!String(c.part_cn||"").trim()||c.cn_status!=="reviewed"));if(un.length)throw new StaticApiError(`번역 검수 미완료 ${un.length}건`,409,"translation_unreviewed",{count:un.length});}return mode; }
@@ -4625,8 +5082,9 @@ function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["K
 function staticLoadScript(src,test) {
   if(test())return Promise.resolve();
   const old=[...document.scripts].find((s)=>s.src===src);
-  if(old)return new Promise((resolve,reject)=>{old.addEventListener("load",resolve,{once:true});old.addEventListener("error",reject,{once:true});});
-  return new Promise((resolve,reject)=>{const script=document.createElement("script");script.src=src;script.crossOrigin="anonymous";script.onload=resolve;script.onerror=()=>reject(new StaticApiError(`라이브러리를 불러오지 못했습니다: ${src}`,503,"cdn_load_failed"));document.head.append(script);});
+  if(old&&old.dataset.staticLoadState==="loading")return new Promise((resolve,reject)=>{old.addEventListener("load",()=>test()?resolve():reject(new StaticApiError(`라이브러리를 초기화하지 못했습니다: ${src}`,503,"cdn_init_failed")),{once:true});old.addEventListener("error",()=>reject(new StaticApiError(`라이브러리를 불러오지 못했습니다: ${src}`,503,"cdn_load_failed")),{once:true});});
+  old?.remove();
+  return new Promise((resolve,reject)=>{const script=document.createElement("script");script.src=src;script.crossOrigin="anonymous";script.dataset.staticLoadState="loading";script.onload=()=>{script.dataset.staticLoadState="loaded";if(test())resolve();else reject(new StaticApiError(`라이브러리를 초기화하지 못했습니다: ${src}`,503,"cdn_init_failed"));};script.onerror=()=>{script.dataset.staticLoadState="error";reject(new StaticApiError(`라이브러리를 불러오지 못했습니다: ${src}`,503,"cdn_load_failed"));};document.head.append(script);});
 }
 async function staticEnsurePdfJs() {
   const base="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174";
@@ -4681,13 +5139,17 @@ async function staticScanPdf(name,{force=false}={}) {
 }
 
 async function staticPermission(handle,request=false) {
-  const options={mode:"readwrite"},permission=await handle.queryPermission(options);if(permission==="granted")return true;if(!request)return false;return(await handle.requestPermission(options))==="granted";
+  if(typeof handle?.queryPermission!=="function")return Boolean(handle?.getDirectoryHandle&&handle?.getFileHandle);const options={mode:"readwrite"},permission=await handle.queryPermission(options);if(permission==="granted")return true;if(!request)return false;return(await handle.requestPermission(options))==="granted";
 }
 function checkStaticBrowserSupport({announce=true}={}) {
   const chromium=/Chrome|Chromium|Edg\//.test(navigator.userAgent)&&!/OPR\//.test(navigator.userAgent),secure=window.isSecureContext,supported=chromium&&secure&&typeof window.showDirectoryPicker==="function"&&"indexedDB"in window;
   const result={supported,chromium,secure,fileSystemAccess:typeof window.showDirectoryPicker==="function",indexedDB:"indexedDB"in window,message:supported?"":"Chrome 또는 Edge에서 HTTPS GitHub Pages로 열어주세요."};
   const banner=document.querySelector("#browser-compat-warning");if(banner)banner.hidden=supported;
   if(announce&&!supported)window.alert?.(result.message);return result;
+}
+async function staticFlushCurrentEdits() {
+  if(typeof flushPendingCommentSaves==="function")await flushPendingCommentSaves();
+  if(typeof state!=="undefined"&&state.commentWriteChain)await state.commentWriteChain;
 }
 async function staticActivateFolder(handle,{create=null}={}) {
   if(!await staticPermission(handle,true))throw new StaticApiError("폴더 읽기/쓰기 권한이 필요합니다.",403,"folder_permission_denied");
@@ -4699,11 +5161,11 @@ async function staticActivateFolder(handle,{create=null}={}) {
   return{ok:true,folder:handle.name,folder_id:recent.id,pdf_files:pdfs,ledger,created_folders:setup.createdFolders,glossary_created:!setup.glossaryExisted,comments_existed:commentsExisted,api_key_set:Boolean(staticGetApiKey())};
 }
 async function pickSubmissionFolder(options={}) {
-  const support=checkStaticBrowserSupport({announce:true});if(!support.supported)throw new StaticApiError(support.message,400,"unsupported_browser");
+  const support=checkStaticBrowserSupport({announce:true});if(!support.supported)throw new StaticApiError(support.message,400,"unsupported_browser");await staticFlushCurrentEdits();STATIC_RUNTIME.quickMode=false;STATIC_RUNTIME.quickProjectId="";
   const handle=await window.showDirectoryPicker({mode:"readwrite",id:"drawing-review-submission",startIn:"documents"});return staticActivateFolder(handle,options);
 }
 async function staticOpenRecent(id,{create=null}={}) {
-  const record=await staticGetRecent(id);if(!record)throw new StaticApiError("최근 폴더 기록을 찾을 수 없습니다.",404,"recent_not_found");return staticActivateFolder(record.handle,{create});
+  await staticFlushCurrentEdits();const record=await staticGetRecent(id);if(!record)throw new StaticApiError("최근 폴더 기록을 찾을 수 없습니다.",404,"recent_not_found");STATIC_RUNTIME.quickMode=Boolean(record.quick_mode);STATIC_RUNTIME.quickProjectId=record.quick_mode?String(record.id||""):"";return staticActivateFolder(record.handle,{create});
 }
 async function staticPageMetadata(pdfName,pageNumber) {
   const scan=await staticScanPdf(pdfName),meta=scan.page_map[Number(pageNumber)-1];if(!meta)throw new StaticApiError("페이지를 찾을 수 없습니다.",404,"page_not_found");return meta;
@@ -4775,7 +5237,7 @@ async function staticOpenPayload(base,requestedPdf="") {
   let recent={id:STATIC_RUNTIME.rootId||base.folder_id||"current"};try{recent=await staticRememberRecent(STATIC_RUNTIME.rootHandle,ledger);STATIC_RUNTIME.rootId=recent.id;}catch(error){console.warn("최근 폴더 갱신을 건너뜁니다.",error);}
   const pdfs=[];for(const name of names)pdfs.push(await staticScanPdf(name));
   const fields=staticNormalizedFields(await staticReadJson(STATIC_RUNTIME.rootHandle,["_review","fields.json"],STATIC_FIELDS)),config=await staticConfigResponse();
-  return{ok:true,folder:STATIC_RUNTIME.rootHandle.name,folder_id:recent.id,pdfs,ledger,fields,verdict:staticVerdict(ledger),needs_zone:!ledger.zone,needs_submit_date:!ledger.submit_date,open_scan_ms:0,readiness:{api_key:{configured:config.has_api_key},glossary:{status:base.glossary_created?"created":"exists"},folders:{status:base.created_folders?.length?"created":"normal",created_count:base.created_folders?.length||0,created:base.created_folders||[]},comments:{exists:Boolean(base.comments_existed),count:ledger.comments.length}}};
+  return{ok:true,folder:STATIC_RUNTIME.rootHandle.name,folder_id:recent.id,quick_mode:Boolean(STATIC_RUNTIME.quickMode),pdfs,ledger,fields,verdict:staticVerdict(ledger),needs_zone:!ledger.zone&&!STATIC_RUNTIME.quickMode,needs_submit_date:!ledger.submit_date&&!STATIC_RUNTIME.quickMode,open_scan_ms:0,readiness:{api_key:{configured:config.has_api_key},glossary:{status:base.glossary_created?"created":"exists"},folders:{status:base.created_folders?.length?"created":"normal",created_count:base.created_folders?.length||0,created:base.created_folders||[]},comments:{exists:Boolean(base.comments_existed),count:ledger.comments.length}}};
 }
 function staticDrawingNo(text) {
   const normalized=String(text||"").replace(/\s+/g," ").trim(),patterns=[/(?:도면번호|图号|DRAWING\s*(?:NO\.?|NUMBER))\s*[:：]?\s*([A-Z0-9][A-Z0-9._\-/]{2,})/i,/\b([A-Z]{1,5}[-_][A-Z0-9._-]{2,})\b/i];for(const pattern of patterns){const found=normalized.match(pattern);if(found)return found[1];}return"";
@@ -4888,7 +5350,7 @@ function staticBindRuntimeUi() {
 function installStaticPortOverrides() {
   window.api=staticApi;window.loadRecent=staticLoadRecent;window.loadPdf=staticLoadPdf;window.ensurePdfJs=staticEnsurePdfJs;window.scheduleSave=staticScheduleSave;window.fetch=staticFetch;staticBindRuntimeUi();
 }
-window.staticPortCore={checkStaticBrowserSupport,pickSubmissionFolder,openRecent:staticOpenRecent,activateFolder:staticActivateFolder,readJson:staticReadJson,writeJson:staticWriteJson,readBinary:staticReadBinary,writeBinary:staticWriteBinary,getDirectory:staticGetDirectory,listRecent:staticListRecent,scanPdf:staticScanPdf,pageMetadata:staticPageMetadata,routeApi:staticRouteApi,setApiKey:staticSetApiKey,getApiKey:staticGetApiKey,install:installStaticPortOverrides,runtime:STATIC_RUNTIME};
+window.staticPortCore={checkStaticBrowserSupport,pickSubmissionFolder,openRecent:staticOpenRecent,activateFolder:staticActivateFolder,flushCurrentEdits:staticFlushCurrentEdits,readJson:staticReadJson,writeJson:staticWriteJson,readBinary:staticReadBinary,writeBinary:staticWriteBinary,getDirectory:staticGetDirectory,listRecent:staticListRecent,scanPdf:staticScanPdf,pageMetadata:staticPageMetadata,routeApi:staticRouteApi,setApiKey:staticSetApiKey,getApiKey:staticGetApiKey,install:installStaticPortOverrides,runtime:STATIC_RUNTIME};
 installStaticPortOverrides();if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",staticBindRuntimeUi,{once:true});
 
 
@@ -6404,6 +6866,292 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
 
   global.DrawingReviewExcelRuntime = api;
 })(globalThis);
+
+
+(function installFolderFreeQuickReview(global) {
+  "use strict";
+
+  const QUICK_ROOT = "drawing-review-quick-projects";
+  const FONTKIT_URL = "https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js";
+  const FONT_URLS = {
+    KR: "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf",
+    CN: "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+  };
+  const FONT_CACHE = new Map();
+  let QUICK_OPEN_CHAIN = Promise.resolve();
+  const PDF_COLORS = {
+    Critical: [0.878, 0.231, 0.231],
+    Major: [0.941, 0.541, 0.141],
+    Minor: [0.184, 0.435, 0.816],
+  };
+
+  function quickSafeStem(name) {
+    const base = String(name || "drawing").replace(/\.pdf$/i, "").replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_").trim();
+    return (base || "drawing").slice(0, 70);
+  }
+
+  async function quickDigest(bytes) {
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+  }
+
+  function quickDownload(bytes, filename, type = "application/pdf") {
+    const blob = new Blob([bytes], { type });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.hidden = true;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  async function performOpenQuickPdf(file) {
+    if (!(file instanceof File) || !/\.pdf$/i.test(file.name || "")) {
+      throw new StaticApiError("PDF 파일을 선택해 주세요.", 400, "pdf_required");
+    }
+    if (!navigator.storage?.getDirectory) {
+      throw new StaticApiError("이 브라우저는 폴더 없는 PDF 작업을 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용해 주세요.", 400, "opfs_unavailable");
+    }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.length < 5 || new TextDecoder("ascii").decode(bytes.slice(0, 5)) !== "%PDF-") {
+      throw new StaticApiError("올바른 PDF 파일이 아닙니다.", 400, "invalid_pdf");
+    }
+    setSaveState("saving", "PDF 준비 중");
+    await staticFlushCurrentEdits();
+    const hash = await quickDigest(bytes);
+    const opfs = await navigator.storage.getDirectory();
+    const persistentStorage = await navigator.storage.persist?.().catch(() => false);
+    const appDirectory = await opfs.getDirectoryHandle(QUICK_ROOT, { create: true });
+    const projectName = `Quick_${hash.slice(0, 24)}`;
+    const project = await appDirectory.getDirectoryHandle(projectName, { create: true });
+    STATIC_RUNTIME.quickMode = true;
+    STATIC_RUNTIME.quickProjectId = hash;
+    await staticEnsureFiles(project, { create: true });
+    if (!await staticFileExists(project, ["00_수신원본", file.name])) {
+      await staticWriteBinary(project, ["00_수신원본", file.name], bytes);
+    }
+    const base = await staticActivateFolder(project, { create: true });
+    const ledger = await staticLoadLedger(project);
+    ledger.source_pdf = file.name;
+    ledger.zone = ledger.zone || staticInferZone(file.name) || "Quick";
+    ledger.submit_date = /^\d{6}$/.test(String(ledger.submit_date || "")) ? ledger.submit_date : staticYymmdd();
+    await staticSaveLedger(ledger, project);
+    await openSubmission(base.folder, false, file.name);
+    const input = document.querySelector("#quick-pdf-input");
+    if (input) input.value = "";
+    staticToast("PDF를 열었습니다", `폴더 없이 바로 마킹할 수 있습니다. 같은 브라우저 프로필에서 다시 선택하면 복원됩니다.${persistentStorage ? " 브라우저 저장소가 영구 보관으로 설정되었습니다." : " 중요한 결과는 KR/CN PDF로 다운로드해 보관하세요."}`, "success", 8500);
+    return { hash, project: projectName, file: file.name };
+  }
+
+  function openQuickPdf(file) {
+    const task = QUICK_OPEN_CHAIN.catch(() => {}).then(() => performOpenQuickPdf(file));
+    QUICK_OPEN_CHAIN = task;
+    return task;
+  }
+
+  async function quickEnsureFont(language) {
+    await staticLoadScript(FONTKIT_URL, () => Boolean(global.fontkit));
+    if (!global.fontkit) throw new StaticApiError("PDF 글꼴 모듈을 불러오지 못했습니다.", 503, "fontkit_unavailable");
+    if (!FONT_CACHE.has(language)) {
+      const task = fetch(FONT_URLS[language]).then(async (response) => {
+        if (!response.ok) throw new StaticApiError(`CJK 글꼴을 불러오지 못했습니다. (HTTP ${response.status})`, 503, "font_load_failed");
+        return new Uint8Array(await response.arrayBuffer());
+      });
+      FONT_CACHE.set(language, task);
+    }
+    try {
+      return await FONT_CACHE.get(language);
+    } catch (error) {
+      FONT_CACHE.delete(language);
+      throw error;
+    }
+  }
+
+  function quickPointToNative(point, media) {
+    return { x: media.x + Number(point[0]), y: media.y + media.height - Number(point[1]) };
+  }
+
+  function quickDefaultTextRect(rect, media) {
+    const width = Math.max(120, Math.min(190, media.width * .36));
+    const height = Math.max(62, Math.min(86, media.height * .18));
+    let x0 = rect[2] + 12;
+    if (x0 + width > media.width - 8) x0 = Math.max(8, rect[0] - width - 12);
+    const y0 = Math.max(8, Math.min(media.height - height - 8, rect[1]));
+    return [x0, y0, x0 + width, y0 + height];
+  }
+
+  function quickWrapText(font, value, size, maxWidth) {
+    const paragraphs = String(value || "").replace(/\r/g, "").split("\n");
+    const lines = [];
+    for (const paragraph of paragraphs) {
+      if (!paragraph) { lines.push(""); continue; }
+      let line = "";
+      for (const character of Array.from(paragraph)) {
+        const candidate = line + character;
+        if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
+          lines.push(line);
+          line = character;
+        } else line = candidate;
+      }
+      if (line) lines.push(line);
+    }
+    return lines;
+  }
+
+  function quickTextLayout(font, text, width, height) {
+    for (let size = 10; size >= 4; size -= .5) {
+      const lineHeight = size * 1.38;
+      const lines = quickWrapText(font, text, size, Math.max(20, (width - 12) * .75));
+      const maxLines = Math.max(1, Math.floor((height - 10) / lineHeight));
+      if (lines.length <= maxLines) return { size, lineHeight, lines, overflow: false };
+    }
+    return { size: 4, lineHeight: 5.52, lines: [], overflow: true };
+  }
+
+  function quickDrawLineShape(page, points, media, color, closed) {
+    if (!Array.isArray(points) || points.length < 2) return;
+    const pairs = points.slice(1).map((point, index) => [points[index], point]);
+    if (closed && points.length > 2) pairs.push([points.at(-1), points[0]]);
+    for (const [start, end] of pairs) {
+      page.drawLine({ start: quickPointToNative(start, media), end: quickPointToNative(end, media), color, thickness: 1.5 });
+    }
+  }
+
+  function quickDisplayText(page, font, text, displayRect, info, color, PDFLib, commentNo) {
+    const width = displayRect.x1 - displayRect.x0;
+    const height = displayRect.y1 - displayRect.y0;
+    const layout = quickTextLayout(font, text, width, height);
+    if (layout.overflow) throw new StaticApiError(`코멘트 #${commentNo}의 내용이 텍스트 상자보다 깁니다. 내용을 줄인 뒤 다시 저장해 주세요.`, 422, "textbox_overflow");
+    layout.lines.forEach((line, index) => {
+      if (!line) return;
+      const displayOrigin = [displayRect.x0 + 6, displayRect.y0 + 7 + layout.size + index * layout.lineHeight];
+      const pageOrigin = global.staticPdfDisplayPointToPage(displayOrigin, info.media.width, info.media.height, info.rotation);
+      const nativeOrigin = global.staticPdfTopLeftPointToNative(pageOrigin, info.media);
+      page.drawText(line, { ...nativeOrigin, font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) });
+    });
+  }
+
+  async function createQuickReviewPdf(language) {
+    const mode = language === "CN" ? "CN" : "KR";
+    if (!STATIC_RUNTIME.quickMode) throw new StaticApiError("간편 PDF 모드에서만 사용할 수 있습니다.", 409, "quick_mode_required");
+    await flushPendingCommentSaves();
+    const ledger = await staticLoadLedger();
+    staticGate(ledger, mode);
+    if (mode === "CN" && !staticGetApiKey()) throw new StaticApiError("OpenAI API 키를 먼저 설정하고 중문 번역을 검수해 주세요.", 409, "api_key_missing");
+    const sourceName = String(ledger.source_pdf || "");
+    const source = await staticSourceFile(sourceName);
+    const sourceBytes = new Uint8Array(await source.arrayBuffer());
+    const PDFLib = await staticEnsurePdfLib();
+    const fontBytes = await quickEnsureFont(mode);
+    const pdf = await PDFLib.PDFDocument.load(sourceBytes.slice(), { updateMetadata: false, ignoreEncryption: false });
+    pdf.registerFontkit(global.fontkit);
+    const font = await pdf.embedFont(fontBytes, { subset: false });
+    const pages = pdf.getPages();
+    const confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
+
+    for (const comment of confirmed) {
+      const pageIndex = Math.trunc(Number(comment.page || 1)) - 1;
+      if (pageIndex < 0 || pageIndex >= pages.length) continue;
+      const page = pages[pageIndex];
+      const box = comment.rect.map(Number);
+      const mediaRaw = page.getMediaBox();
+      const media = { x: Number(mediaRaw.x), y: Number(mediaRaw.y), width: Number(mediaRaw.width), height: Number(mediaRaw.height) };
+      const rotation = ((Number(page.getRotation()?.angle || 0) % 360) + 360) % 360;
+      const info = { media, rotation };
+      const tuple = PDF_COLORS[comment.severity] || PDF_COLORS.Major;
+      const color = PDFLib.rgb(...tuple);
+      const nativeRect = global.toPdfLibRect(box, media.height);
+      nativeRect.x += media.x;
+      nativeRect.y += media.y;
+      if (comment.shape === "circle") {
+        page.drawEllipse({ x: nativeRect.x + nativeRect.width / 2, y: nativeRect.y + nativeRect.height / 2, xScale: nativeRect.width / 2, yScale: nativeRect.height / 2, borderColor: color, borderWidth: 1.5 });
+      } else if (comment.shape === "polygon") {
+        quickDrawLineShape(page, comment.points, media, color, true);
+      } else if (comment.shape === "freehand") {
+        quickDrawLineShape(page, comment.points, media, color, false);
+      } else {
+        page.drawRectangle({ ...nativeRect, borderColor: color, borderWidth: 1.5 });
+      }
+
+      const textRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
+        ? comment.text_rect.map(Number)
+        : quickDefaultTextRect(box, media);
+      const textNative = global.toPdfLibRect(textRect, media.height);
+      textNative.x += media.x;
+      textNative.y += media.y;
+      const markCenter = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+      const textCenter = [(textRect[0] + textRect[2]) / 2, (textRect[1] + textRect[3]) / 2];
+      const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
+      const textWidth = Math.max(textRect[2] - textRect[0], .1);
+      const textHeight = Math.max(textRect[3] - textRect[1], .1);
+      const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / (textWidth / 2), Math.abs(towardMark[1]) / (textHeight / 2), 1);
+      const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
+      page.drawLine({ start: quickPointToNative(markCenter, media), end: quickPointToNative(textEdge, media), color, thickness: .85, opacity: .8 });
+      page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, 1, 1), opacity: .92, borderColor: color, borderWidth: 1.2 });
+      const display = global.staticPdfDisplayRect(textRect, media.width, media.height, rotation);
+      const header = `#${comment.no} · ${comment.axis || "-"}`;
+      const body = mode === "CN"
+        ? [comment.part_cn, comment.cn].filter((value) => String(value || "").trim()).join("\n")
+        : [comment.part, comment.kr].filter((value) => String(value || "").trim()).join("\n");
+      quickDisplayText(page, font, [header, body].filter(Boolean).join("\n"), display, info, PDFLib.rgb(.08, .1, .14), PDFLib, comment.no);
+    }
+
+    const output = new Uint8Array(await pdf.save());
+    const outputDirectory = await staticGetDirectory(STATIC_RUNTIME.rootHandle, ["03_마크업"], { create: true });
+    const stem = `${quickSafeStem(sourceName)}_${mode}_REVIEW`;
+    const version = await global.staticNextVersion(outputDirectory, stem, ".pdf");
+    await staticWriteBinary(outputDirectory, [version.filename], output);
+    quickDownload(output, version.filename);
+    return { filename: version.filename, bytes: output.byteLength, comments: confirmed.length, language: mode };
+  }
+
+  async function staticQuickExportPdf(language) {
+    const mode = language === "CN" ? "CN" : "KR";
+    const button = document.querySelector(mode === "CN" ? "#quick-export-cn" : "#quick-export-kr");
+    if (button?.disabled) return;
+    if (button) button.disabled = true;
+    try {
+      const result = await createQuickReviewPdf(mode);
+      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 완료`, `${result.filename} · 마킹 ${result.comments}건`, "success", 9000);
+    } catch (error) {
+      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 실패`, error.message, "error", 8000);
+    } finally {
+      if (typeof renderGate === "function") renderGate();
+    }
+  }
+
+  function bindQuickReviewUi() {
+    const zone = document.querySelector("#quick-pdf-drop-zone");
+    const input = document.querySelector("#quick-pdf-input");
+    if (!zone || !input || zone.dataset.bound === "1") return;
+    zone.dataset.bound = "1";
+    const open = (file) => openQuickPdf(file).catch((error) => {
+      if (error?.name !== "AbortError") staticToast("PDF 열기 실패", error.message, "error", 8000);
+      input.value = "";
+      setSaveState("error", "PDF 열기 실패");
+    });
+    ["dragenter", "dragover"].forEach((name) => zone.addEventListener(name, (event) => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      zone.classList.add("dragging");
+    }));
+    ["dragleave", "drop"].forEach((name) => zone.addEventListener(name, (event) => {
+      event.preventDefault();
+      zone.classList.remove("dragging");
+    }));
+    zone.addEventListener("drop", (event) => open(event.dataTransfer?.files?.[0]));
+    input.addEventListener("change", () => open(input.files?.[0]));
+  }
+
+  global.openQuickPdf = openQuickPdf;
+  global.staticQuickExportPdf = staticQuickExportPdf;
+  global.staticCreateQuickReviewPdf = createQuickReviewPdf;
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindQuickReviewUi, { once: true });
+  else bindQuickReviewUi();
+})(typeof globalThis !== "undefined" ? globalThis : window);
 
   </script>
 </body>
