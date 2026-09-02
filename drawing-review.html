@@ -665,6 +665,11 @@ kbd {
 .gate-warning { min-height: 20px; margin-bottom: 6px; color: var(--ink-600); font-size: 10px; text-align: center; }
 .gate-warning.alert { color: var(--critical); font-weight: 800; }
 .image-export-note { margin: -2px 0 7px; padding: 5px 7px; color: #245d47; text-align: center; background: #e8f6ef; border: 1px solid #b9dfcc; border-radius: 5px; font-size: 9px; font-weight: 750; }
+.quick-cn-readiness { display: flex; align-items: center; justify-content: space-between; gap: 7px; margin: -2px 0 7px; padding: 6px 7px; color: #7c5200; background: #fff7dc; border: 1px solid #eed08a; border-radius: 5px; font-size: 9px; font-weight: 750; line-height: 1.35; }
+.quick-cn-readiness.ready { color: #176144; background: #e8f6ef; border-color: #b9dfcc; }
+.quick-cn-readiness .button { flex: 0 0 auto; min-height: 25px; padding: 3px 7px; font-size: 8px; }
+.quick-cn-image-warning { margin: 0; padding: 8px 9px; color: #7c5200; background: #fff7dc; border: 1px solid #eed08a; border-radius: 6px; font-size: 10px; line-height: 1.45; }
+.quick-cn-dialog-actions { justify-content: flex-end; }
 .export-buttons { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 5px; }
 .button.export { min-height: 34px; padding: 5px 4px; font-size: 10px; }
 .export-dock > .wide { min-height: 33px; margin-top: 6px; padding: 5px; font-size: 10px; }
@@ -844,6 +849,7 @@ body.quick-mode #reply-drop-zone,
 body.quick-mode #reply-import-result { display: none !important; }
 body.quick-mode #quick-workflow { display: flex; }
 body.quick-mode #quick-export-buttons { display: grid; }
+body.quick-mode #quick-cn-readiness { display: flex; }
 body.quick-mode #export-warning { margin-bottom: 6px; }
 .annotation-shape.shape-polygon, .annotation-shape.shape-polyline, .annotation-shape.shape-freehand { stroke-linejoin: round; stroke-linecap: round; }
 .annotation-shape.shape-polyline, .annotation-shape.shape-freehand { fill: none; }
@@ -1126,6 +1132,10 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             <div class="export-dock">
               <div id="export-warning" class="gate-warning">확정할 코멘트를 추가해 주세요.</div>
               <div id="image-export-note" class="image-export-note" role="status" hidden>붙여넣은 이미지는 현재 배치 그대로 PDF에 포함됩니다.</div>
+              <div id="quick-cn-readiness" class="quick-cn-readiness" role="status" hidden>
+                <span id="quick-cn-readiness-text">중문 준비 상태 확인 중</span>
+                <button id="quick-translate-btn" class="button text compact" type="button">중문 준비</button>
+              </div>
               <div id="quick-export-buttons" class="quick-export-buttons" hidden>
                 <button id="quick-export-kr" class="button export primary" type="button">한글 PDF 다운로드</button>
                 <button id="quick-export-cn" class="button export" type="button">중문 PDF 다운로드</button>
@@ -1221,7 +1231,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
         <div><p class="eyebrow">TRANSLATION</p><h2 id="settings-title">OpenAI 번역 설정</h2></div>
         <button class="icon-button" value="cancel" formmethod="dialog" aria-label="닫기">×</button>
       </div>
-      <p class="modal-copy">API 키는 현재 브라우저 탭의 메모리에만 보관하며 선택한 폴더·GitHub 저장소·로그에는 쓰지 않습니다. 화면에는 마스킹된 값만 표시합니다.</p>
+      <p class="modal-copy">여기서 입력한 키는 이 GitHub Pages 사이트의 브라우저 저장소(localStorage)에만 보관합니다. 저장소 파일·PDF·로그에는 쓰지 않으며 화면에는 마스킹해 표시합니다.</p>
       <label>API 키<input id="config-api-key" type="password" autocomplete="new-password" placeholder="sk-...abcd"></label>
       <label>모델<input id="config-model" type="text" autocomplete="off" placeholder="실행 시점의 유효한 모델명"></label>
       <div class="field-row">
@@ -1230,6 +1240,21 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
       </div>
       <div id="config-key-source" class="field-help"></div>
       <div class="modal-footer"><button class="button primary" type="submit">설정 저장</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="quick-cn-dialog" class="modal" aria-labelledby="quick-cn-dialog-title">
+    <form method="dialog" class="modal-card narrow">
+      <div class="modal-header">
+        <div><p class="eyebrow">CHINESE EXPORT CHECK</p><h2 id="quick-cn-dialog-title">중문 내용이 준비되지 않았습니다</h2></div>
+        <button class="icon-button" value="cancel" aria-label="닫기">×</button>
+      </div>
+      <p id="quick-cn-dialog-copy" class="modal-copy"></p>
+      <p class="quick-cn-image-warning">붙여넣은 캡처 이미지 안의 글자는 이미지 픽셀이므로 자동 번역되지 않습니다.</p>
+      <div class="modal-footer quick-cn-dialog-actions">
+        <button class="button secondary" value="incomplete" type="submit">중문 없이 그대로 저장</button>
+        <button class="button primary" value="settings" type="submit">API 키 설정·자동번역</button>
+      </div>
     </form>
   </dialog>
 
@@ -4795,9 +4820,9 @@ function renderGate() {
   const unreviewed = confirmed.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim() || comment.cn_status !== "reviewed").length;
   const quickCnMissing = quickIncluded.filter((comment) => {
     const kr = String(comment.kr || "").trim();
-    const part = String(comment.part || "").trim();
-    return (kr && !String(comment.cn || "").trim()) || (part && !String(comment.part_cn || "").trim());
+    return kr && !String(comment.cn || "").trim();
   }).length;
+  const quickTextComments = quickIncluded.filter((comment) => String(comment.kr || "").trim()).length;
   const noApiKey = !hasConfiguredApiKey();
   const warning = $("#export-warning");
   const krButton = $('[data-export-mode="KR"]');
@@ -4818,13 +4843,13 @@ function renderGate() {
   if (quickCnButton) {
     quickCnButton.disabled = !quickHasSource;
     quickCnButton.title = quickCnMissing
-      ? (noApiKey ? "중문이 없는 표시는 도형만 포함해 저장합니다." : "자동번역을 시도한 뒤, 비어 있는 내용은 도형만 포함해 저장합니다.")
+      ? (noApiKey ? "중문 누락을 확인한 뒤 API 키 설정 또는 도형만 저장을 선택합니다." : "자동번역을 완료한 뒤 중문 PDF를 저장합니다.")
       : (quickHasOutput ? "중문 PDF를 바로 저장합니다." : "표시 없이 원본 PDF를 저장합니다.");
   }
   if (quickKrcnButton) {
     quickKrcnButton.disabled = !quickHasSource;
     quickKrcnButton.title = quickCnMissing
-      ? (noApiKey ? "중문이 없으면 한국어만 넣어 병기 PDF를 저장합니다." : "자동번역을 시도한 뒤 한·중 병기 PDF를 저장합니다.")
+      ? (noApiKey ? "중문 누락을 확인한 뒤 API 키 설정 또는 한국어만 저장을 선택합니다." : "자동번역을 완료한 뒤 한·중 병기 PDF를 저장합니다.")
       : (quickHasOutput ? "한국어와 중국어를 함께 넣어 저장합니다." : "표시 없이 원본 PDF를 저장합니다.");
   }
   const cnReason = pending
@@ -4854,6 +4879,19 @@ function renderGate() {
   }
   const imageNote = $("#image-export-note");
   if (imageNote) imageNote.hidden = imageCount === 0;
+  const quickCnReadiness = $("#quick-cn-readiness");
+  const quickCnReadinessText = $("#quick-cn-readiness-text");
+  const quickTranslateButton = $("#quick-translate-btn");
+  if (quickCnReadiness && quickCnReadinessText && quickTranslateButton) {
+    quickCnReadiness.hidden = !state.quickMode || !quickHasSource;
+    quickCnReadiness.classList.toggle("ready", quickTextComments === 0 || quickCnMissing === 0);
+    if (!quickTextComments) quickCnReadinessText.textContent = "텍스트 코멘트 없음 · 모든 언어 PDF는 도형·이미지만 저장됩니다.";
+    else if (!quickCnMissing) quickCnReadinessText.textContent = `중문 ${quickTextComments}/${quickTextComments}건 준비 완료`;
+    else if (noApiKey) quickCnReadinessText.textContent = `중문 ${quickTextComments - quickCnMissing}/${quickTextComments}건 · API 키 없음 · CN PDF에서 ${quickCnMissing}건의 글이 빠집니다.`;
+    else quickCnReadinessText.textContent = `중문 ${quickTextComments - quickCnMissing}/${quickTextComments}건 · 저장 시 ${quickCnMissing}건 자동번역`;
+    quickTranslateButton.hidden = quickCnMissing === 0;
+    quickTranslateButton.textContent = noApiKey ? "API 키 설정" : "지금 번역";
+  }
   $("#translation-tab-count").textContent = String(unreviewed);
   $("#unreviewed-counter").textContent = `미검수 ${unreviewed}건`;
 }
@@ -5294,7 +5332,7 @@ async function saveSettings(event) {
     state.config = data.config;
     $("#settings-dialog").close();
     await loadConfig();
-    toast("번역 설정을 저장했습니다", "API 키는 현재 실행 세션 메모리에만 보관되고 마스킹되어 표시됩니다.", "success");
+    toast("번역 설정을 저장했습니다", "API 키는 이 브라우저에만 보관되고 화면에는 마스킹되어 표시됩니다.", "success");
   } catch (error) { toast("설정 저장 실패", error.message, "error"); }
 }
 
@@ -5697,6 +5735,7 @@ function bindEvents() {
   $("#quick-export-kr")?.addEventListener("click", () => window.staticQuickExportPdf?.("KR"));
   $("#quick-export-cn")?.addEventListener("click", () => window.staticQuickExportPdf?.("CN"));
   $("#quick-export-krcn")?.addEventListener("click", () => window.staticQuickExportPdf?.("KRCN"));
+  $("#quick-translate-btn")?.addEventListener("click", () => window.staticQuickPrepareChinese?.());
   $("#export-reply-btn").addEventListener("click", exportReply);
   bindDropZone($("#reply-drop-zone"), $("#reply-file-input"), importReply);
   window.addEventListener("keydown", handleKeyboard);
@@ -5732,6 +5771,7 @@ const STATIC_AXES = [
 ];
 const STATIC_FIELDS = { axes:STATIC_AXES, severities:["Critical","Major","Minor"], statuses:["pending","confirmed","dropped"], shapes:["rect","circle","polygon","polyline","freehand"], fields:["part","kr","cn","related_drawings"] };
 const STATIC_CONFIG = { provider:"openai",model:"gpt-4o",batch_size:20,temperature:0.2 };
+const STATIC_API_KEY_STORAGE = "drawing-review-openai-api-key";
 const STATIC_COMMENT_DEFAULTS = {
   drawing_no:"미상",related_drawings:[],page:1,shape:"rect",rect:[0,0,0,0],axis:"F",severity:"Major",
   part:"",part_cn:"",kr:"",cn:"",cn_status:"empty",cn_translated_at:"",status:"pending",action:"",due:"",reply_status:"Open",reply_text:"",
@@ -5778,8 +5818,19 @@ async function staticReadJson(root,path,fallback,{required=false}={}) { try{retu
 async function staticWriteJson(root,path,value) { return staticWriteBinary(root,path,new TextEncoder().encode(JSON.stringify(value,null,2)+"\n")); }
 async function staticMissingDirs(handle) { const missing=[];for(const name of STATIC_REQUIRED_DIRS)if(!await staticDirectoryExists(handle,name))missing.push(name);return missing; }
 function staticNormalizedFields(value) { const result={...staticClone(STATIC_FIELDS),...(value&&typeof value==="object"?staticClone(value):{})};result.axes=staticClone(STATIC_AXES);result.shapes=[...new Set([...STATIC_FIELDS.shapes,...(Array.isArray(result.shapes)?result.shapes:[])])];return result; }
-function staticGetApiKey() { return STATIC_RUNTIME.apiKey; }
-function staticSetApiKey(value) { STATIC_RUNTIME.apiKey=String(value||"").trim(); }
+function staticGetApiKey() {
+  if (STATIC_RUNTIME.apiKey) return STATIC_RUNTIME.apiKey;
+  try { STATIC_RUNTIME.apiKey=String(localStorage.getItem(STATIC_API_KEY_STORAGE)||"").trim(); }
+  catch { STATIC_RUNTIME.apiKey=""; }
+  return STATIC_RUNTIME.apiKey;
+}
+function staticSetApiKey(value) {
+  STATIC_RUNTIME.apiKey=String(value||"").trim();
+  try {
+    if (STATIC_RUNTIME.apiKey) localStorage.setItem(STATIC_API_KEY_STORAGE,STATIC_RUNTIME.apiKey);
+    else localStorage.removeItem(STATIC_API_KEY_STORAGE);
+  } catch {}
+}
 
 async function staticEnsureFiles(handle,{create=false}={}) {
   const missing=await staticMissingDirs(handle);if(missing.length&&!create)throw new StaticApiError("검토에 필요한 하위 폴더가 없습니다. 지금 생성할까요?",409,"structure_missing",{required_folders:STATIC_REQUIRED_DIRS.slice(),missing_folders:missing});for(const name of missing)await staticGetDirectory(handle,name,{create:true});
@@ -5952,7 +6003,7 @@ async function staticTranslationImport(body) {
 
 function staticMaskKey(key) { key=String(key||"");return key?(key.length>=8?`${key.slice(0,3)}...${key.slice(-4)}`:"설정됨"):""; }
 async function staticConfigResponse() {
-  const disk={...STATIC_CONFIG,...await staticReadJson(STATIC_RUNTIME.rootHandle,["_review","config.json"],STATIC_CONFIG)},key=staticGetApiKey();delete disk.api_key;return{...disk,api_key:staticMaskKey(key),has_api_key:Boolean(key),key_source:key?"현재 실행 세션":"없음"};
+  const disk={...STATIC_CONFIG,...await staticReadJson(STATIC_RUNTIME.rootHandle,["_review","config.json"],STATIC_CONFIG)},key=staticGetApiKey();delete disk.api_key;return{...disk,api_key:staticMaskKey(key),has_api_key:Boolean(key),key_source:key?"이 브라우저":"없음"};
 }
 async function staticSaveConfig(payload) {
   const disk={...STATIC_CONFIG,...await staticReadJson(STATIC_RUNTIME.rootHandle,["_review","config.json"],STATIC_CONFIG)};for(const key of["provider","model","batch_size","temperature"])if(Object.hasOwn(payload,key))disk[key]=payload[key];
@@ -7993,6 +8044,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
   };
   const FONT_CACHE = new Map();
   let QUICK_OPEN_CHAIN = Promise.resolve();
+  let QUICK_PENDING_EXPORT_MODE = "";
   const PDF_COLORS = {
     Critical: [0.878, 0.231, 0.231],
     Major: [0.941, 0.541, 0.141],
@@ -8023,12 +8075,21 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return kr;
   }
 
+  function quickCommentSegments(comment, mode, fonts) {
+    const kr = String(comment?.kr || "").trim();
+    const cn = String(comment?.cn || "").trim();
+    if (mode === "CN") return cn ? [{ text: cn, font: fonts.CN, language: "CN" }] : [];
+    if (mode === "KRCN") return [
+      kr ? { text: kr, font: fonts.KR, language: "KR" } : null,
+      cn ? { text: cn, font: fonts.CN, language: "CN" } : null,
+    ].filter(Boolean);
+    return kr ? [{ text: kr, font: fonts.KR, language: "KR" }] : [];
+  }
+
   function quickCnMissing(comments) {
     return (comments || []).filter((comment) => {
       const kr = String(comment.kr || "").trim();
-      const part = String(comment.part || "").trim();
-      return (kr && !String(comment.cn || "").trim())
-        || (part && !String(comment.part_cn || "").trim());
+      return kr && !String(comment.cn || "").trim();
     });
   }
 
@@ -8134,6 +8195,26 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return [x0, y0, x0 + width, y0 + height];
   }
 
+  function quickDisplayMedia(media, rotation) {
+    return rotation === 90 || rotation === 270
+      ? { width: media.height, height: media.width }
+      : { width: media.width, height: media.height };
+  }
+
+  function quickRectArray(rect) {
+    return [Number(rect.x0), Number(rect.y0), Number(rect.x1), Number(rect.y1)];
+  }
+
+  function quickDisplayRectToPage(displayRect, media, rotation) {
+    const [x0, y0, x1, y1] = quickRectArray(displayRect);
+    const points = [
+      [x0, y0], [x1, y0], [x0, y1], [x1, y1],
+    ].map((point) => global.staticPdfDisplayPointToPage(point, media.width, media.height, rotation));
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+  }
+
   function quickWrapText(font, value, size, maxWidth) {
     const paragraphs = String(value || "").replace(/\r/g, "").split("\n");
     const lines = [];
@@ -8152,23 +8233,33 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return lines;
   }
 
-  function quickTextLayout(font, text, width, height) {
+  function quickWrapSegments(segments, size, maxWidth) {
+    const lines = [];
+    for (const segment of segments) {
+      for (const line of quickWrapText(segment.font, segment.text, size, maxWidth)) {
+        lines.push({ ...segment, text: line });
+      }
+    }
+    return lines;
+  }
+
+  function quickTextLayout(segments, width, height) {
     for (let size = 10; size >= 7; size -= .5) {
       const lineHeight = size * 1.38;
-      const lines = quickWrapText(font, text, size, Math.max(20, width - 12));
+      const lines = quickWrapSegments(segments, size, Math.max(20, width - 12));
       const maxLines = Math.max(1, Math.floor((height - 10) / lineHeight));
       if (lines.length <= maxLines) return { size, lineHeight, lines, overflow: false };
     }
     return { size: 7, lineHeight: 9.66, lines: [], overflow: true };
   }
 
-  function quickCompactTextRect(font, text, preferredRect, media) {
+  function quickCompactTextRect(segments, preferredRect, media) {
     const size = 10;
     const maxTextWidth = Math.max(90, Math.min(230, media.width * .38));
-    const lines = quickWrapText(font, text || " ", size, maxTextWidth);
-    const textWidth = Math.max(56, ...lines.map((line) => font.widthOfTextAtSize(line || " ", size)));
+    const lines = quickWrapSegments(segments, size, maxTextWidth);
+    const textWidth = Math.max(56, ...lines.map((line) => line.font.widthOfTextAtSize(line.text || " ", size)));
     const width = Math.ceil(Math.min(maxTextWidth, textWidth) + 12);
-    const height = Math.ceil(Math.max(26, lines.length * size * 1.38 + 10));
+    const height = Math.min(media.height - 8, Math.ceil(Math.max(26, lines.length * size * 1.38 + 10)));
     let x0 = Number(preferredRect?.[0] || 8);
     let y0 = Number(preferredRect?.[1] || 8);
     x0 = Math.max(4, Math.min(media.width - width - 4, x0));
@@ -8199,19 +8290,19 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     }
   }
 
-  function quickDisplayText(page, font, text, displayRect, info, color, PDFLib, commentNo) {
+  function quickDisplayText(page, segments, displayRect, info, color, PDFLib, commentNo) {
     const width = displayRect.x1 - displayRect.x0;
     const height = displayRect.y1 - displayRect.y0;
-    const layout = quickTextLayout(font, text, width, height);
+    const layout = quickTextLayout(segments, width, height);
     if (layout.overflow) throw new StaticApiError(`코멘트 #${commentNo}의 내용이 텍스트 상자보다 깁니다. 내용을 줄인 뒤 다시 저장해 주세요.`, 422, "textbox_overflow");
     layout.lines.forEach((line, index) => {
-      if (!line) return;
+      if (!line.text) return;
       const displayOrigin = [displayRect.x0 + 6, displayRect.y0 + 7 + layout.size + index * layout.lineHeight];
       const pageOrigin = global.staticPdfDisplayPointToPage(displayOrigin, info.media.width, info.media.height, info.rotation);
       const nativeOrigin = global.staticPdfTopLeftPointToNative(pageOrigin, info.media);
-      const options = { ...nativeOrigin, font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) };
-      page.drawText(line, options);
-      page.drawText(line, { ...options, x: options.x + .18 });
+      const options = { ...nativeOrigin, font: line.font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) };
+      page.drawText(line.text, options);
+      page.drawText(line.text, { ...options, x: options.x + .18 });
     });
   }
 
@@ -8230,11 +8321,24 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const pdf = await PDFLib.PDFDocument.load(sourceBytes.slice(), { updateMetadata: false, ignoreEncryption: false });
     const pages = pdf.getPages();
     const imageRecords = await global.staticImageOverlayRuntime?.embedIntoPdf(pdf, pages, PDFLib, { pdfName: "" }) || [];
-    let font = null;
+    const fonts = {};
+    const neededLanguages = mode === "KRCN" ? ["KR", "CN"] : [mode];
     if (included.some((comment) => quickCommentBody(comment, mode))) {
-      const fontBytes = await quickEnsureFont(mode === "CN" ? "CN" : "KR");
-      pdf.registerFontkit(global.fontkit);
-      font = await pdf.embedFont(fontBytes, { subset: false });
+      let fontkitRegistered = false;
+      for (const language of neededLanguages) {
+        const hasText = included.some((comment) => language === "CN" ? String(comment.cn || "").trim() : String(comment.kr || "").trim());
+        if (!hasText) continue;
+        const fontBytes = await quickEnsureFont(language);
+        if (!fontkitRegistered) {
+          pdf.registerFontkit(global.fontkit);
+          fontkitRegistered = true;
+        }
+        // @pdf-lib/fontkit 1.1.1 drops outlines from these variable CJK fonts
+        // when subsetting: text extraction still reports the full string, but
+        // only a few glyphs are visibly rendered. Full embedding is larger,
+        // but preserves every Korean / Simplified Chinese glyph reliably.
+        fonts[language] = await pdf.embedFont(fontBytes, { subset: false });
+      }
     }
 
     for (const comment of included) {
@@ -8264,11 +8368,19 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       }
 
       const body = quickCommentBody(comment, mode);
-      if (body && font) {
-        const preferredTextRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
-          ? comment.text_rect.map(Number)
-          : quickDefaultTextRect(box, media);
-        const textRect = quickCompactTextRect(font, body, preferredTextRect, media);
+      const segments = quickCommentSegments(comment, mode, fonts);
+      if (body && segments.length) {
+        const displayMedia = quickDisplayMedia(media, rotation);
+        const markDisplay = global.staticPdfDisplayRect(box, media.width, media.height, rotation);
+        const preferredDisplay = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
+          ? global.staticPdfDisplayRect(comment.text_rect.map(Number), media.width, media.height, rotation)
+          : (() => {
+            const value = quickDefaultTextRect(quickRectArray(markDisplay), displayMedia);
+            return { x0: value[0], y0: value[1], x1: value[2], y1: value[3] };
+          })();
+        const compactDisplay = quickCompactTextRect(segments, quickRectArray(preferredDisplay), displayMedia);
+        const display = { x0: compactDisplay[0], y0: compactDisplay[1], x1: compactDisplay[2], y1: compactDisplay[3] };
+        const textRect = quickDisplayRectToPage(display, media, rotation);
         const textNative = global.toPdfLibRect(textRect, media.height);
         textNative.x += media.x;
         textNative.y += media.y;
@@ -8281,8 +8393,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
         page.drawLine({ start: quickPointToNative(markCenter, media), end: quickPointToNative(textEdge, media), color, thickness: .85, opacity: .8 });
         page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, .902, 0), opacity: .97, borderColor: PDFLib.rgb(.77, .57, 0), borderWidth: 1.1 });
-        const display = global.staticPdfDisplayRect(textRect, media.width, media.height, rotation);
-        quickDisplayText(page, font, body, display, info, PDFLib.rgb(.04, .04, .04), PDFLib, comment.no);
+        quickDisplayText(page, segments, display, info, PDFLib.rgb(.04, .04, .04), PDFLib, comment.no);
       }
     }
 
@@ -8297,7 +8408,67 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return { filename: version.filename, bytes: output.byteLength, comments: included.length, images: imageRecords.length, image_records: imageRecords, language: mode };
   }
 
-  async function staticQuickExportPdf(language) {
+  function quickShowIncompleteCnDialog(mode, count, detail = "") {
+    const dialog = document.querySelector("#quick-cn-dialog");
+    const copy = document.querySelector("#quick-cn-dialog-copy");
+    const incomplete = dialog?.querySelector('[value="incomplete"]');
+    const imageWarning = dialog?.querySelector(".quick-cn-image-warning");
+    if (!dialog || !copy || !incomplete) return Promise.resolve("cancel");
+    const outcome = mode === "CN"
+      ? `계속 저장하면 해당 ${count}건은 글 없이 도형만 표시됩니다.`
+      : `계속 저장하면 해당 ${count}건은 한국어만 표시되어 완전한 병기본이 아닙니다.`;
+    copy.textContent = [`한국어가 있는 코멘트 중 중문이 비어 있는 항목이 ${count}건입니다.`, detail, outcome].filter(Boolean).join(" ");
+    incomplete.textContent = mode === "CN" ? "글 없이 도형만 저장" : "중문 없이 한국어만 저장";
+    if (imageWarning) imageWarning.hidden = !(state?.imageOverlays || []).some(imageMatchesActivePdf);
+    dialog.returnValue = "cancel";
+    return new Promise((resolve) => {
+      dialog.addEventListener("close", () => resolve(dialog.returnValue || "cancel"), { once: true });
+      dialog.showModal();
+    });
+  }
+
+  function quickOpenTranslationSettings(mode = "") {
+    QUICK_PENDING_EXPORT_MODE = mode;
+    if (typeof showSettings === "function") showSettings();
+    else staticToast("API 키 설정 필요", "OpenAI API 키를 설정한 뒤 다시 시도해 주세요.", "error", 7000);
+  }
+
+  async function quickTranslateMissing() {
+    const translated = await staticRunTranslation();
+    const ledger = await staticLoadLedger();
+    const missing = quickCnMissing(quickExportComments(ledger));
+    if (typeof adoptLedger === "function") adoptLedger(ledger);
+    if (typeof renderDerivedUI === "function") renderDerivedUI();
+    return { translated, ledger, missing };
+  }
+
+  async function staticQuickPrepareChinese() {
+    await flushPendingCommentSaves();
+    let ledger = await staticLoadLedger();
+    if (quickAutoIncludeCompleted(ledger)) {
+      await staticSaveLedger(ledger);
+      if (typeof adoptLedger === "function") adoptLedger(ledger);
+    }
+    const missing = quickCnMissing(quickExportComments(ledger));
+    if (!missing.length) {
+      staticToast("중문 준비 완료", "한국어가 있는 모든 코멘트에 중문이 입력되어 있습니다.", "success");
+      return { ok: true, translated: 0, missing: [] };
+    }
+    if (!staticGetApiKey()) {
+      staticToast("API 키 설정 필요", `중문이 비어 있는 ${missing.length}건을 자동번역하려면 API 키를 설정해 주세요.`, "info", 7000);
+      quickOpenTranslationSettings();
+      return { ok: false, translated: 0, missing };
+    }
+    staticToast("중문 자동번역 중", `${missing.length}건을 번역합니다.`, "info", 5000);
+    const result = await quickTranslateMissing();
+    if (result.translated.failures?.length || result.missing.length) {
+      throw new StaticApiError(`자동번역 미완료 · 남은 ${result.missing.length}건 · 실패 배치 ${result.translated.failures?.length || 0}건`, 502, "quick_translation_incomplete");
+    }
+    staticToast("중문 자동번역 완료", `${result.translated.translated}건을 반영했습니다.`, "success", 7000);
+    return { ok: true, translated: result.translated.translated, missing: [] };
+  }
+
+  async function staticQuickExportPdf(language, options = {}) {
     const requestedMode = String(language || "KR").toUpperCase();
     const mode = ["CN", "KRCN"].includes(requestedMode) ? requestedMode : "KR";
     const modeLabel = mode === "CN" ? "중문" : mode === "KRCN" ? "한·중 병기" : "한글";
@@ -8315,24 +8486,28 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         let included = quickExportComments(ledger);
         let missing = quickCnMissing(included);
         if (missing.length) {
+          let translationDetail = "";
           if (staticGetApiKey()) {
             staticToast("중문 자동번역 중", `${missing.length}건을 번역한 뒤 PDF를 바로 저장합니다.`, "info", 5000);
             try {
-              const translated = await staticRunTranslation();
-              ledger = await staticLoadLedger();
+              const result = await quickTranslateMissing();
+              ledger = result.ledger;
               included = quickExportComments(ledger);
-              missing = quickCnMissing(included);
-              if (typeof adoptLedger === "function") adoptLedger(ledger);
-              if (typeof renderDerivedUI === "function") renderDerivedUI();
-              if (translated.failures?.length || missing.length) {
-                staticToast("일부 중문 없이 저장", `번역되지 않은 ${missing.length}건은 도형만 포함합니다.`, "info", 6500);
-              }
+              missing = result.missing;
+              if (result.translated.failures?.length || missing.length) translationDetail = `자동번역 미완료: 남은 ${missing.length}건, 실패 배치 ${result.translated.failures?.length || 0}건.`;
             } catch (error) {
-              staticToast("자동번역 생략", `${error.message} · 중문이 없는 표시는 도형만 포함합니다.`, "info", 6500);
+              translationDetail = `자동번역 실패: ${error.message}`;
             }
           } else {
-            const detail = mode === "KRCN" ? "중문이 없는 표시는 한국어만 넣습니다." : "중문이 없는 표시는 도형만 넣습니다.";
-            staticToast("API 키 없이 PDF 저장", detail, "info", 5500);
+            translationDetail = "OpenAI API 키가 설정되어 있지 않습니다.";
+          }
+          if (missing.length && !options.allowIncomplete) {
+            const action = await quickShowIncompleteCnDialog(mode, missing.length, translationDetail);
+            if (action === "settings") {
+              quickOpenTranslationSettings(mode);
+              return;
+            }
+            if (action !== "incomplete") return;
           }
         }
       }
@@ -8350,6 +8525,15 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const input = document.querySelector("#quick-pdf-input");
     if (!zone || !input || zone.dataset.bound === "1") return;
     zone.dataset.bound = "1";
+    const settingsDialog = document.querySelector("#settings-dialog");
+    if (settingsDialog && settingsDialog.dataset.quickResumeBound !== "1") {
+      settingsDialog.dataset.quickResumeBound = "1";
+      settingsDialog.addEventListener("close", () => {
+        const mode = QUICK_PENDING_EXPORT_MODE;
+        QUICK_PENDING_EXPORT_MODE = "";
+        if (mode && staticGetApiKey()) setTimeout(() => staticQuickExportPdf(mode), 0);
+      });
+    }
     const open = (file) => openQuickPdf(file).catch((error) => {
       if (error?.name !== "AbortError") staticToast("PDF 열기 실패", error.message, "error", 8000);
       input.value = "";
@@ -8370,6 +8554,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
 
   global.openQuickPdf = openQuickPdf;
   global.staticQuickExportPdf = staticQuickExportPdf;
+  global.staticQuickPrepareChinese = () => staticQuickPrepareChinese().catch((error) => staticToast("중문 자동번역 실패", error.message, "error", 8000));
   global.staticCreateQuickReviewPdf = createQuickReviewPdf;
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindQuickReviewUi, { once: true });
   else bindQuickReviewUi();
