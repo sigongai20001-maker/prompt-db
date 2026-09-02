@@ -484,6 +484,9 @@ kbd {
 .interaction-mode-controls .tool-button { height: 30px; padding: 0 8px; }
 .rect-icon, .circle-icon { width: 13px; height: 10px; border: 1.5px solid currentColor; }
 .circle-icon { border-radius: 50%; }
+.paste-image-button { color: var(--ink-700); }
+.paste-image-button kbd { min-width: auto; height: 18px; padding: 0 4px; color: var(--ink-600); background: white; border-color: var(--line-strong); font-size: 8px; }
+.paste-image-icon { font-size: 15px; line-height: 1; }
 
 .filter-drawer {
   z-index: 25;
@@ -544,6 +547,10 @@ kbd {
 .annotation-layer.mode-draw { cursor: crosshair; }
 .annotation-layer.mode-draw .annotation-group,
 .annotation-layer.mode-draw .annotation-group * { pointer-events: none !important; }
+.annotation-layer.mode-draw .pasted-image-group,
+.annotation-layer.mode-draw .pasted-image-group *,
+.annotation-layer.mode-draw .image-overlay-group,
+.annotation-layer.mode-draw .image-overlay-group * { pointer-events: none !important; }
 .annotation-layer.mode-select { cursor: default; }
 .annotation-shape { vector-effect: non-scaling-stroke; fill: transparent; stroke-width: 2.2; pointer-events: stroke; cursor: pointer; }
 .annotation-shape.severity-Critical { stroke: var(--critical); }
@@ -556,6 +563,24 @@ kbd {
 .annotation-hit { fill: transparent; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: move; }
 .resize-handle { fill: white; stroke: var(--ink-900); stroke-width: 1.3; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
 .resize-handle[data-handle="ne"], .resize-handle[data-handle="sw"] { cursor: nesw-resize; }
+.pasted-image-group, .image-overlay-group { outline: none; }
+.pasted-image, .image-overlay, .pasted-image-overlay { pointer-events: none; user-select: none; }
+.pasted-image-hit, .image-overlay-hit { fill: transparent; stroke: transparent; pointer-events: all; cursor: move; }
+.pasted-image-outline, .image-overlay-outline, .image-selection-border { fill: none; stroke: var(--minor); stroke-width: 1.6; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0; }
+.pasted-image-group.selected .pasted-image-outline,
+.pasted-image-group:focus-visible .pasted-image-outline,
+.image-overlay-group.selected .image-overlay-outline,
+.image-overlay-group:focus-visible .image-overlay-outline,
+.image-overlay-group.selected .image-selection-border,
+.image-overlay-group:focus-visible .image-selection-border { opacity: 1; filter: drop-shadow(0 0 2px rgba(255,255,255,.95)); }
+.image-resize-handle { display: none; fill: white; stroke: var(--minor); stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: all; cursor: nwse-resize; }
+.image-resize-handle[data-handle="ne"], .image-resize-handle[data-handle="sw"] { cursor: nesw-resize; }
+.image-resize-hit { display: none; fill: transparent; stroke: transparent; pointer-events: all; cursor: nwse-resize; }
+.image-resize-hit[data-handle="ne"], .image-resize-hit[data-handle="sw"] { cursor: nesw-resize; }
+.pasted-image-group.selected .image-resize-handle,
+.pasted-image-group.selected .image-resize-hit,
+.image-overlay-group.selected .image-resize-handle,
+.image-overlay-group.selected .image-resize-hit { display: block; }
 .annotation-label rect { fill: var(--ink-950); opacity: .9; }
 .annotation-label text { fill: white; font-size: 10px; font-weight: 800; pointer-events: none; }
 .viewer-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 30px; color: #aab2c0; text-align: center; }
@@ -580,6 +605,11 @@ kbd {
 .compact-heading { align-items: center; margin-bottom: 12px; }
 .compact-heading h2 { font-size: 14px; }
 .editor-empty { width: 100%; min-width: 0; min-height: 118px; display: grid; place-items: center; padding: 18px 12px; color: var(--ink-500); text-align: center; background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 7px; font-size: 11px; }
+.image-selection-panel { display: grid; gap: 10px; padding: 12px; color: var(--ink-700); background: #eef3fb; border: 1px solid #c8d6ef; border-radius: 7px; }
+.image-selection-panel > div { display: grid; gap: 4px; }
+.image-selection-panel strong { color: var(--minor); font-size: 12px; }
+.image-selection-panel span { color: var(--ink-600); font-size: 10px; line-height: 1.5; }
+.image-selection-panel .button { justify-self: end; min-height: 32px; padding: 5px 9px; font-size: 10px; }
 .comment-editor, #comment-form, .dynamic-fields { width: 100%; min-width: 0; }
 .dynamic-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dynamic-fields .field-full { grid-column: 1 / -1; }
@@ -630,6 +660,7 @@ kbd {
 .export-dock { padding: 10px 12px 12px; background: #f8f8f9; border-top: 1px solid var(--line); box-shadow: 0 -5px 18px rgba(17,26,44,.06); }
 .gate-warning { min-height: 20px; margin-bottom: 6px; color: var(--ink-600); font-size: 10px; text-align: center; }
 .gate-warning.alert { color: var(--critical); font-weight: 800; }
+.image-export-note { margin: -2px 0 7px; padding: 5px 7px; color: #245d47; text-align: center; background: #e8f6ef; border: 1px solid #b9dfcc; border-radius: 5px; font-size: 9px; font-weight: 750; }
 .export-buttons { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 5px; }
 .button.export { min-height: 34px; padding: 5px 4px; font-size: 10px; }
 .export-dock > .wide { min-height: 33px; margin-top: 6px; padding: 5px; font-size: 10px; }
@@ -810,23 +841,29 @@ body.quick-mode #reply-import-result { display: none !important; }
 body.quick-mode #quick-workflow { display: flex; }
 body.quick-mode #quick-export-buttons { display: grid; }
 body.quick-mode #export-warning { margin-bottom: 6px; }
-.annotation-shape.shape-polygon, .annotation-shape.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.annotation-shape.shape-polygon, .annotation-shape.shape-polyline, .annotation-shape.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .annotation-shape.shape-freehand { stroke-width: 2.8; }
-.annotation-hit.shape-polygon, .annotation-hit.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.annotation-hit.shape-polygon, .annotation-hit.shape-polyline, .annotation-hit.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .annotation-text-link { pointer-events: none; stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .85; }
 .annotation-textbox { cursor: default; filter: drop-shadow(0 2px 5px rgba(15, 24, 39, .18)); }
-.annotation-textbox .textbox-shell { fill: rgba(255,255,255,.96); stroke-width: 1.4; }
+.annotation-textbox .textbox-shell { fill: #ffe600; stroke: #c59600; stroke-width: 1.2; pointer-events: all; cursor: move; }
+.textbox-move-handle { opacity: 0; pointer-events: none; cursor: move; transition: opacity .12s ease; }
+.textbox-move-handle circle { fill: #6b5200; stroke: white; stroke-width: 1; }
+.textbox-move-handle text { fill: white; font-size: 9px; font-weight: 900; pointer-events: none; }
+.annotation-textbox:hover .textbox-move-handle,
+.annotation-group.selected .textbox-move-handle,
+.textbox-move-handle:focus-visible { opacity: 1; pointer-events: all; }
 .annotation-textbox .textbox-grip { cursor: move; opacity: .96; }
 .annotation-textbox .textbox-grip-label { fill: white; font-size: 9px; font-weight: 800; pointer-events: none; }
 .annotation-textbox foreignObject { overflow: visible; }
 .annotation-text-editor {
-  width: 100%; height: 100%; box-sizing: border-box; overflow: auto; padding: 7px 8px;
-  color: #182235; background: rgba(255,255,255,.96); border: 0; outline: none;
-  font: 11px/1.42 "Noto Sans KR", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
+  width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; padding: 3px 5px;
+  color: #111; background: transparent; border: 0; outline: none;
+  font: 800 12px/1.42 "Noto Sans KR", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
 }
-.annotation-text-editor:empty::before { content: attr(data-placeholder); color: #8791a1; pointer-events: none; }
-.annotation-text-editor:focus { box-shadow: inset 0 0 0 2px rgba(47,111,208,.28); }
-.annotation-group.selected .annotation-textbox .textbox-shell { stroke-width: 2.2; }
+.annotation-text-editor:empty::before { content: attr(data-placeholder); color: rgba(17,17,17,.52); pointer-events: none; }
+.annotation-text-editor:focus { box-shadow: inset 0 0 0 2px rgba(87,63,0,.32); }
+.annotation-group.selected .annotation-textbox .textbox-shell { stroke-width: 2; }
 .polygon-preview { fill: none; stroke-dasharray: 5 4; opacity: .8; pointer-events: none; }
 @media (max-width: 1180px) {
   .overlay-language-controls .tool-button { font-size: 0; }
@@ -964,7 +1001,12 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             <button id="rect-tool-btn" class="tool-button active" type="button" aria-pressed="true" title="사각형 (R)"><span class="rect-icon" aria-hidden="true"></span> 사각형</button>
             <button id="circle-tool-btn" class="tool-button" type="button" aria-pressed="false" title="원 (C)"><span class="circle-icon" aria-hidden="true"></span> 원</button>
             <button id="polygon-tool-btn" class="tool-button" type="button" aria-pressed="false" title="폴리곤 (P) — 점을 찍고 Enter 또는 더블클릭으로 완료">⌁ 폴리곤</button>
+            <button id="polyline-tool-btn" class="tool-button" type="button" aria-pressed="false" title="열린 꺾은선 (Q) — 점을 찍고 Enter 또는 더블클릭으로 완료">⌁ 꺾은선</button>
             <button id="freehand-tool-btn" class="tool-button" type="button" aria-pressed="false" title="자유연필 (L) — 드래그하여 그리기">✎ 연필</button>
+          </div>
+          <div class="toolbar-divider" aria-hidden="true"></div>
+          <div class="toolbar-group image-tools" aria-label="클립보드 이미지">
+            <button id="paste-image-btn" class="tool-button paste-image-button" type="button" aria-keyshortcuts="Control+V Meta+V" aria-describedby="image-paste-help" title="클립보드 이미지를 현재 PDF 페이지에 붙여넣기 (Ctrl+V)"><span class="paste-image-icon" aria-hidden="true">▧</span> 이미지 붙여넣기 <kbd>Ctrl+V</kbd></button>
           </div>
           <div class="toolbar-divider" aria-hidden="true"></div>
           <div class="toolbar-group overlay-language-controls" aria-label="텍스트 박스 언어">
@@ -1013,11 +1055,12 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             <div id="pdf-stage" class="pdf-stage" hidden>
               <div id="page-surface" class="page-surface">
                 <canvas id="pdf-canvas" aria-label="현재 PDF 페이지"></canvas>
-                <svg id="annotation-layer" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="도면 지적 도형 레이어" tabindex="0"></svg>
+                <svg id="annotation-layer" class="annotation-layer" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="도면 마크업 및 붙여넣은 이미지 레이어" aria-describedby="viewer-shortcut-hint image-paste-help" tabindex="0"></svg>
               </div>
             </div>
             <div id="viewer-loading" class="viewer-loading" hidden role="status"><span class="spinner"></span><span id="viewer-loading-text">페이지 렌더링 중</span></div>
-            <div class="viewer-hint"><kbd>R</kbd> 사각 · <kbd>C</kbd> 원 · <kbd>P</kbd> 폴리곤 · <kbd>L</kbd> 연필 · <kbd>Enter</kbd> 폴리곤 완료 · <kbd>Esc</kbd> 취소</div>
+            <div id="viewer-shortcut-hint" class="viewer-hint"><kbd>Ctrl+V</kbd> 이미지 · 드래그 이동 · 모서리 크기 · <kbd>Del</kbd> 삭제 · <kbd>R</kbd> 사각 · <kbd>C</kbd> 원 · <kbd>P</kbd> 폴리곤 · <kbd>Q</kbd> 꺾은선 · <kbd>L</kbd> 연필 · <kbd>Esc</kbd> 취소</div>
+            <p id="image-paste-help" class="sr-only">PDF 도면을 선택한 뒤 Ctrl+V로 클립보드 이미지를 붙여넣습니다. 선택한 이미지는 드래그하거나 화살표 키로 이동하고, 네 모서리로 크기를 조절하며, Delete 키로 삭제할 수 있습니다. 텍스트 입력 중에는 일반 텍스트 붙여넣기가 유지됩니다.</p>
           </section>
 
           <aside class="inspector" aria-label="코멘트 편집기">
@@ -1040,6 +1083,13 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
                   <span id="selected-status-chip" class="status-chip pending" hidden>pending</span>
                 </div>
                 <div id="editor-empty" class="editor-empty">마킹 도구로 수정 부위를 표시하면 이동·편집 가능한 텍스트 박스가 자동으로 붙습니다.</div>
+                <div id="image-selection-panel" class="image-selection-panel" role="status" aria-live="polite" hidden>
+                  <div>
+                    <strong>붙여넣은 이미지 선택됨</strong>
+                    <span>드래그 또는 화살표 키로 이동하고 네 모서리에서 크기를 조절하세요.</span>
+                  </div>
+                  <button id="delete-image-btn" class="button danger-text compact" type="button">이미지 삭제</button>
+                </div>
                 <form id="comment-form" hidden autocomplete="off">
                   <div id="dynamic-fields" class="dynamic-fields"></div>
                   <div class="editor-actions">
@@ -1061,6 +1111,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
 
             <div class="export-dock">
               <div id="export-warning" class="gate-warning">확정할 코멘트를 추가해 주세요.</div>
+              <div id="image-export-note" class="image-export-note" role="status" hidden>붙여넣은 이미지는 현재 배치 그대로 PDF에 포함됩니다.</div>
               <div id="quick-export-buttons" class="quick-export-buttons" hidden>
                 <button id="quick-export-kr" class="button export primary" type="button">한글 PDF 다운로드</button>
                 <button id="quick-export-cn" class="button export" type="button">중문 PDF 다운로드</button>
@@ -1345,6 +1396,11 @@ const state = {
   relatedDrawingWarningsConfirmed: new Set(),
   quickMode: false,
   overlayLanguage: "KR",
+  imageOverlays: [],
+  selectedImageId: null,
+  imagePasteAnchorViewport: null,
+  imagePasteAnchorPage: null,
+  imagePasteAnchorPdf: null,
 };
 
 function announce(message) {
@@ -1440,6 +1496,7 @@ function currentPageMeta() {
 }
 
 function severityColor(value) { return COLORS[value] || "#59647A"; }
+function statusDisplay(value) { return ({ pending: "작성 중", confirmed: "PDF 포함", dropped: "PDF 제외" })[value] || String(value || ""); }
 
 function loadScript(source) {
   return new Promise((resolve, reject) => {
@@ -1525,6 +1582,10 @@ async function openSubmission(path, create = false, file = "") {
     state.relatedDrawingWarningsConfirmed.clear();
     state.activePdf = data.ledger.source_pdf || state.pdfs[0]?.name || "";
     state.selectedNo = null;
+    state.selectedImageId = null;
+    state.imagePasteAnchorViewport = null;
+    state.imagePasteAnchorPage = null;
+    state.imagePasteAnchorPdf = null;
     state.repeatEntryActive = false;
     state.replyImportResult = null;
     state.page = 1;
@@ -1547,6 +1608,7 @@ async function openSubmission(path, create = false, file = "") {
     if (quickWorkflow) quickWorkflow.hidden = !state.quickMode;
     const quickExports = $("#quick-export-buttons");
     if (quickExports) quickExports.hidden = !state.quickMode;
+    await loadImageOverlays();
     renderDerivedUI();
     const supportPromise = Promise.allSettled([loadGlossary(), loadConfig()]);
     if (data.needs_zone || data.needs_submit_date) showMetadataDialog(data.needs_zone, data.needs_submit_date);
@@ -2408,6 +2470,10 @@ function updatePageControls() {
 async function goToPage(number) {
   const next = Math.min(Math.max(1, Number(number) || 1), state.pageCount || 1);
   if (next === state.page && state.viewport) return;
+  state.selectedImageId = null;
+  state.imagePasteAnchorViewport = null;
+  state.imagePasteAnchorPage = null;
+  state.imagePasteAnchorPdf = null;
   await renderPage(next, { keepScale: !state.fitWidth });
 }
 
@@ -2592,15 +2658,15 @@ function defaultTextRect(markRect) {
     const meta = currentPageMeta();
     const pageWidth = Number(meta?.unrotated_width || meta?.width || 1000);
     const pageHeight = Number(meta?.unrotated_height || meta?.height || 1000);
-    const width = Math.min(190, pageWidth * .38);
-    const height = Math.min(76, pageHeight * .22);
+    const width = Math.min(110, pageWidth * .28);
+    const height = Math.min(34, pageHeight * .12);
     const x0 = markRect[2] + 12 + width <= pageWidth ? markRect[2] + 12 : Math.max(0, markRect[0] - width - 12);
     const y0 = Math.max(0, Math.min(pageHeight - height, markRect[1]));
     return [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
   }
   const [x0, y0, x1, y1] = rectToViewport(markRect);
-  const width = Math.max(130, Math.min(230, state.viewport.width * .34));
-  const height = Math.max(62, Math.min(96, state.viewport.height * .2));
+  const width = Math.max(96, Math.min(120, state.viewport.width * .22));
+  const height = 34;
   let left = x1 + 14;
   let top = y0;
   if (left + width > state.viewport.width - 8) left = Math.max(8, x0 - width - 14);
@@ -2612,6 +2678,33 @@ function resolvedTextRect(comment) {
   return Array.isArray(comment?.text_rect) && comment.text_rect.length === 4
     ? comment.text_rect.map(Number)
     : defaultTextRect(comment.rect);
+}
+
+let textBoxMeasureCanvas = null;
+function compactTextBoxSize(value, placeholder = "") {
+  textBoxMeasureCanvas ||= document.createElement("canvas");
+  const context = textBoxMeasureCanvas.getContext("2d");
+  context.font = '800 12px "Noto Sans KR", "Microsoft YaHei", sans-serif';
+  const source = String(value || "").replace(/\r/g, "") || String(placeholder || "");
+  const maxTextWidth = Math.max(110, Math.min(250, Number(state.viewport?.width || 900) * .3));
+  const lines = [];
+  for (const paragraph of source.split("\n")) {
+    if (!paragraph) { lines.push(""); continue; }
+    let line = "";
+    for (const character of Array.from(paragraph)) {
+      const candidate = line + character;
+      if (line && context.measureText(candidate).width > maxTextWidth) {
+        lines.push(line);
+        line = character;
+      } else line = candidate;
+    }
+    lines.push(line);
+  }
+  const measured = Math.max(58, ...lines.map((line) => context.measureText(line || " ").width));
+  return {
+    width: Math.ceil(Math.min(maxTextWidth, measured) + 16),
+    height: Math.ceil(Math.max(30, lines.length * 17 + 10)),
+  };
 }
 
 function captureGestureFrame(layer) {
@@ -2897,6 +2990,142 @@ function supportsExtendedMarkup() {
   return Boolean(window.staticPortCore);
 }
 
+async function normalizeClipboardImage(blob) {
+  if (!(blob instanceof Blob) || !String(blob.type || "").startsWith("image/")) {
+    throw new Error("클립보드에서 이미지 데이터를 찾지 못했습니다.");
+  }
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const width = Math.max(1, Number(bitmap.width));
+    const height = Math.max(1, Number(bitmap.height));
+    if (["image/png", "image/jpeg"].includes(blob.type)) return { blob, width, height };
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    const normalized = await new Promise((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error("이미지를 PNG로 변환하지 못했습니다.")), "image/png");
+    });
+    canvas.width = 0;
+    canvas.height = 0;
+    return { blob: normalized, width, height };
+  } finally {
+    bitmap.close?.();
+  }
+}
+
+async function addClipboardImage(blob) {
+  const runtime = imageRuntime();
+  if (!runtime || !state.pdfDoc || !state.viewport) {
+    toast("PDF를 먼저 열어 주세요", "원본 PDF를 연 뒤 페이지를 클릭하고 이미지를 붙여넣을 수 있습니다.", "error");
+    return null;
+  }
+  if (!state.pageLayoutStable || Number(state.layoutStablePage) !== Number(state.page)) {
+    toast("페이지 위치 안정화 중", "페이지가 완전히 표시된 뒤 다시 붙여넣어 주세요.", "error");
+    return null;
+  }
+  if (state.gesture) cancelActiveGesture("image-paste", false);
+  try {
+    const normalized = await normalizeClipboardImage(blob);
+    const viewportWidth = Number(state.viewport.width);
+    const viewportHeight = Number(state.viewport.height);
+    let width = Math.min(360, Math.max(110, viewportWidth * .32));
+    let height = width * normalized.height / normalized.width;
+    const maxHeight = Math.max(90, viewportHeight * .45);
+    if (height > maxHeight) {
+      const ratio = maxHeight / height;
+      width *= ratio;
+      height = maxHeight;
+    }
+    const anchor = state.imagePasteAnchorPage === Number(state.page) && state.imagePasteAnchorPdf === state.activePdf && Array.isArray(state.imagePasteAnchorViewport)
+      ? state.imagePasteAnchorViewport
+      : [viewportWidth / 2, viewportHeight / 2];
+    const x0 = Math.max(0, Math.min(viewportWidth - width, anchor[0] - width / 2));
+    const y0 = Math.max(0, Math.min(viewportHeight - height, anchor[1] - height / 2));
+    const rect = viewportRectToFitz([x0, y0, x0 + width, y0 + height]);
+    const item = await runtime.add({
+      blob: normalized.blob,
+      pdf: state.activePdf,
+      page: state.page,
+      rect,
+      pixelWidth: normalized.width,
+      pixelHeight: normalized.height,
+    });
+    state.imageOverlays.push(item);
+    state.selectedImageId = item.id;
+    state.selectedNo = null;
+    state.commentTemplateLinks.delete("draft");
+    state.draft = null;
+    state.repeatEntryActive = false;
+    setInteractionMode("select", { announce: false, render: false });
+    renderDerivedUI();
+    toast("이미지를 붙였습니다", "드래그해 이동하고 모서리의 파란 점으로 크기를 조절할 수 있습니다.", "success");
+    announce("클립보드 이미지를 PDF 페이지에 붙였습니다.");
+    return item;
+  } catch (error) {
+    toast("이미지 붙여넣기 실패", error.message, "error", 7000);
+    return null;
+  }
+}
+
+function clipboardImageFromEvent(event) {
+  const items = [...(event.clipboardData?.items || [])];
+  const entry = items.find((item) => item.kind === "file" && String(item.type || "").startsWith("image/"));
+  return entry?.getAsFile?.() || null;
+}
+
+async function handleClipboardPaste(event) {
+  if ($("#workspace-view").hidden) return;
+  const target = event.target instanceof Element ? event.target : null;
+  const blob = clipboardImageFromEvent(event);
+  if (!blob) return;
+  if (target?.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox']")) {
+    event.preventDefault();
+    toast("이미지는 PDF에 붙여넣어 주세요", "PDF 페이지를 클릭한 뒤 Ctrl+V를 누르면 이미지로 배치됩니다.", "info", 6500);
+    return;
+  }
+  event.preventDefault();
+  await addClipboardImage(blob);
+}
+
+async function pasteImageFromClipboard() {
+  if (!navigator.clipboard?.read) {
+    $("#annotation-layer")?.focus({ preventScroll: true });
+    toast("Ctrl+V로 붙여넣어 주세요", "PDF를 클릭한 뒤 Ctrl+V를 누르면 클립보드 이미지가 들어갑니다.", "info", 6500);
+    return;
+  }
+  try {
+    const clipboardItems = await navigator.clipboard.read();
+    for (const item of clipboardItems) {
+      const type = item.types.find((value) => value.startsWith("image/"));
+      if (type) {
+        await addClipboardImage(await item.getType(type));
+        return;
+      }
+    }
+    throw new Error("클립보드에 이미지가 없습니다.");
+  } catch (error) {
+    $("#annotation-layer")?.focus({ preventScroll: true });
+    toast("Ctrl+V로 붙여넣어 주세요", `${error.message} PDF를 클릭한 뒤 Ctrl+V를 눌러도 됩니다.`, "info", 7000);
+  }
+}
+
+async function deleteSelectedImageOverlay() {
+  const item = selectedImageOverlay();
+  if (!item) return false;
+  if (!confirm("선택한 붙여넣기 이미지를 삭제할까요?")) return true;
+  try {
+    await imageRuntime()?.remove(item.id);
+    state.imageOverlays = state.imageOverlays.filter((entry) => entry.id !== item.id);
+    state.selectedImageId = null;
+    renderDerivedUI();
+    toast("이미지를 삭제했습니다", "PDF 원본 파일은 변경되지 않았습니다.", "success");
+  } catch (error) {
+    toast("이미지 삭제 실패", error.message, "error", 7000);
+  }
+  return true;
+}
+
 async function finishOverlayTextEntry(editor, comment, field) {
   if (!editor || !comment?.no || editor.dataset.committing === "true") return false;
   const value = editor.innerText.replace(/\n$/, "");
@@ -2923,7 +3152,7 @@ async function finishOverlayTextEntry(editor, comment, field) {
     state.selectedNo = null;
     startRepeatEntry({ announce: false });
     requestAnimationFrame(() => $("#annotation-layer")?.focus({ preventScroll: true }));
-    const toolName = { rect: "사각형", circle: "원", polygon: "폴리곤", freehand: "자유연필" }[state.activeTool] || state.activeTool;
+    const toolName = { rect: "사각형", circle: "원", polygon: "폴리곤", polyline: "꺾은선", freehand: "자유연필" }[state.activeTool] || state.activeTool;
     announce(`내용을 저장했습니다. ${toolName}으로 다음 영역을 표시하세요.`);
   } else {
     announce(`코멘트 ${comment.no}번 내용을 저장했습니다.`);
@@ -2935,40 +3164,41 @@ function appendTextBoxOverlay(group, comment, markRect) {
   if (!comment.no) return;
   const language = state.overlayLanguage === "CN" ? "CN" : "KR";
   const field = language === "CN" ? "cn" : "kr";
-  const [tx0, ty0, tx1, ty1] = rectToViewport(resolvedTextRect(comment));
-  const width = Math.max(82, tx1 - tx0);
-  const height = Math.max(42, ty1 - ty0);
+  const placeholder = language === "CN" ? "中文内容输入" : "수정 내용을 입력하세요";
+  const current = rectToViewport(resolvedTextRect(comment));
+  let tx0 = current[0];
+  let ty0 = current[1];
+  let { width, height } = compactTextBoxSize(comment[field], placeholder);
+  tx0 = Math.max(3, Math.min(Number(state.viewport.width) - width - 3, tx0));
+  ty0 = Math.max(3, Math.min(Number(state.viewport.height) - height - 3, ty0));
   const markCenter = [(markRect[0] + markRect[2]) / 2, (markRect[1] + markRect[3]) / 2];
-  const textCenter = [tx0 + width / 2, ty0 + height / 2];
-  const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
-  const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
-  const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
-  group.append(svgElement("line", {
-    x1: markCenter[0], y1: markCenter[1], x2: textEdge[0], y2: textEdge[1],
+  const link = svgElement("line", {
+    x1: markCenter[0], y1: markCenter[1], x2: tx0, y2: ty0,
     class: "annotation-text-link", stroke: severityColor(comment.severity),
-  }));
+  });
+  group.append(link);
 
   const box = svgElement("g", { class: "annotation-textbox", "data-language": language });
-  box.append(svgElement("rect", {
+  const shell = svgElement("rect", {
     class: "textbox-shell", x: tx0, y: ty0, width, height, rx: 5,
-    stroke: severityColor(comment.severity),
-  }));
-  const grip = svgElement("rect", {
-    class: "textbox-grip", x: tx0, y: ty0, width, height: 17, rx: 5,
-    fill: severityColor(comment.severity), tabindex: 0,
+    tabindex: 0,
   });
-  grip.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
-  const gripLabel = svgElement("text", { class: "textbox-grip-label", x: tx0 + 6, y: ty0 + 12 });
-  gripLabel.textContent = `↕ #${comment.no} · ${language}`;
-  box.append(grip, gripLabel);
+  shell.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
+  box.append(shell);
+  const moveHandle = svgElement("g", { class: "textbox-move-handle", tabindex: 0, role: "button", "aria-label": "텍스트 박스 이동" });
+  const moveHandleCircle = svgElement("circle", { cx: tx0 + 2, cy: ty0 + 2, r: 7 });
+  const moveHandleIcon = svgElement("text", { x: tx0 + 2, y: ty0 + 5, "text-anchor": "middle" });
+  moveHandleIcon.textContent = "↕";
+  moveHandle.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
+  moveHandle.append(moveHandleCircle, moveHandleIcon);
 
-  const foreign = svgElement("foreignObject", { x: tx0, y: ty0 + 17, width, height: Math.max(24, height - 17) });
+  const foreign = svgElement("foreignObject", { x: tx0 + 3, y: ty0 + 3, width: Math.max(24, width - 6), height: Math.max(22, height - 6) });
   const editor = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
   editor.className = "annotation-text-editor";
   editor.contentEditable = "true";
   editor.setAttribute("role", "textbox");
   editor.setAttribute("aria-label", `코멘트 ${comment.no} ${language} 내용`);
-  editor.dataset.placeholder = language === "CN" ? "中文内容输入" : "수정 내용을 입력하세요";
+  editor.dataset.placeholder = placeholder;
   editor.textContent = String(comment[field] || "");
   editor.addEventListener("pointerdown", (event) => event.stopPropagation());
   editor.addEventListener("focus", () => {
@@ -2991,6 +3221,27 @@ function appendTextBoxOverlay(group, comment, markRect) {
   editor.addEventListener("input", () => {
     comment[field] = editor.innerText.replace(/\n$/, "");
     if (field === "cn") comment.cn_status = comment.cn.trim() && String(comment.part_cn || "").trim() ? "reviewed" : "empty";
+    ({ width, height } = compactTextBoxSize(comment[field], placeholder));
+    tx0 = Math.max(3, Math.min(Number(state.viewport.width) - width - 3, tx0));
+    ty0 = Math.max(3, Math.min(Number(state.viewport.height) - height - 3, ty0));
+    shell.setAttribute("x", tx0);
+    shell.setAttribute("y", ty0);
+    shell.setAttribute("width", width);
+    shell.setAttribute("height", height);
+    moveHandleCircle.setAttribute("cx", tx0 + 2);
+    moveHandleCircle.setAttribute("cy", ty0 + 2);
+    moveHandleIcon.setAttribute("x", tx0 + 2);
+    moveHandleIcon.setAttribute("y", ty0 + 5);
+    foreign.setAttribute("x", tx0 + 3);
+    foreign.setAttribute("y", ty0 + 3);
+    foreign.setAttribute("width", Math.max(24, width - 6));
+    foreign.setAttribute("height", Math.max(22, height - 6));
+    const textCenter = [tx0 + width / 2, ty0 + height / 2];
+    const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
+    const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
+    link.setAttribute("x2", textCenter[0] + towardMark[0] * edgeScale);
+    link.setAttribute("y2", textCenter[1] + towardMark[1] * edgeScale);
+    comment.text_rect = viewportRectToFitz([tx0, ty0, tx0 + width, ty0 + height]);
     scheduleSave(comment);
     renderGate();
   });
@@ -2999,14 +3250,113 @@ function appendTextBoxOverlay(group, comment, markRect) {
     renderCommentList();
   });
   foreign.append(editor);
-  box.append(foreign);
+  box.append(foreign, moveHandle);
   group.append(box);
+  const textCenter = [tx0 + width / 2, ty0 + height / 2];
+  const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
+  const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
+  link.setAttribute("x2", textCenter[0] + towardMark[0] * edgeScale);
+  link.setAttribute("y2", textCenter[1] + towardMark[1] * edgeScale);
+  const compactRect = viewportRectToFitz([tx0, ty0, tx0 + width, ty0 + height]);
+  if (!Array.isArray(comment.text_rect) || comment.text_rect.some((value, index) => Math.abs(Number(value) - compactRect[index]) >= .25)) {
+    comment.text_rect = compactRect;
+    scheduleSave(comment);
+  }
+}
+
+function imageRuntime() {
+  return window.staticImageOverlayRuntime || null;
+}
+
+function imageMatchesActivePdf(item) {
+  return Boolean(item) && (!item.pdf || item.pdf === state.activePdf || state.quickMode);
+}
+
+function currentPageImages() {
+  return state.imageOverlays.filter((item) => imageMatchesActivePdf(item) && Number(item.page) === Number(state.page));
+}
+
+function selectedImageOverlay() {
+  return state.imageOverlays.find((item) => item.id === state.selectedImageId && imageMatchesActivePdf(item) && Number(item.page) === Number(state.page)) || null;
+}
+
+async function loadImageOverlays() {
+  const runtime = imageRuntime();
+  if (!runtime) {
+    state.imageOverlays = [];
+    return;
+  }
+  try {
+    state.imageOverlays = await runtime.load();
+  } catch (error) {
+    state.imageOverlays = [];
+    console.warn("붙여넣은 이미지 목록을 불러오지 못했습니다.", error);
+    toast("붙여넣은 이미지 확인 실패", error.message, "error", 7000);
+  }
+}
+
+function appendImageOverlays(layer) {
+  currentPageImages().forEach((item) => {
+    if (!Array.isArray(item.rect) || item.rect.length !== 4 || !item.src) return;
+    const [x0, y0, x1, y1] = rectToViewport(item.rect);
+    const width = Math.max(0, x1 - x0);
+    const height = Math.max(0, y1 - y0);
+    if (width < .5 || height < .5) return;
+    const selected = item.id === state.selectedImageId;
+    const group = svgElement("g", {
+      class: `image-overlay-group${selected ? " selected" : ""}`,
+      "data-image-id": item.id,
+      tabindex: 0,
+      role: "img",
+      "aria-label": `붙여넣은 이미지 · ${item.page}페이지`,
+    });
+    const image = svgElement("image", {
+      class: "pasted-image-overlay image-overlay",
+      x: x0,
+      y: y0,
+      width,
+      height,
+      href: item.src,
+      preserveAspectRatio: "none",
+    });
+    image.setAttributeNS("http://www.w3.org/1999/xlink", "href", item.src);
+    const hit = svgElement("rect", { class: "image-overlay-hit", x: x0, y: y0, width, height });
+    image.addEventListener("pointerdown", (event) => beginImageMoveGesture(event, item));
+    hit.addEventListener("pointerdown", (event) => beginImageMoveGesture(event, item));
+    group.append(image, hit);
+    if (selected) {
+      group.append(svgElement("rect", { class: "image-selection-border image-overlay-outline", x: x0, y: y0, width, height }));
+      [["nw", x0, y0], ["ne", x1, y0], ["se", x1, y1], ["sw", x0, y1]].forEach(([name, x, y]) => {
+        const handle = svgElement("rect", {
+          class: "image-resize-handle",
+          "data-handle": name,
+          x: Number(x) - 6,
+          y: Number(y) - 6,
+          width: 12,
+          height: 12,
+          rx: 2,
+        });
+        const resizeHit = svgElement("rect", {
+          class: "image-resize-hit",
+          "data-handle": name,
+          x: Number(x) - 10,
+          y: Number(y) - 10,
+          width: 20,
+          height: 20,
+        });
+        resizeHit.addEventListener("pointerdown", (event) => beginImageResizeGesture(event, item, name));
+        group.append(handle, resizeHit);
+      });
+    }
+    layer.append(group);
+  });
 }
 
 function renderOverlay() {
   const layer = $("#annotation-layer");
   layer.replaceChildren();
   if (!state.viewport) return;
+  appendImageOverlays(layer);
   const drawable = drawableComments();
   const badgeLayout = overlayBadgeLayout(drawable);
   drawable.forEach((comment) => {
@@ -3020,7 +3370,7 @@ function renderOverlay() {
     const group = svgElement("g", { class: `annotation-group${isSelected ? " selected" : ""}`, "data-no": comment.no || "draft" });
     let shapeName;
     let shapeAttrs;
-    if (comment.shape === "polygon" || comment.shape === "freehand") {
+    if (["polygon", "polyline", "freehand"].includes(comment.shape)) {
       const viewportPoints = commentViewportPoints(comment);
       if (!viewportPoints.length) return;
       shapeName = comment.shape === "polygon" ? "polygon" : "polyline";
@@ -3035,7 +3385,7 @@ function renderOverlay() {
     const hit = svgElement(shapeName, { ...shapeAttrs, class: `annotation-hit ${shapeClass}` });
     const shape = svgElement(shapeName, {
       ...shapeAttrs,
-      class: `annotation-shape ${shapeClass} severity-${comment.severity || "Major"} status-${comment.status || "pending"}${comment === state.draft && comment.shape === "polygon" ? " polygon-preview" : ""}`,
+      class: `annotation-shape ${shapeClass} severity-${comment.severity || "Major"} status-${comment.status || "pending"}${comment === state.draft && ["polygon", "polyline"].includes(comment.shape) ? " polygon-preview" : ""}`,
       stroke: severityColor(comment.severity),
     });
     if (comment.no) {
@@ -3115,7 +3465,22 @@ function stopRepeatEntry({ announce: shouldAnnounce = true } = {}) {
 }
 
 function beginDrawGesture(event) {
-  if (event.button !== 0 || event.target !== $("#annotation-layer") || !state.viewport || state.interactionMode !== "draw") return;
+  if (event.button !== 0 || event.target !== $("#annotation-layer") || !state.viewport) return;
+  if (state.interactionMode !== "draw") {
+    const layer = $("#annotation-layer");
+    const frame = captureGestureFrame(layer);
+    if (!frame) return;
+    state.imagePasteAnchorViewport = pointerViewportPoint(event, frame);
+    state.imagePasteAnchorPage = Number(state.page);
+    state.imagePasteAnchorPdf = state.activePdf;
+    state.selectedImageId = null;
+    state.selectedNo = null;
+    state.commentTemplateLinks.delete("draft");
+    state.draft = null;
+    layer.focus({ preventScroll: true });
+    renderDerivedUI();
+    return;
+  }
   if (!state.pageLayoutStable || state.layoutStablePage !== Number(state.page)) {
     toast("페이지 위치 안정화 중", "페이지가 완전히 고정된 뒤 도형을 그릴 수 있습니다.", "error");
     return;
@@ -3148,6 +3513,7 @@ function beginDrawGesture(event) {
   }
   const previousSelectedNo = state.selectedNo;
   state.selectedNo = null;
+  state.selectedImageId = null;
   const retained = state.draft && !state.draft.no ? state.draft : null;
   state.draft = {
     ...defaultComment([startFitz[0], startFitz[1], startFitz[0] + .5, startFitz[1] + .5]),
@@ -3165,13 +3531,13 @@ function beginDrawGesture(event) {
       related_drawings: Array.isArray(retained.related_drawings) ? retained.related_drawings.slice() : [],
     } : {}),
   };
-  if (state.activeTool === "polygon") {
+  if (["polygon", "polyline"].includes(state.activeTool)) {
     const point = roundPagePoint(startFitz);
     state.draft.points = [point];
     state.draft.rect = fitzPointsBounds(state.draft.points);
     state.gesture = { mode: "polygon", pointerId: event.pointerId, points: [point], previewFitz: point, frame, previousSelectedNo, moved: false };
     renderOverlay();
-    announce("폴리곤 시작. 점을 계속 찍고 Enter 또는 더블클릭으로 완료하세요.");
+    announce(`${state.activeTool === "polygon" ? "폴리곤" : "꺾은선"} 시작. 점을 계속 찍고 Enter 또는 더블클릭으로 완료하세요.`);
     return;
   }
   if (state.activeTool === "freehand") state.draft.points = [roundPagePoint(startFitz)];
@@ -3184,6 +3550,7 @@ function beginMoveGesture(event, comment) {
   event.preventDefault();
   event.stopPropagation();
   state.selectedNo = Number(comment.no);
+  state.selectedImageId = null;
   state.commentTemplateLinks.delete("draft");
   state.draft = null;
   const layer = $("#annotation-layer");
@@ -3209,6 +3576,7 @@ function beginResizeGesture(event, comment, handle) {
   event.preventDefault();
   event.stopPropagation();
   state.selectedNo = Number(comment.no);
+  state.selectedImageId = null;
   const layer = $("#annotation-layer");
   const frame = captureGestureFrame(layer);
   if (!frame) return;
@@ -3230,6 +3598,7 @@ function beginTextMoveGesture(event, comment) {
   event.preventDefault();
   event.stopPropagation();
   state.selectedNo = Number(comment.no);
+  state.selectedImageId = null;
   const layer = $("#annotation-layer");
   const frame = captureGestureFrame(layer);
   if (!frame) return;
@@ -3244,6 +3613,52 @@ function beginTextMoveGesture(event, comment) {
   };
   layer.setPointerCapture(event.pointerId);
   renderDynamicForm();
+}
+
+function beginImageMoveGesture(event, item) {
+  if (event.button !== 0 || !item?.id || state.interactionMode !== "select") return;
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedImageId = item.id;
+  state.selectedNo = null;
+  state.commentTemplateLinks.delete("draft");
+  state.draft = null;
+  const layer = $("#annotation-layer");
+  const frame = captureGestureFrame(layer);
+  if (!frame) return;
+  state.gesture = {
+    mode: "image-move",
+    pointerId: event.pointerId,
+    imageId: item.id,
+    frame,
+    startFitz: viewportToFitz(pointerViewportPoint(event, frame)),
+    originalRect: item.rect.map(Number),
+    moved: false,
+  };
+  layer.setPointerCapture(event.pointerId);
+  renderDerivedUI();
+}
+
+function beginImageResizeGesture(event, item, handle) {
+  if (event.button !== 0 || !item?.id || state.interactionMode !== "select") return;
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedImageId = item.id;
+  state.selectedNo = null;
+  const layer = $("#annotation-layer");
+  const frame = captureGestureFrame(layer);
+  if (!frame) return;
+  state.gesture = {
+    mode: "image-resize",
+    pointerId: event.pointerId,
+    imageId: item.id,
+    handle,
+    frame,
+    originalRect: item.rect.map(Number),
+    originalViewportRect: rectToViewport(item.rect),
+    moved: false,
+  };
+  layer.setPointerCapture(event.pointerId);
 }
 
 function handlePointerMove(event) {
@@ -3275,6 +3690,33 @@ function handlePointerMove(event) {
     const dy = point[1] - gesture.startViewport[1];
     gesture.moved ||= Math.hypot(dx, dy) >= 3;
     state.draft.rect = viewportRectToFitz([gesture.startViewport[0], gesture.startViewport[1], point[0], point[1]]);
+  } else if (gesture.mode === "image-move") {
+    const item = selectedImageOverlay();
+    if (!item || item.id !== gesture.imageId) return;
+    const currentFitz = viewportToFitz(point);
+    const dx = currentFitz[0] - gesture.startFitz[0];
+    const dy = currentFitz[1] - gesture.startFitz[1];
+    gesture.moved ||= Math.hypot(dx, dy) >= .8;
+    const meta = currentPageMeta();
+    const maxWidth = Number(meta?.unrotated_width || meta?.width || Infinity);
+    const maxHeight = Number(meta?.unrotated_height || meta?.height || Infinity);
+    const width = gesture.originalRect[2] - gesture.originalRect[0];
+    const height = gesture.originalRect[3] - gesture.originalRect[1];
+    const x0 = Math.max(0, Math.min(maxWidth - width, gesture.originalRect[0] + dx));
+    const y0 = Math.max(0, Math.min(maxHeight - height, gesture.originalRect[1] + dy));
+    item.rect = [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
+  } else if (gesture.mode === "image-resize") {
+    const item = selectedImageOverlay();
+    if (!item || item.id !== gesture.imageId) return;
+    let [x0, y0, x1, y1] = gesture.originalViewportRect;
+    if (gesture.handle.includes("w")) x0 = point[0];
+    if (gesture.handle.includes("e")) x1 = point[0];
+    if (gesture.handle.includes("n")) y0 = point[1];
+    if (gesture.handle.includes("s")) y1 = point[1];
+    if (Math.abs(x1 - x0) >= 12 && Math.abs(y1 - y0) >= 12) {
+      item.rect = viewportRectToFitz([x0, y0, x1, y1]);
+      gesture.moved = true;
+    }
   } else if (gesture.mode === "move") {
     const comment = selectedComment();
     if (!comment) return;
@@ -3372,6 +3814,22 @@ async function handlePointerEnd(event) {
     const created = await createComment(draft);
     setInteractionMode("select", { announce: false });
     if (!created) toast("초안을 보존했습니다", "실패 원인을 확인한 뒤 그리기 모드에서 다시 지정해 주세요.", "error");
+  } else if (["image-move", "image-resize"].includes(gesture.mode)) {
+    const item = state.imageOverlays.find((entry) => entry.id === gesture.imageId);
+    if (!item || !gesture.moved) {
+      renderOverlay();
+      return;
+    }
+    try {
+      const updated = await imageRuntime()?.update(item);
+      if (updated) Object.assign(item, updated);
+      renderDerivedUI();
+      announce("붙여넣은 이미지 위치를 저장했습니다.");
+    } catch (error) {
+      item.rect = gesture.originalRect.slice();
+      renderDerivedUI();
+      toast("이미지 위치 저장 실패", error.message, "error", 7000);
+    }
   } else if (gesture.moved) {
     await saveSelectedComment(true);
   } else if (gesture.mode === "move") {
@@ -3394,8 +3852,9 @@ async function finishPolygonGesture() {
     if (!previous || Math.hypot(point[0] - previous[0], point[1] - previous[1]) >= .5) points.push(point);
   }
   if (points.length > 2 && Math.hypot(points[0][0] - points.at(-1)[0], points[0][1] - points.at(-1)[1]) < .5) points.pop();
-  if (points.length < 3) {
-    toast("폴리곤 점이 부족합니다", "서로 다른 점을 3개 이상 찍어 주세요.", "error");
+  const minimum = draft.shape === "polygon" ? 3 : 2;
+  if (points.length < minimum) {
+    toast(`${draft.shape === "polygon" ? "폴리곤" : "꺾은선"} 점이 부족합니다`, `서로 다른 점을 ${minimum}개 이상 찍어 주세요.`, "error");
     return false;
   }
   draft.points = points;
@@ -3416,6 +3875,9 @@ function cancelActiveGesture(reason = "pointer-cancel", render = true) {
   if (layer.hasPointerCapture?.(gesture.pointerId)) layer.releasePointerCapture(gesture.pointerId);
   if (["draw", "polygon"].includes(gesture.mode)) {
     state.selectedNo = gesture.previousSelectedNo ?? null;
+  } else if (["image-move", "image-resize"].includes(gesture.mode)) {
+    const item = state.imageOverlays.find((entry) => entry.id === gesture.imageId);
+    if (item && Array.isArray(gesture.originalRect)) item.rect = gesture.originalRect.slice();
   } else {
     const comment = state.comments.find((item) => Number(item.no) === Number(gesture.commentNo));
     if (comment && Array.isArray(gesture.originalRect)) comment.rect = gesture.originalRect.slice();
@@ -3850,6 +4312,7 @@ function selectComment(number, navigate = true) {
   const comment = state.comments.find((item) => Number(item.no) === Number(number));
   if (!comment) return;
   state.selectedNo = Number(number);
+  state.selectedImageId = null;
   state.repeatEntryActive = false;
   setInteractionMode("select", { announce: false, render: false });
   state.commentTemplateLinks.delete("draft");
@@ -3864,20 +4327,20 @@ function selectComment(number, navigate = true) {
 }
 
 function setTool(tool, { enterDraw = true } = {}) {
-  const extended = supportsExtendedMarkup() ? ["polygon", "freehand"] : [];
+  const extended = supportsExtendedMarkup() ? ["polygon", "polyline", "freehand"] : [];
   const allowed = new Set(["rect", "circle", ...extended, ...(state.fields?.shapes || []).filter((shape) => extended.includes(shape) || ["rect", "circle"].includes(shape))]);
   if (!allowed.has(tool)) return;
   if (state.gesture?.mode === "polygon") cancelActiveGesture("tool-change", false);
   state.activeTool = tool;
   localStorage.setItem("drawing-review-tool", tool);
-  const buttons = { rect: "#rect-tool-btn", circle: "#circle-tool-btn", polygon: "#polygon-tool-btn", freehand: "#freehand-tool-btn" };
+  const buttons = { rect: "#rect-tool-btn", circle: "#circle-tool-btn", polygon: "#polygon-tool-btn", polyline: "#polyline-tool-btn", freehand: "#freehand-tool-btn" };
   Object.entries(buttons).forEach(([name, selector]) => {
     const button = $(selector);
     button?.classList.toggle("active", tool === name);
     button?.setAttribute("aria-pressed", String(tool === name));
   });
   if (enterDraw) startRepeatEntry({ announce: false });
-  announce(`${{ rect: "사각형", circle: "원", polygon: "폴리곤", freehand: "자유연필" }[tool] || tool} 도구`);
+  announce(`${{ rect: "사각형", circle: "원", polygon: "폴리곤", polyline: "꺾은선", freehand: "자유연필" }[tool] || tool} 도구`);
 }
 
 function setOverlayLanguage(language) {
@@ -3902,7 +4365,7 @@ function appendSelectField(container, comment, key, label, values, full = false)
   const current = comment[key];
   const items = values.map((item) => typeof item === "object"
     ? { value: item.code, label: `${item.code} · ${item.label}` }
-    : { value: item, label: item });
+    : { value: item, label: key === "status" ? statusDisplay(item) : item });
   if (current && !items.some((item) => item.value === current)) items.unshift({ value: current, label: `${current} (미정의)` });
   items.forEach((item) => {
     const option = document.createElement("option");
@@ -4035,10 +4498,21 @@ function appendRelatedDrawingsField(container, comment) {
 
 function renderDynamicForm() {
   const comment = state.draft || selectedComment();
+  const selectedImage = selectedImageOverlay();
   const form = $("#comment-form");
   const empty = $("#editor-empty");
+  const imagePanel = $("#image-selection-panel");
   const title = $("#editor-title");
   const chip = $("#selected-status-chip");
+  if (selectedImage) {
+    form.hidden = true;
+    empty.hidden = true;
+    imagePanel.hidden = false;
+    chip.hidden = true;
+    title.textContent = "붙여넣은 이미지";
+    return;
+  }
+  imagePanel.hidden = true;
   if (!comment) {
     form.hidden = true;
     empty.hidden = false;
@@ -4051,7 +4525,7 @@ function renderDynamicForm() {
   title.textContent = comment.no ? `코멘트 #${comment.no}` : "새 코멘트";
   chip.hidden = false;
   chip.className = `status-chip ${comment.status}`;
-  chip.textContent = comment.status;
+  chip.textContent = statusDisplay(comment.status);
   const container = $("#dynamic-fields");
   container.replaceChildren();
   appendCommentTemplateField(container, comment);
@@ -4168,8 +4642,8 @@ function renderCommentList() {
     const status = document.createElement("button");
     status.type = "button";
     status.className = `comment-status-button ${comment.status}`;
-    status.textContent = comment.status;
-    status.title = "클릭하여 상태 전환";
+    status.textContent = statusDisplay(comment.status);
+    status.title = "클릭하면 작성 중 → PDF 포함 → PDF 제외 순서로 바뀝니다.";
     status.addEventListener("click", async () => {
       state.selectedNo = comment.no;
       await cycleSelectedStatus();
@@ -4207,6 +4681,8 @@ function renderVerdict() {
 function renderGate() {
   const pending = state.comments.filter((comment) => comment.status === "pending").length;
   const confirmed = state.comments.filter((comment) => comment.status === "confirmed");
+  const imageCount = state.imageOverlays.filter(imageMatchesActivePdf).length;
+  const quickHasOutput = confirmed.length > 0 || imageCount > 0;
   const unreviewed = confirmed.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim() || comment.cn_status !== "reviewed").length;
   const noApiKey = !hasConfiguredApiKey();
   const warning = $("#export-warning");
@@ -4220,10 +4696,16 @@ function renderGate() {
   cnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   krcnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
   replyButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
-  if (quickKrButton) quickKrButton.disabled = pending > 0 || confirmed.length === 0;
+  if (quickKrButton) quickKrButton.disabled = pending > 0 || !quickHasOutput;
   if (quickCnButton) {
-    quickCnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey || confirmed.length === 0;
-    quickCnButton.title = pending ? "pending 코멘트를 모두 정리해야 합니다." : (noApiKey ? "OpenAI API 키를 먼저 설정해야 중문 PDF를 저장할 수 있습니다." : (unreviewed ? "확정 코멘트의 CN·부위 번역을 모두 검수해야 합니다." : ""));
+    quickCnButton.disabled = pending > 0 || !quickHasOutput || (confirmed.length > 0 && (unreviewed > 0 || noApiKey));
+    quickCnButton.title = pending
+      ? "작성 중인 지적을 PDF 포함 또는 PDF 제외로 정리해 주세요."
+      : (!quickHasOutput
+        ? "도형 또는 이미지를 추가해 주세요."
+        : (confirmed.length > 0 && noApiKey
+          ? "OpenAI API 키를 먼저 설정해야 중문 코멘트를 만들 수 있습니다."
+          : (unreviewed ? "PDF 포함 코멘트의 CN·부위 번역을 모두 검수해야 합니다." : "")));
   }
   const cnReason = pending
     ? "pending 코멘트를 모두 정리해야 합니다."
@@ -4242,13 +4724,16 @@ function renderGate() {
   else if (unreviewed) warning.textContent = `번역 검수 미완료 ${unreviewed}건 · KR 통합 내보내기만 가능`;
   else warning.textContent = confirmed.length ? "내보내기 준비 완료" : "확정 코멘트 없이 빈 산출물이 생성됩니다.";
   if (state.quickMode) {
-    warning.classList.toggle("alert", pending > 0 || unreviewed > 0 || noApiKey);
-    if (pending) warning.textContent = `미확인 ${pending}건을 확정 또는 제외해야 PDF를 저장할 수 있습니다.`;
-    else if (!confirmed.length) warning.textContent = "마킹을 만들고 내용을 입력해 주세요.";
+    warning.classList.toggle("alert", pending > 0 || (confirmed.length > 0 && (unreviewed > 0 || noApiKey)));
+    if (pending) warning.textContent = `작성 중인 지적 ${pending}건이 있습니다. 각 카드의 상태를 ‘PDF 포함’ 또는 ‘PDF 제외’로 정리하면 저장 버튼이 켜집니다.`;
+    else if (!quickHasOutput) warning.textContent = "도형 또는 이미지를 추가해 주세요.";
+    else if (!confirmed.length && imageCount) warning.textContent = `붙여넣은 이미지 ${imageCount}개를 포함해 한글·중문 PDF를 저장할 수 있습니다.`;
     else if (noApiKey) warning.textContent = "한글 PDF 준비 완료 · 중문 PDF는 설정에서 OpenAI API 키를 입력한 뒤 번역·검수해야 합니다.";
     else if (unreviewed) warning.textContent = `한글 PDF 준비 완료 · 중문 내용/검수 ${unreviewed}건 남음`;
     else warning.textContent = "한글·중문 PDF 다운로드 준비 완료";
   }
+  const imageNote = $("#image-export-note");
+  if (imageNote) imageNote.hidden = imageCount === 0;
   $("#translation-tab-count").textContent = String(unreviewed);
   $("#unreviewed-counter").textContent = `미검수 ${unreviewed}건`;
 }
@@ -4290,7 +4775,9 @@ function renderReplyImportResult() {
 function updateThumbnailCounts() {
   const visible = currentVisibleComments();
   $$("[data-page-count]").forEach((badge) => {
-    const count = visible.filter((comment) => Number(comment.page) === Number(badge.dataset.pageCount)).length;
+    const page = Number(badge.dataset.pageCount);
+    const count = visible.filter((comment) => Number(comment.page) === page).length +
+      state.imageOverlays.filter((item) => imageMatchesActivePdf(item) && Number(item.page) === page).length;
     badge.textContent = String(count);
     badge.hidden = count === 0;
   });
@@ -4317,7 +4804,10 @@ function renderDerivedUI() {
   updateThumbnailCounts();
   renderReplyImportResult();
   const quickMarkCount = $("#quick-mark-step em");
-  if (quickMarkCount) quickMarkCount.textContent = String(state.comments.filter((comment) => comment.status !== "dropped").length);
+  if (quickMarkCount) quickMarkCount.textContent = String(
+    state.comments.filter((comment) => comment.status !== "dropped").length +
+    state.imageOverlays.filter(imageMatchesActivePdf).length,
+  );
   if (!$("#translation-panel").hidden) renderTranslationTable();
 }
 
@@ -4348,7 +4838,7 @@ function renderFilters() {
       input.type = "checkbox";
       input.checked = state.filters[key].has(value);
       const copy = document.createElement("span");
-      copy.textContent = value;
+      copy.textContent = key === "statuses" ? statusDisplay(value) : value;
       input.addEventListener("change", () => {
         if (input.checked) state.filters[key].add(value);
         else state.filters[key].delete(value);
@@ -4888,6 +5378,29 @@ function updateShortcutField(key, value) {
   return true;
 }
 
+async function nudgeSelectedImage(dx, dy) {
+  const item = selectedImageOverlay();
+  if (!item) return false;
+  const previous = item.rect.slice();
+  const [vx0, vy0, vx1, vy1] = rectToViewport(item.rect);
+  const width = vx1 - vx0;
+  const height = vy1 - vy0;
+  const x0 = Math.max(0, Math.min(Number(state.viewport.width) - width, vx0 + dx));
+  const y0 = Math.max(0, Math.min(Number(state.viewport.height) - height, vy0 + dy));
+  item.rect = viewportRectToFitz([x0, y0, x0 + width, y0 + height]);
+  try {
+    const updated = await imageRuntime()?.update(item);
+    if (updated) Object.assign(item, updated);
+    renderOverlay();
+    return true;
+  } catch (error) {
+    item.rect = previous;
+    renderOverlay();
+    toast("이미지 위치 저장 실패", error.message, "error", 7000);
+    return false;
+  }
+}
+
 function handleKeyboard(event) {
   if ($("#workspace-view").hidden || shortcutTargetBlocked(event)) return;
   const command = event.code;
@@ -4901,10 +5414,11 @@ function handleKeyboard(event) {
     saveSelectedComment(false);
     return;
   }
-  if (command === "KeyR") { event.preventDefault(); setTool("rect"); return; }
-  if (command === "KeyC") { event.preventDefault(); setTool("circle"); return; }
-  if (command === "KeyP") { event.preventDefault(); setTool("polygon"); return; }
-  if (command === "KeyL") { event.preventDefault(); setTool("freehand"); return; }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && command === "KeyR") { event.preventDefault(); setTool("rect"); return; }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && command === "KeyC") { event.preventDefault(); setTool("circle"); return; }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && command === "KeyP") { event.preventDefault(); setTool("polygon"); return; }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && command === "KeyQ") { event.preventDefault(); setTool("polyline"); return; }
+  if (!event.ctrlKey && !event.metaKey && !event.altKey && command === "KeyL") { event.preventDefault(); setTool("freehand"); return; }
   const axis = { KeyF: "F", KeyD: "D", KeyJ: "J", KeyS: "S", KeyU: "U", KeyM: "M" }[command];
   if (axis && state.fields?.axes?.some((item) => item.code === axis)) {
     event.preventDefault();
@@ -4922,17 +5436,27 @@ function handleKeyboard(event) {
     cycleSelectedStatus();
   } else if (command === "Delete" && !event.repeat) {
     event.preventDefault();
-    deleteSelectedComment();
+    if (state.selectedImageId) void deleteSelectedImageOverlay();
+    else deleteSelectedComment();
   } else if (command === "ArrowLeft") {
     event.preventDefault();
-    goToPage(state.page - 1);
+    if (state.selectedImageId) void nudgeSelectedImage(event.shiftKey ? -10 : -1, 0);
+    else goToPage(state.page - 1);
   } else if (command === "ArrowRight") {
     event.preventDefault();
-    goToPage(state.page + 1);
+    if (state.selectedImageId) void nudgeSelectedImage(event.shiftKey ? 10 : 1, 0);
+    else goToPage(state.page + 1);
+  } else if (command === "ArrowUp" && state.selectedImageId) {
+    event.preventDefault();
+    void nudgeSelectedImage(0, event.shiftKey ? -10 : -1);
+  } else if (command === "ArrowDown" && state.selectedImageId) {
+    event.preventDefault();
+    void nudgeSelectedImage(0, event.shiftKey ? 10 : 1);
   } else if (command === "Escape") {
     event.preventDefault();
     cancelActiveGesture("escape", false);
     state.selectedNo = null;
+    state.selectedImageId = null;
     state.commentTemplateLinks.delete("draft");
     state.draft = null;
     stopRepeatEntry({ announce: false });
@@ -4964,7 +5488,9 @@ function bindDropZone(element, input, handler) {
 function bindEvents() {
   const extendedMarkup = supportsExtendedMarkup();
   $("#polygon-tool-btn")?.toggleAttribute("hidden", !extendedMarkup);
+  $("#polyline-tool-btn")?.toggleAttribute("hidden", !extendedMarkup);
   $("#freehand-tool-btn")?.toggleAttribute("hidden", !extendedMarkup);
+  $("#paste-image-btn")?.toggleAttribute("hidden", !extendedMarkup);
   $(".overlay-language-controls")?.toggleAttribute("hidden", !extendedMarkup);
   $("#session-memory-reload-btn").addEventListener("click", handleMemoryWatchdogReload);
   $("#open-folder-btn").addEventListener("click", async () => {
@@ -4999,7 +5525,9 @@ function bindEvents() {
   $("#rect-tool-btn").addEventListener("click", () => setTool("rect"));
   $("#circle-tool-btn").addEventListener("click", () => setTool("circle"));
   $("#polygon-tool-btn")?.addEventListener("click", () => setTool("polygon"));
+  $("#polyline-tool-btn")?.addEventListener("click", () => setTool("polyline"));
   $("#freehand-tool-btn")?.addEventListener("click", () => setTool("freehand"));
+  $("#paste-image-btn")?.addEventListener("click", pasteImageFromClipboard);
   $("#overlay-language-kr")?.addEventListener("click", () => setOverlayLanguage("KR"));
   $("#overlay-language-cn")?.addEventListener("click", () => setOverlayLanguage("CN"));
   $("#select-mode-btn").addEventListener("click", () => stopRepeatEntry());
@@ -5016,6 +5544,7 @@ function bindEvents() {
   $("#comment-form").addEventListener("submit", (event) => { event.preventDefault(); saveSelectedComment(false); });
   $("#cycle-status-btn").addEventListener("click", cycleSelectedStatus);
   $("#delete-comment-btn").addEventListener("click", deleteSelectedComment);
+  $("#delete-image-btn")?.addEventListener("click", () => { void deleteSelectedImageOverlay(); });
   $("#toggle-filters-btn").addEventListener("click", (event) => {
     const drawer = $("#filter-drawer");
     drawer.hidden = !drawer.hidden;
@@ -5048,6 +5577,7 @@ function bindEvents() {
   $("#export-reply-btn").addEventListener("click", exportReply);
   bindDropZone($("#reply-drop-zone"), $("#reply-file-input"), importReply);
   window.addEventListener("keydown", handleKeyboard);
+  window.addEventListener("paste", (event) => { void handleClipboardPaste(event); });
   window.addEventListener("scroll", () => cancelActiveGesture("window-or-element-scroll"), { capture: true, passive: true });
   window.visualViewport?.addEventListener("scroll", () => cancelActiveGesture("visual-viewport-scroll"), { passive: true });
   window.visualViewport?.addEventListener("resize", () => cancelActiveGesture("visual-viewport-resize"), { passive: true });
@@ -5077,7 +5607,7 @@ const STATIC_AXES = [
   { code:"J",label:"결합·고정" }, { code:"S",label:"안전·구조" },
   { code:"U",label:"사용성·체험" }, { code:"M",label:"표준·운영" },
 ];
-const STATIC_FIELDS = { axes:STATIC_AXES, severities:["Critical","Major","Minor"], statuses:["pending","confirmed","dropped"], shapes:["rect","circle","polygon","freehand"], fields:["part","kr","cn","related_drawings"] };
+const STATIC_FIELDS = { axes:STATIC_AXES, severities:["Critical","Major","Minor"], statuses:["pending","confirmed","dropped"], shapes:["rect","circle","polygon","polyline","freehand"], fields:["part","kr","cn","related_drawings"] };
 const STATIC_CONFIG = { provider:"openai",model:"gpt-4o",batch_size:20,temperature:0.2 };
 const STATIC_COMMENT_DEFAULTS = {
   drawing_no:"미상",related_drawings:[],page:1,shape:"rect",rect:[0,0,0,0],axis:"F",severity:"Major",
@@ -5145,10 +5675,10 @@ function staticRect(value) { if(!Array.isArray(value)||value.length!==4)throw ne
 function staticPoints(value,minCount) { if(!Array.isArray(value)||value.length<minCount)throw new StaticApiError(`도형 점은 최소 ${minCount}개가 필요합니다.`);const points=value.map((point)=>{if(!Array.isArray(point)||point.length!==2)throw new StaticApiError("도형 점 좌표가 올바르지 않습니다.");const pair=point.map((item)=>Math.round(Number(item)*1e4)/1e4);if(!pair.every(Number.isFinite))throw new StaticApiError("도형 점 좌표가 올바르지 않습니다.");return pair;});return points; }
 function staticPointsRect(points) { const xs=points.map((point)=>point[0]),ys=points.map((point)=>point[1]);let x0=Math.min(...xs),y0=Math.min(...ys),x1=Math.max(...xs),y1=Math.max(...ys);if(x1-x0<.5){x0=Math.max(0,x0-.25);x1=x0+.5;}if(y1-y0<.5){y0=Math.max(0,y0-.25);y1=y0+.5;}return staticRect([x0,y0,x1,y1]); }
 function staticCommentPayload(payload,fields,existing=null) {
-  const c=existing?staticClone(existing):staticClone(STATIC_COMMENT_DEFAULTS),editable=Object.keys(STATIC_COMMENT_DEFAULTS).filter((k)=>!["reply_status","reply_text"].includes(k));for(const key of editable)if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);for(const key of["points","text_rect"])if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);c.page=Math.max(1,Math.trunc(Number(c.page||1)));if(!new Set(fields.axes.map((a)=>a.code)).has(c.axis)||!fields.severities.includes(c.severity)||!fields.statuses.includes(c.status)||!fields.shapes.includes(c.shape))throw new StaticApiError("fields.json에 없는 코멘트 값입니다.");if(c.shape==="polygon"||c.shape==="freehand"){c.points=staticPoints(c.points,c.shape==="polygon"?3:2);c.rect=staticPointsRect(c.points);}else c.rect=staticRect(c.rect);if(c.text_rect!=null)c.text_rect=staticRect(c.text_rect);c.related_drawings=staticRelated(c.related_drawings);for(const key of["drawing_no","part","part_cn","kr","cn","action","due","reply_status","reply_text"])c[key]=String(c[key]??"");const unresolved={};for(const key of["part","kr"]){const found=c[key].match(/\{[^{}]+\}/g)||[];if(found.length)unresolved[key]=found;}if(Object.keys(unresolved).length)throw new StaticApiError("미치환 플레이스홀더가 남아 있습니다. 값을 모두 입력해 주세요.",422,"unresolved_placeholder",{fields:Object.keys(unresolved),placeholders:unresolved});if(existing&&["cn","part_cn"].some((k)=>Object.hasOwn(payload,k)&&c[k]!==String(existing[k]??"")))c.cn_status=c.cn.trim()&&c.part_cn.trim()?"reviewed":"empty";if(!["empty","auto","reviewed"].includes(c.cn_status))c.cn_status="empty";return c;
+  const c=existing?staticClone(existing):staticClone(STATIC_COMMENT_DEFAULTS),editable=Object.keys(STATIC_COMMENT_DEFAULTS).filter((k)=>!["reply_status","reply_text"].includes(k));for(const key of editable)if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);for(const key of["points","text_rect"])if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);c.page=Math.max(1,Math.trunc(Number(c.page||1)));if(!new Set(fields.axes.map((a)=>a.code)).has(c.axis)||!fields.severities.includes(c.severity)||!fields.statuses.includes(c.status)||!fields.shapes.includes(c.shape))throw new StaticApiError("fields.json에 없는 코멘트 값입니다.");if(c.shape==="polygon"||c.shape==="polyline"||c.shape==="freehand"){c.points=staticPoints(c.points,c.shape==="polygon"?3:2);c.rect=staticPointsRect(c.points);}else c.rect=staticRect(c.rect);if(c.text_rect!=null)c.text_rect=staticRect(c.text_rect);c.related_drawings=staticRelated(c.related_drawings);for(const key of["drawing_no","part","part_cn","kr","cn","action","due","reply_status","reply_text"])c[key]=String(c[key]??"");const unresolved={};for(const key of["part","kr"]){const found=c[key].match(/\{[^{}]+\}/g)||[];if(found.length)unresolved[key]=found;}if(Object.keys(unresolved).length)throw new StaticApiError("미치환 플레이스홀더가 남아 있습니다. 값을 모두 입력해 주세요.",422,"unresolved_placeholder",{fields:Object.keys(unresolved),placeholders:unresolved});if(existing&&["cn","part_cn"].some((k)=>Object.hasOwn(payload,k)&&c[k]!==String(existing[k]??"")))c.cn_status=c.cn.trim()&&c.part_cn.trim()?"reviewed":"empty";if(!["empty","auto","reviewed"].includes(c.cn_status))c.cn_status="empty";return c;
 }
 function staticVerdict(ledger) { const severity={Critical:0,Major:0,Minor:0},axes={};for(const c of ledger.comments.filter((x)=>x.status==="confirmed")){if(Object.hasOwn(severity,c.severity))severity[c.severity]++;axes[c.axis]=(axes[c.axis]||0)+1;}const grade=severity.Critical>=1||severity.Major>=4?"C":severity.Major>=1?"B":"A";return{grade,label:{A:"승인",B:"조건부승인",C:"재제출"}[grade],severity,axes}; }
-function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["KR","CN","KRCN"].includes(mode))throw new StaticApiError("내보내기 모드가 올바르지 않습니다.");const pending=ledger.comments.filter((c)=>c.status==="pending");if(pending.length)throw new StaticApiError(`미확인 ${pending.length}건 남음`,409,"pending_comments",{count:pending.length});if(mode!=="KR"){const un=ledger.comments.filter((c)=>c.status==="confirmed"&&(!String(c.cn||"").trim()||!String(c.part_cn||"").trim()||c.cn_status!=="reviewed"));if(un.length)throw new StaticApiError(`번역 검수 미완료 ${un.length}건`,409,"translation_unreviewed",{count:un.length});}return mode; }
+function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["KR","CN","KRCN"].includes(mode))throw new StaticApiError("내보내기 모드가 올바르지 않습니다.");const pending=ledger.comments.filter((c)=>c.status==="pending");if(pending.length)throw new StaticApiError(`작성 중인 지적 ${pending.length}건을 PDF 포함 또는 PDF 제외로 정리해 주세요.`,409,"pending_comments",{count:pending.length});if(mode!=="KR"){const un=ledger.comments.filter((c)=>c.status==="confirmed"&&(!String(c.cn||"").trim()||!String(c.part_cn||"").trim()||c.cn_status!=="reviewed"));if(un.length)throw new StaticApiError(`번역 검수 미완료 ${un.length}건`,409,"translation_unreviewed",{count:un.length});}return mode; }
 
 /* PDF.js and pdf-lib are loaded directly from pinned CDNs. */
 function staticLoadScript(src,test) {
@@ -5222,6 +5752,7 @@ function checkStaticBrowserSupport({announce=true}={}) {
 async function staticFlushCurrentEdits() {
   if(typeof flushPendingCommentSaves==="function")await flushPendingCommentSaves();
   if(typeof state!=="undefined"&&state.commentWriteChain)await state.commentWriteChain;
+  if(window.staticImageOverlayRuntime?.flush)await window.staticImageOverlayRuntime.flush();
 }
 async function staticActivateFolder(handle,{create=null}={}) {
   if(!await staticPermission(handle,true))throw new StaticApiError("폴더 읽기/쓰기 권한이 필요합니다.",403,"folder_permission_denied");
@@ -5930,6 +6461,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     });
     const boldFont = await pdfDocument.embedFont(PDFLib.StandardFonts.HelveticaBold);
     const pages = pdfDocument.getPages();
+    const imageRecords = await global.staticImageOverlayRuntime?.embedIntoPdf(pdfDocument, pages, PDFLib, { pdfName: sourceName }) || [];
     const confirmed = ledger.comments
       .map((comment, ledgerIndex) => ({ comment, ledgerIndex }))
       .filter((entry) => entry.comment?.status === "confirmed")
@@ -5995,7 +6527,10 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
           width: localRect.width,
           height: localRect.height,
         };
-        const shape = comment.shape === "circle" || comment.shape === "ellipse" ? "circle" : "rect";
+        const requestedShape = String(comment.shape || "rect");
+        const shape = requestedShape === "circle" || requestedShape === "ellipse"
+          ? "circle"
+          : (["polygon", "polyline", "freehand"].includes(requestedShape) ? requestedShape : "rect");
         if (shape === "circle") {
           page.drawEllipse({
             x: nativeRect.x + nativeRect.width / 2,
@@ -6005,6 +6540,18 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
             borderColor: color,
             borderWidth: OUTLINE_WIDTH_PT,
           });
+        } else if (["polygon", "polyline", "freehand"].includes(shape)) {
+          const points = Array.isArray(comment.points) ? comment.points : [];
+          const pairs = points.slice(1).map((point, index) => [points[index], point]);
+          if (shape === "polygon" && points.length > 2) pairs.push([points.at(-1), points[0]]);
+          for (const [start, end] of pairs) {
+            page.drawLine({
+              start: { x: media.x + Number(start[0]), y: media.y + media.height - Number(start[1]) },
+              end: { x: media.x + Number(end[0]), y: media.y + media.height - Number(end[1]) },
+              color,
+              thickness: OUTLINE_WIDTH_PT,
+            });
+          }
         } else {
           page.drawRectangle({
             ...nativeRect,
@@ -6076,6 +6623,9 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
           no: Math.trunc(Number(comment.no) || 0),
           page: pageIndex + 1,
           shape,
+          points: ["polygon", "polyline", "freehand"].includes(shape)
+            ? comment.points.map((point) => point.map((value) => rounded(value)))
+            : undefined,
           box: item.box.map((value) => rounded(value)),
           pdf_rect: [
             rounded(nativeRect.x),
@@ -6156,6 +6706,8 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       bytes: outputBytes.byteLength,
       vector_count: vectors.length,
       vectors,
+      image_count: imageRecords.length,
+      images: imageRecords,
       skipped,
       source_unchanged: sourceUnchanged,
       source_fingerprint: sourceSummary(sourceAfter),
@@ -6940,6 +7492,266 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
 })(globalThis);
 
 
+(function installStaticImageOverlayRuntime(global) {
+  "use strict";
+
+  const META_PATH = ["_review", "image-overlays.json"];
+  const IMAGE_DIR = ["_review", "images"];
+  const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+  let writeChain = Promise.resolve();
+  const objectUrls = new Map();
+
+  function rootHandle() {
+    const root = global.staticPortCore?.runtime?.rootHandle;
+    if (!root) throw new StaticApiError("먼저 PDF 또는 프로젝트 폴더를 열어 주세요.", 409, "folder_not_open");
+    return root;
+  }
+
+  function normalizedRect(value) {
+    if (!Array.isArray(value) || value.length !== 4) throw new StaticApiError("이미지 위치 좌표가 올바르지 않습니다.", 400, "invalid_image_rect");
+    const numbers = value.map((item) => Math.round(Number(item) * 100) / 100);
+    if (!numbers.every(Number.isFinite)) throw new StaticApiError("이미지 위치 좌표가 올바르지 않습니다.", 400, "invalid_image_rect");
+    const rect = [
+      Math.min(numbers[0], numbers[2]),
+      Math.min(numbers[1], numbers[3]),
+      Math.max(numbers[0], numbers[2]),
+      Math.max(numbers[1], numbers[3]),
+    ];
+    if (rect[2] - rect[0] < .5 || rect[3] - rect[1] < .5) throw new StaticApiError("이미지가 너무 작습니다.", 400, "image_too_small");
+    return rect;
+  }
+
+  function normalizedMeta(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const items = Array.isArray(source.items) ? source.items : [];
+    return {
+      version: 1,
+      items: items.flatMap((item) => {
+        try {
+          const id = String(item?.id || "").trim();
+          const filename = String(item?.filename || "").trim();
+          const mime = String(item?.mime || "").toLowerCase();
+          const page = Math.max(1, Math.trunc(Number(item?.page || 1)));
+          if (!id || !filename || !["image/png", "image/jpeg"].includes(mime)) return [];
+          return [{
+            id,
+            filename,
+            mime,
+            pdf: String(item?.pdf || ""),
+            page,
+            rect: normalizedRect(item.rect),
+            pixel_width: Math.max(1, Math.trunc(Number(item.pixel_width || 1))),
+            pixel_height: Math.max(1, Math.trunc(Number(item.pixel_height || 1))),
+            created_at: String(item.created_at || ""),
+            updated_at: String(item.updated_at || ""),
+          }];
+        } catch {
+          return [];
+        }
+      }),
+    };
+  }
+
+  async function readMeta() {
+    return normalizedMeta(await staticReadJson(rootHandle(), META_PATH, { version: 1, items: [] }));
+  }
+
+  async function writeMeta(meta) {
+    await staticWriteJson(rootHandle(), META_PATH, normalizedMeta(meta));
+  }
+
+  function enqueueWrite(task) {
+    const operation = writeChain.catch(() => undefined).then(task);
+    writeChain = operation;
+    return operation;
+  }
+
+  function revokeObjectUrls() {
+    for (const url of objectUrls.values()) URL.revokeObjectURL(url);
+    objectUrls.clear();
+  }
+
+  async function itemWithObjectUrl(item) {
+    const buffer = await staticReadBinary(rootHandle(), [...IMAGE_DIR, item.filename]);
+    const blob = new Blob([buffer], { type: item.mime });
+    const url = URL.createObjectURL(blob);
+    objectUrls.set(item.id, url);
+    return { ...item, src: url };
+  }
+
+  async function load() {
+    await writeChain.catch(() => undefined);
+    revokeObjectUrls();
+    const meta = await readMeta();
+    const items = [];
+    for (const item of meta.items) {
+      try {
+        items.push(await itemWithObjectUrl(item));
+      } catch (error) {
+        console.warn("붙여넣은 이미지 파일을 불러오지 못했습니다.", { id: item.id, filename: item.filename, error });
+      }
+    }
+    return items;
+  }
+
+  async function add({ blob, pdf, page, rect, pixelWidth, pixelHeight }) {
+    if (!(blob instanceof Blob) || !["image/png", "image/jpeg"].includes(blob.type)) {
+      throw new StaticApiError("PNG 또는 JPEG 이미지만 붙여넣을 수 있습니다.", 400, "unsupported_clipboard_image");
+    }
+    if (blob.size > MAX_IMAGE_BYTES) {
+      throw new StaticApiError("클립보드 이미지가 25MB를 초과합니다.", 413, "clipboard_image_too_large");
+    }
+    return enqueueWrite(async () => {
+      const meta = await readMeta();
+      const id = crypto.randomUUID();
+      const extension = blob.type === "image/jpeg" ? "jpg" : "png";
+      const filename = `${id}.${extension}`;
+      const now = staticNowIso();
+      const item = {
+        id,
+        filename,
+        mime: blob.type,
+        pdf: String(pdf || ""),
+        page: Math.max(1, Math.trunc(Number(page || 1))),
+        rect: normalizedRect(rect),
+        pixel_width: Math.max(1, Math.trunc(Number(pixelWidth || 1))),
+        pixel_height: Math.max(1, Math.trunc(Number(pixelHeight || 1))),
+        created_at: now,
+        updated_at: now,
+      };
+      await staticWriteBinary(rootHandle(), [...IMAGE_DIR, filename], new Uint8Array(await blob.arrayBuffer()));
+      meta.items.push(item);
+      await writeMeta(meta);
+      const previousUrl = objectUrls.get(id);
+      if (previousUrl) URL.revokeObjectURL(previousUrl);
+      const src = URL.createObjectURL(blob);
+      objectUrls.set(id, src);
+      return { ...item, src };
+    });
+  }
+
+  async function update(item) {
+    if (!item?.id) return null;
+    return enqueueWrite(async () => {
+      const meta = await readMeta();
+      const index = meta.items.findIndex((entry) => entry.id === item.id);
+      if (index < 0) throw new StaticApiError("이동할 이미지를 찾을 수 없습니다.", 404, "image_overlay_missing");
+      const updated = {
+        ...meta.items[index],
+        pdf: String(item.pdf ?? meta.items[index].pdf ?? ""),
+        page: Math.max(1, Math.trunc(Number(item.page || meta.items[index].page))),
+        rect: normalizedRect(item.rect),
+        updated_at: staticNowIso(),
+      };
+      meta.items[index] = updated;
+      await writeMeta(meta);
+      return { ...updated, src: objectUrls.get(updated.id) || item.src || "" };
+    });
+  }
+
+  async function remove(id) {
+    id = String(id || "");
+    if (!id) return false;
+    return enqueueWrite(async () => {
+      const meta = await readMeta();
+      const item = meta.items.find((entry) => entry.id === id);
+      if (!item) return false;
+      meta.items = meta.items.filter((entry) => entry.id !== id);
+      await writeMeta(meta);
+      try {
+        const directory = await staticGetDirectory(rootHandle(), IMAGE_DIR);
+        await directory.removeEntry(item.filename);
+      } catch (error) {
+        if (error?.name !== "NotFoundError") console.warn("이미지 파일 삭제를 완료하지 못했습니다.", error);
+      }
+      const url = objectUrls.get(id);
+      if (url) URL.revokeObjectURL(url);
+      objectUrls.delete(id);
+      return true;
+    });
+  }
+
+  async function exportItems() {
+    await writeChain.catch(() => undefined);
+    const meta = await readMeta();
+    const output = [];
+    for (const item of meta.items) {
+      try {
+        output.push({ ...item, bytes: new Uint8Array(await staticReadBinary(rootHandle(), [...IMAGE_DIR, item.filename])) });
+      } catch (error) {
+        console.warn("PDF에 넣을 이미지 파일을 읽지 못했습니다.", { id: item.id, filename: item.filename, error });
+      }
+    }
+    return output;
+  }
+
+  async function embedIntoPdf(pdfDocument, pages, PDFLib, { pdfName = "" } = {}) {
+    if (!pdfDocument || !Array.isArray(pages) || !PDFLib) return [];
+    const items = await exportItems();
+    const records = [];
+    for (const item of items) {
+      if (pdfName && item.pdf && item.pdf !== pdfName) continue;
+      const pageIndex = item.page - 1;
+      if (pageIndex < 0 || pageIndex >= pages.length) continue;
+      const page = pages[pageIndex];
+      const embedded = item.mime === "image/jpeg"
+        ? await pdfDocument.embedJpg(item.bytes)
+        : await pdfDocument.embedPng(item.bytes);
+      const mediaRaw = page.getMediaBox();
+      const media = {
+        x: Number(mediaRaw.x),
+        y: Number(mediaRaw.y),
+        width: Number(mediaRaw.width),
+        height: Number(mediaRaw.height),
+      };
+      const rotation = ((Number(page.getRotation()?.angle || 0) % 360) + 360) % 360;
+      const display = global.staticPdfDisplayRect(item.rect, media.width, media.height, rotation);
+      const displayWidth = display.x1 - display.x0;
+      const displayHeight = display.y1 - display.y0;
+      const local = global.toPdfLibRect(item.rect, media.height);
+      const native = {
+        x: media.x + local.x,
+        y: media.y + local.y,
+        width: local.width,
+        height: local.height,
+      };
+      const anchor = {
+        0: { x: native.x, y: native.y },
+        90: { x: native.x + native.width, y: native.y },
+        180: { x: native.x + native.width, y: native.y + native.height },
+        270: { x: native.x, y: native.y + native.height },
+      }[rotation] || { x: native.x, y: native.y };
+      page.drawImage(embedded, {
+        ...anchor,
+        width: displayWidth,
+        height: displayHeight,
+        rotate: PDFLib.degrees(rotation),
+      });
+      records.push({
+        id: item.id,
+        page: item.page,
+        rect: item.rect.slice(),
+        display_rect: [display.x0, display.y0, display.x1, display.y1],
+        rotation,
+        mime: item.mime,
+      });
+    }
+    return records;
+  }
+
+  global.staticImageOverlayRuntime = {
+    load,
+    add,
+    update,
+    remove,
+    exportItems,
+    embedIntoPdf,
+    flush: () => writeChain.catch(() => undefined),
+    revokeObjectUrls,
+  };
+})(typeof globalThis !== "undefined" ? globalThis : window);
+
+
 (function installFolderFreeQuickReview(global) {
   "use strict";
 
@@ -7074,13 +7886,27 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
   }
 
   function quickTextLayout(font, text, width, height) {
-    for (let size = 10; size >= 4; size -= .5) {
+    for (let size = 10; size >= 7; size -= .5) {
       const lineHeight = size * 1.38;
-      const lines = quickWrapText(font, text, size, Math.max(20, (width - 12) * .75));
+      const lines = quickWrapText(font, text, size, Math.max(20, width - 12));
       const maxLines = Math.max(1, Math.floor((height - 10) / lineHeight));
       if (lines.length <= maxLines) return { size, lineHeight, lines, overflow: false };
     }
-    return { size: 4, lineHeight: 5.52, lines: [], overflow: true };
+    return { size: 7, lineHeight: 9.66, lines: [], overflow: true };
+  }
+
+  function quickCompactTextRect(font, text, preferredRect, media) {
+    const size = 10;
+    const maxTextWidth = Math.max(90, Math.min(230, media.width * .38));
+    const lines = quickWrapText(font, text || " ", size, maxTextWidth);
+    const textWidth = Math.max(56, ...lines.map((line) => font.widthOfTextAtSize(line || " ", size)));
+    const width = Math.ceil(Math.min(maxTextWidth, textWidth) + 12);
+    const height = Math.ceil(Math.max(26, lines.length * size * 1.38 + 10));
+    let x0 = Number(preferredRect?.[0] || 8);
+    let y0 = Number(preferredRect?.[1] || 8);
+    x0 = Math.max(4, Math.min(media.width - width - 4, x0));
+    y0 = Math.max(4, Math.min(media.height - height - 4, y0));
+    return [x0, y0, x0 + width, y0 + height];
   }
 
   function quickDrawLineShape(page, points, media, color, closed) {
@@ -7102,7 +7928,9 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       const displayOrigin = [displayRect.x0 + 6, displayRect.y0 + 7 + layout.size + index * layout.lineHeight];
       const pageOrigin = global.staticPdfDisplayPointToPage(displayOrigin, info.media.width, info.media.height, info.rotation);
       const nativeOrigin = global.staticPdfTopLeftPointToNative(pageOrigin, info.media);
-      page.drawText(line, { ...nativeOrigin, font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) });
+      const options = { ...nativeOrigin, font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) };
+      page.drawText(line, options);
+      page.drawText(line, { ...options, x: options.x + .18 });
     });
   }
 
@@ -7111,18 +7939,23 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     if (!STATIC_RUNTIME.quickMode) throw new StaticApiError("간편 PDF 모드에서만 사용할 수 있습니다.", 409, "quick_mode_required");
     await flushPendingCommentSaves();
     const ledger = await staticLoadLedger();
+    const confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
     staticGate(ledger, mode);
-    if (mode === "CN" && !staticGetApiKey()) throw new StaticApiError("OpenAI API 키를 먼저 설정하고 중문 번역을 검수해 주세요.", 409, "api_key_missing");
+    if (mode === "CN" && confirmed.length > 0 && !staticGetApiKey()) throw new StaticApiError("OpenAI API 키를 먼저 설정하고 중문 번역을 검수해 주세요.", 409, "api_key_missing");
     const sourceName = String(ledger.source_pdf || "");
     const source = await staticSourceFile(sourceName);
     const sourceBytes = new Uint8Array(await source.arrayBuffer());
     const PDFLib = await staticEnsurePdfLib();
-    const fontBytes = await quickEnsureFont(mode);
     const pdf = await PDFLib.PDFDocument.load(sourceBytes.slice(), { updateMetadata: false, ignoreEncryption: false });
-    pdf.registerFontkit(global.fontkit);
-    const font = await pdf.embedFont(fontBytes, { subset: false });
     const pages = pdf.getPages();
-    const confirmed = ledger.comments.filter((comment) => comment.status === "confirmed");
+    const imageRecords = await global.staticImageOverlayRuntime?.embedIntoPdf(pdf, pages, PDFLib, { pdfName: "" }) || [];
+    let font = null;
+    if (confirmed.length) {
+      const fontBytes = await quickEnsureFont(mode);
+      pdf.registerFontkit(global.fontkit);
+      font = await pdf.embedFont(fontBytes, { subset: false });
+    }
+    if (!confirmed.length && !imageRecords.length) throw new StaticApiError("도형 또는 이미지를 추가해 주세요.", 409, "output_empty");
 
     for (const comment of confirmed) {
       const pageIndex = Math.trunc(Number(comment.page || 1)) - 1;
@@ -7142,15 +7975,17 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         page.drawEllipse({ x: nativeRect.x + nativeRect.width / 2, y: nativeRect.y + nativeRect.height / 2, xScale: nativeRect.width / 2, yScale: nativeRect.height / 2, borderColor: color, borderWidth: 1.5 });
       } else if (comment.shape === "polygon") {
         quickDrawLineShape(page, comment.points, media, color, true);
-      } else if (comment.shape === "freehand") {
+      } else if (comment.shape === "polyline" || comment.shape === "freehand") {
         quickDrawLineShape(page, comment.points, media, color, false);
       } else {
         page.drawRectangle({ ...nativeRect, borderColor: color, borderWidth: 1.5 });
       }
 
-      const textRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
+      const preferredTextRect = Array.isArray(comment.text_rect) && comment.text_rect.length === 4
         ? comment.text_rect.map(Number)
         : quickDefaultTextRect(box, media);
+      const body = mode === "CN" ? String(comment.cn || "") : String(comment.kr || "");
+      const textRect = quickCompactTextRect(font, body, preferredTextRect, media);
       const textNative = global.toPdfLibRect(textRect, media.height);
       textNative.x += media.x;
       textNative.y += media.y;
@@ -7162,13 +7997,9 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / (textWidth / 2), Math.abs(towardMark[1]) / (textHeight / 2), 1);
       const textEdge = [textCenter[0] + towardMark[0] * edgeScale, textCenter[1] + towardMark[1] * edgeScale];
       page.drawLine({ start: quickPointToNative(markCenter, media), end: quickPointToNative(textEdge, media), color, thickness: .85, opacity: .8 });
-      page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, 1, 1), opacity: .92, borderColor: color, borderWidth: 1.2 });
+      page.drawRectangle({ ...textNative, color: PDFLib.rgb(1, .902, 0), opacity: .97, borderColor: PDFLib.rgb(.77, .57, 0), borderWidth: 1.1 });
       const display = global.staticPdfDisplayRect(textRect, media.width, media.height, rotation);
-      const header = `#${comment.no} · ${comment.axis || "-"}`;
-      const body = mode === "CN"
-        ? [comment.part_cn, comment.cn].filter((value) => String(value || "").trim()).join("\n")
-        : [comment.part, comment.kr].filter((value) => String(value || "").trim()).join("\n");
-      quickDisplayText(page, font, [header, body].filter(Boolean).join("\n"), display, info, PDFLib.rgb(.08, .1, .14), PDFLib, comment.no);
+      quickDisplayText(page, font, body, display, info, PDFLib.rgb(.04, .04, .04), PDFLib, comment.no);
     }
 
     const output = new Uint8Array(await pdf.save());
@@ -7177,7 +8008,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const version = await global.staticNextVersion(outputDirectory, stem, ".pdf");
     await staticWriteBinary(outputDirectory, [version.filename], output);
     quickDownload(output, version.filename);
-    return { filename: version.filename, bytes: output.byteLength, comments: confirmed.length, language: mode };
+    return { filename: version.filename, bytes: output.byteLength, comments: confirmed.length, images: imageRecords.length, image_records: imageRecords, language: mode };
   }
 
   async function staticQuickExportPdf(language) {
@@ -7187,7 +8018,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     if (button) button.disabled = true;
     try {
       const result = await createQuickReviewPdf(mode);
-      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 완료`, `${result.filename} · 마킹 ${result.comments}건`, "success", 9000);
+      staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 완료`, `${result.filename} · 코멘트 ${result.comments}건 · 이미지 ${result.images}개`, "success", 9000);
     } catch (error) {
       staticToast(`${mode === "CN" ? "중문" : "한글"} PDF 저장 실패`, error.message, "error", 8000);
     } finally {
