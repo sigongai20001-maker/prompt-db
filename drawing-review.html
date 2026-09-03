@@ -455,10 +455,16 @@ kbd {
   background: var(--paper);
   border-bottom: 1px solid var(--line);
   box-shadow: 0 2px 8px rgba(15, 24, 42, .04);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
 }
+.review-toolbar > *, .toolbar-group, .toolbar-divider { flex: 0 0 auto; }
 .toolbar-group { display: flex; align-items: center; gap: 4px; }
 .toolbar-divider { width: 1px; height: 25px; margin: 0 3px; background: var(--line); }
-.toolbar-spacer { flex: 1; }
+.toolbar-spacer { flex: 1 0 8px; min-width: 8px; }
 .select.compact { min-width: 170px; max-width: 270px; min-height: 34px; padding: 5px 28px 5px 9px; font-size: 12px; }
 .toolbar-meta, .visible-count { color: var(--ink-500); font-size: 10px; white-space: nowrap; }
 .page-input { display: flex; align-items: center; gap: 4px; color: var(--ink-600); font-size: 11px; }
@@ -467,7 +473,7 @@ kbd {
 .zoom-label:hover { background: var(--surface); }
 .tool-button {
   display: inline-flex;
-  height: 34px;
+  height: 40px;
   align-items: center;
   gap: 6px;
   padding: 0 9px;
@@ -481,8 +487,22 @@ kbd {
 .tool-button:hover { background: var(--surface); }
 .tool-button.active { color: var(--minor); background: #e9effa; border-color: #c8d6ef; }
 .interaction-mode-controls { padding: 2px; background: var(--surface); border-radius: 6px; }
-.interaction-mode-controls .tool-button { height: 30px; padding: 0 8px; }
-.line-style-control { display: inline-flex; height: 32px; align-items: center; gap: 5px; padding: 0 6px; color: var(--ink-600); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+.interaction-mode-controls .tool-button { height: 40px; padding: 0 8px; }
+.tool-button.icon-only,
+.interaction-mode-controls .tool-button.icon-only {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  justify-content: center;
+  padding: 0;
+  font-size: 0;
+}
+.toolbar-svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.toolbar-svg circle[r="1"] { fill: currentColor; stroke: none; }
+.filter-tool-button { position: relative; overflow: visible; }
+.filter-tool-button .filter-count { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; color: white; background: var(--accent); border: 2px solid white; border-radius: 999px; font-size: 8px; line-height: 12px; }
+.overlay-language-controls .tool-button { width: 40px; min-width: 40px; justify-content: center; padding: 0; font-size: 10px; }
+.line-style-control { display: inline-flex; height: 40px; align-items: center; gap: 5px; padding: 0 6px; color: var(--ink-600); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; font-size: 0; font-weight: 800; white-space: nowrap; }
 .line-style-control select { min-width: 54px; padding: 2px 16px 2px 4px; color: var(--ink-800); background: white; border: 0; border-radius: 3px; font-size: 10px; font-weight: 800; }
 .rect-icon, .circle-icon { width: 13px; height: 10px; border: 1.5px solid currentColor; }
 .circle-icon { border-radius: 50%; }
@@ -554,22 +574,19 @@ kbd {
 .annotation-layer.mode-draw .image-overlay-group,
 .annotation-layer.mode-draw .image-overlay-group * { pointer-events: none !important; }
 .annotation-layer.mode-select { cursor: default; }
-.annotation-shape { vector-effect: non-scaling-stroke; fill: transparent; stroke-width: 2.2; pointer-events: stroke; cursor: pointer; }
+.annotation-shape { fill: transparent; pointer-events: stroke; cursor: pointer; }
 .annotation-shape.shape-closed { fill: rgba(255, 230, 0, .24); }
 .annotation-shape.severity-Critical { stroke: var(--critical); }
 .annotation-shape.severity-Major { stroke: var(--major); }
 .annotation-shape.severity-Minor { stroke: var(--minor); }
-.annotation-shape.status-pending { stroke-dasharray: 8 5; }
-.annotation-shape.status-confirmed { stroke-dasharray: none; }
-.annotation-shape.status-dropped { stroke: #8b9099; opacity: .3; stroke-dasharray: none; }
-.annotation-group.selected .annotation-shape { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); stroke-width: 3.2; }
+.annotation-group.selected .annotation-shape { filter: drop-shadow(0 0 3px rgba(255,255,255,.9)); }
 .annotation-hit { fill: transparent; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: move; }
 .resize-handle { fill: white; stroke: var(--ink-900); stroke-width: 1.3; vector-effect: non-scaling-stroke; cursor: nwse-resize; }
 .resize-handle[data-handle="ne"], .resize-handle[data-handle="sw"] { cursor: nesw-resize; }
 .pasted-image-group, .image-overlay-group { outline: none; }
 .pasted-image, .image-overlay, .pasted-image-overlay { pointer-events: none; user-select: none; }
 .pasted-image-hit, .image-overlay-hit { fill: transparent; stroke: transparent; pointer-events: all; cursor: move; }
-.image-red-outline { fill: none; stroke: #ef2b2d; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.image-red-outline { fill: none; stroke: #ef2b2d; pointer-events: none; }
 .pasted-image-outline, .image-overlay-outline, .image-selection-border { fill: none; stroke: var(--minor); stroke-width: 1.6; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; opacity: 0; }
 .pasted-image-group.selected .pasted-image-outline,
 .pasted-image-group:focus-visible .pasted-image-outline,
@@ -596,7 +613,7 @@ kbd {
 .spinner { width: 13px; height: 13px; border: 2px solid #6d7788; border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
 .viewer-hint { position: sticky; bottom: 10px; z-index: 15; width: max-content; max-width: calc(100% - 20px); margin: -48px auto 10px; padding: 7px 10px; color: #aeb7c5; background: rgba(21,28,41,.9); border: 1px solid #4a5363; border-radius: 7px; font-size: 9px; backdrop-filter: blur(6px); }
 
-.inspector { display: grid; width: var(--inspector-width); min-width: var(--inspector-width); max-width: var(--inspector-width); grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border-left: 1px solid var(--line); }
+.inspector { display: grid; width: var(--inspector-width); min-width: var(--inspector-width); max-width: var(--inspector-width); grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; border-left: 1px solid var(--line); }
 .verdict-card { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 14px; padding: 12px 16px; color: white; background: var(--ink-900); border-bottom: 3px solid var(--success); }
 .verdict-card[data-grade="B"] { border-bottom-color: var(--major); }
 .verdict-card[data-grade="C"] { border-bottom-color: var(--critical); }
@@ -632,34 +649,20 @@ kbd {
 .related-drawing-tag button:hover { color: #8d2424; background: rgba(224, 59, 59, .11); }
 .editor-actions { display: flex; gap: 6px; margin-top: 12px; }
 .editor-actions .button { flex: 1; min-height: 35px; padding: 5px 8px; font-size: 11px; }
-.status-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 850; text-transform: uppercase; }
-.status-chip.pending { color: #9a5a06; background: var(--warning-soft); }
-.status-chip.confirmed { color: #08744c; background: var(--success-soft); }
-.status-chip.dropped { color: #687183; background: var(--surface-2); }
 .comment-list { display: grid; gap: 6px; }
 .comment-list-empty { padding: 22px 8px; color: var(--ink-500); text-align: center; font-size: 11px; }
-.comment-card { position: relative; display: grid; grid-template-columns: 5px minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 10px 8px 10px 6px; color: var(--ink-800); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+.comment-card { position: relative; display: grid; grid-template-columns: 5px minmax(0, 1fr); gap: 8px; align-items: start; padding: 10px 8px 10px 6px; color: var(--ink-800); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
 .comment-card:hover { border-color: #aab2bf; box-shadow: 0 2px 6px rgba(17,26,44,.06); }
 .comment-card.selected { background: #f2f6fc; border-color: #9eb5dd; }
 .comment-severity-line { align-self: stretch; border-radius: 3px; background: var(--major); }
 .comment-card.severity-Critical .comment-severity-line { background: var(--critical); }
 .comment-card.severity-Minor .comment-severity-line { background: var(--minor); }
-.comment-card.status-dropped { opacity: .52; }
 .comment-main { min-width: 0; border: 0; padding: 0; color: inherit; background: transparent; text-align: left; }
 .comment-topline { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; font-size: 9px; font-weight: 800; }
 .comment-topline b { font-size: 11px; }
 .overlap-chip { padding: 1px 4px; color: #6b4a00; background: #fff0c8; border: 1px solid #e8c36d; border-radius: 999px; font-size: 8px; white-space: nowrap; }
 .comment-main p { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ink-600); font-size: 10px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.comment-status-button { min-width: 68px; padding: 3px 6px; border: 0; border-radius: 999px; font-size: 8px; font-weight: 800; }
-.comment-status-button.pending { color: #9a5a06; background: var(--warning-soft); }
-.comment-status-button.confirmed { color: #08744c; background: var(--success-soft); }
-.comment-status-button.dropped { color: #687183; background: var(--surface-2); }
-.comment-card-controls { display: grid; justify-items: end; gap: 5px; }
-.reply-status-badge { display: inline-flex; min-height: 18px; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 999px; font-size: 8px; font-weight: 850; line-height: 1.2; white-space: nowrap; }
-.reply-status-badge.reply-open { color: #59647a; background: var(--surface-2); }
-.reply-status-badge.reply-in-progress { color: #8b5600; background: var(--warning-soft); }
-.reply-status-badge.reply-done { color: #08744c; background: var(--success-soft); }
-.reply-status-badge.reply-rejected { color: #a52727; background: var(--danger-soft); }
+.verdict-card { display: none !important; }
 
 .export-dock { padding: 10px 12px 12px; background: #f8f8f9; border-top: 1px solid var(--line); box-shadow: 0 -5px 18px rgba(17,26,44,.06); }
 .gate-warning { min-height: 20px; margin-bottom: 6px; color: var(--ink-600); font-size: 10px; text-align: center; }
@@ -762,7 +765,7 @@ kbd {
   :root { --inspector-width: 330px; }
   .review-grid { grid-template-columns: 190px minmax(0, 1fr) var(--inspector-width); }
   .welcome-view { gap: 48px; }
-  .visible-count, .toolbar-meta, .fit-width-btn { display: none; }
+  .visible-count, .toolbar-meta { display: none; }
   .review-toolbar { overflow-x: auto; }
   .toolbar-spacer { min-width: 8px; }
 }
@@ -803,7 +806,7 @@ kbd {
   .path-input-row { grid-template-columns: 1fr; }
   .recent-grid { grid-template-columns: 1fr; }
   .source-controls, .toolbar-divider { display: none; }
-  .draw-tools .tool-button { width: 40px; justify-content: center; overflow: hidden; font-size: 0; }
+  .draw-tools .tool-button { width: 40px; min-width: 40px; height: 40px; justify-content: center; overflow: hidden; font-size: 0; }
   .pdf-stage { padding: 24px 12px 72px; }
   .viewer-hint { display: none; }
   .translation-actions { align-items: stretch; flex-direction: column; }
@@ -854,12 +857,10 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
 .annotation-shape.shape-polygon, .annotation-shape.shape-polyline, .annotation-shape.shape-freehand { stroke-linejoin: round; stroke-linecap: round; }
 .annotation-shape.shape-polyline, .annotation-shape.shape-freehand { fill: none; }
 .annotation-shape.line-solid { stroke-dasharray: none; }
-.annotation-shape.line-dashed { stroke-dasharray: 8 5; }
-.annotation-shape.shape-freehand { stroke-width: 2.8; }
 .annotation-hit.shape-polygon, .annotation-hit.shape-polyline, .annotation-hit.shape-freehand { fill: none; stroke-linejoin: round; stroke-linecap: round; }
-.annotation-text-link { pointer-events: none; stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .85; }
+.annotation-text-link { pointer-events: none; opacity: .85; }
 .annotation-textbox { cursor: default; filter: drop-shadow(0 2px 5px rgba(15, 24, 39, .18)); }
-.annotation-textbox .textbox-shell { fill: #ffe600; stroke: #c59600; stroke-width: 1.2; pointer-events: all; cursor: move; }
+.annotation-textbox .textbox-shell { fill: #ffe600; stroke: #c59600; pointer-events: all; cursor: move; }
 .textbox-move-handle { opacity: 0; pointer-events: none; cursor: move; transition: opacity .12s ease; }
 .textbox-move-handle circle { fill: #6b5200; stroke: white; stroke-width: 1; }
 .textbox-move-handle text { fill: white; font-size: 9px; font-weight: 900; pointer-events: none; }
@@ -870,19 +871,22 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
 .annotation-textbox .textbox-grip-label { fill: white; font-size: 9px; font-weight: 800; pointer-events: none; }
 .annotation-textbox foreignObject { overflow: visible; }
 .annotation-text-editor {
-  width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; padding: 3px 5px;
+  width: 100%; height: 100%; box-sizing: border-box; overflow: visible; padding: 0;
   color: #111; background: transparent; border: 0; outline: none;
-  font: 800 12px/1.42 "Noto Sans KR", "Microsoft YaHei", sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; cursor: text;
+  font-family: "Noto Sans KR", "Microsoft YaHei", sans-serif;
+  font-weight: 800;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+  cursor: text;
 }
 .annotation-text-editor:empty::before { content: attr(data-placeholder); color: rgba(17,17,17,.52); pointer-events: none; }
 .annotation-text-editor:focus { box-shadow: inset 0 0 0 2px rgba(87,63,0,.32); }
 .annotation-group.selected .annotation-textbox .textbox-shell { stroke-width: 2; }
 .polygon-preview { fill: none; stroke-dasharray: 5 4; opacity: .8; pointer-events: none; }
 @media (max-width: 1180px) {
-  .overlay-language-controls .tool-button { font-size: 0; }
-  .overlay-language-controls .tool-button::after { font-size: 10px; }
-  #overlay-language-kr::after { content: "KR"; }
-  #overlay-language-cn::after { content: "CN"; }
+  .overlay-language-controls .tool-button { font-size: 10px; }
+  .overlay-language-controls .tool-button::after { content: none !important; }
   .quick-autosave { display: none; }
 }
 
@@ -1002,39 +1006,38 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             <button id="zoom-out-btn" class="icon-button small" type="button" aria-label="축소">−</button>
             <button id="zoom-label" class="zoom-label" type="button" title="너비 맞춤">100%</button>
             <button id="zoom-in-btn" class="icon-button small" type="button" aria-label="확대">＋</button>
-            <button id="fit-width-btn" class="button text compact" type="button">너비 맞춤</button>
+            <button id="fit-width-btn" class="tool-button icon-only" type="button" aria-label="너비 맞춤" title="너비 맞춤"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6v12M21 6v12M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3"/></svg></button>
           </div>
           <div class="toolbar-divider" aria-hidden="true"></div>
           <div class="toolbar-group interaction-mode-controls" aria-label="도형 상호작용 모드">
-            <button id="select-mode-btn" class="tool-button active" type="button" aria-pressed="true" title="기존 도형 선택·이동">선택</button>
-            <button id="draw-mode-btn" class="tool-button" type="button" aria-pressed="false" title="새 도형 그리기">그리기</button>
+            <button id="select-mode-btn" class="tool-button icon-only active" type="button" aria-label="선택·이동" aria-pressed="true" title="기존 도형 선택·이동"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l12 9-6 1 3 7-3 1-3-7-4 4z"/></svg></button>
+            <button id="draw-mode-btn" class="tool-button icon-only" type="button" aria-label="그리기" aria-pressed="false" title="새 도형 그리기"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10zM13.8 6.7l3.5 3.5M4 20l1-4.5"/></svg></button>
           </div>
           <div class="toolbar-divider" aria-hidden="true"></div>
           <div class="toolbar-group draw-tools" aria-label="도형 도구">
-            <button id="rect-tool-btn" class="tool-button active" type="button" aria-pressed="true" title="사각형 (R)"><span class="rect-icon" aria-hidden="true"></span> 사각형</button>
-            <button id="circle-tool-btn" class="tool-button" type="button" aria-pressed="false" title="원 (C)"><span class="circle-icon" aria-hidden="true"></span> 원</button>
-            <button id="polygon-tool-btn" class="tool-button" type="button" aria-pressed="false" title="폴리곤 (P) — 점을 찍고 Enter 또는 더블클릭으로 완료">⌁ 폴리곤</button>
-            <button id="polyline-tool-btn" class="tool-button" type="button" aria-pressed="false" title="열린 꺾은선 (Q) — 점을 찍고 Enter 또는 더블클릭으로 완료">⌁ 꺾은선</button>
-            <button id="freehand-tool-btn" class="tool-button" type="button" aria-pressed="false" title="자유연필 (L) — 드래그하여 그리기">✎ 연필</button>
+            <button id="rect-tool-btn" class="tool-button icon-only active" type="button" aria-label="사각형" aria-keyshortcuts="R" aria-pressed="true" title="사각형 (R)"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1"/></svg></button>
+            <button id="circle-tool-btn" class="tool-button icon-only" type="button" aria-label="원" aria-keyshortcuts="C" aria-pressed="false" title="원 (C)"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg></button>
+            <button id="polygon-tool-btn" class="tool-button icon-only" type="button" aria-label="폴리곤" aria-keyshortcuts="P" aria-pressed="false" title="폴리곤 (P) — 점을 찍고 Enter 또는 더블클릭으로 완료"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18l2-11 9-3 4 8-6 8z"/><circle cx="7" cy="7" r="1"/><circle cx="16" cy="4" r="1"/><circle cx="20" cy="12" r="1"/><circle cx="14" cy="20" r="1"/><circle cx="5" cy="18" r="1"/></svg></button>
+            <button id="polyline-tool-btn" class="tool-button icon-only" type="button" aria-label="열린 꺾은선" aria-keyshortcuts="Q" aria-pressed="false" title="열린 꺾은선 (Q) — 점을 찍고 Enter 또는 더블클릭으로 완료"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18l5-10 6 7 7-10"/><circle cx="3" cy="18" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="14" cy="15" r="1"/><circle cx="21" cy="5" r="1"/></svg></button>
+            <button id="freehand-tool-btn" class="tool-button icon-only" type="button" aria-label="자유연필" aria-keyshortcuts="L" aria-pressed="false" title="자유연필 (L) — 드래그하여 그리기"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-9 5 5 9-5s5 5 9-4"/></svg></button>
           </div>
-          <label class="line-style-control" for="line-style-select">
-            <span>선</span>
+          <label class="line-style-control" for="line-style-select" title="선 형식">
             <select id="line-style-select" aria-label="도형 선 형식">
-              <option value="solid">실선</option>
-              <option value="dashed">점선</option>
+              <option value="solid">━━━━</option>
+              <option value="dashed">┄ ┄ ┄</option>
             </select>
           </label>
           <div class="toolbar-divider" aria-hidden="true"></div>
           <div class="toolbar-group image-tools" aria-label="클립보드 이미지">
-            <button id="paste-image-btn" class="tool-button paste-image-button" type="button" aria-keyshortcuts="Control+V Meta+V" aria-describedby="image-paste-help" title="클립보드 이미지를 현재 PDF 페이지에 붙여넣기 (Ctrl+V)"><span class="paste-image-icon" aria-hidden="true">▧</span> 이미지 붙여넣기 <kbd>Ctrl+V</kbd></button>
+            <button id="paste-image-btn" class="tool-button icon-only paste-image-button" type="button" aria-label="클립보드 이미지 붙여넣기" aria-keyshortcuts="Control+V Meta+V" aria-describedby="image-paste-help" title="클립보드 이미지를 현재 PDF 페이지에 붙여넣기 (Ctrl+V)"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h10v14H9zM5 9H3v12h10v-2M12 9l2-2 2 2M14 7v7"/></svg></button>
           </div>
           <div class="toolbar-divider" aria-hidden="true"></div>
           <div class="toolbar-group overlay-language-controls" aria-label="텍스트 박스 언어">
-            <button id="overlay-language-kr" class="tool-button active" type="button" aria-pressed="true">텍스트 KR</button>
-            <button id="overlay-language-cn" class="tool-button" type="button" aria-pressed="false">文本 CN</button>
+            <button id="overlay-language-kr" class="tool-button active" type="button" aria-label="한글 텍스트 박스" title="한글 텍스트 박스" aria-pressed="true">KR</button>
+            <button id="overlay-language-cn" class="tool-button" type="button" aria-label="중문 텍스트 박스" title="중문 텍스트 박스" aria-pressed="false">CN</button>
           </div>
           <div class="toolbar-spacer"></div>
-          <button id="toggle-filters-btn" class="button secondary compact" type="button" aria-expanded="false" aria-controls="filter-drawer">필터 <span id="active-filter-count" class="filter-count">0</span></button>
+          <button id="toggle-filters-btn" class="tool-button icon-only filter-tool-button" type="button" aria-label="필터" title="필터" aria-expanded="false" aria-controls="filter-drawer"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg><span id="active-filter-count" class="filter-count">0</span></button>
           <strong id="visible-count" class="visible-count">0건 표시 중 / 전체 0건</strong>
         </div>
 
@@ -1079,18 +1082,18 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
               </div>
             </div>
             <div id="viewer-loading" class="viewer-loading" hidden role="status"><span class="spinner"></span><span id="viewer-loading-text">페이지 렌더링 중</span></div>
-            <div id="viewer-shortcut-hint" class="viewer-hint"><kbd>Ctrl+V</kbd> 이미지 · 드래그 이동 · 모서리 크기 · <kbd>Del</kbd> 삭제 · <kbd>R</kbd> 사각 · <kbd>C</kbd> 원 · <kbd>P</kbd> 폴리곤 · <kbd>Q</kbd> 꺾은선 · <kbd>L</kbd> 연필 · <kbd>Esc</kbd> 취소</div>
+            <div id="viewer-shortcut-hint" class="viewer-hint"><kbd>Enter</kbd> 입력 완료 · <kbd>Shift+Enter</kbd> 직접 줄바꿈 · <kbd>Ctrl+V</kbd> 이미지 · <kbd>R</kbd> 사각 · <kbd>C</kbd> 원 · <kbd>P</kbd> 폴리곤 · <kbd>Q</kbd> 꺾은선 · <kbd>L</kbd> 연필 · <kbd>Esc</kbd> 취소</div>
             <p id="image-paste-help" class="sr-only">PDF 도면을 선택한 뒤 Ctrl+V로 클립보드 이미지를 붙여넣습니다. 선택한 이미지는 드래그하거나 화살표 키로 이동하고, 네 모서리로 크기를 조절하며, Delete 키로 삭제할 수 있습니다. 텍스트 입력 중에는 일반 텍스트 붙여넣기가 유지됩니다.</p>
           </section>
 
           <aside class="inspector" aria-label="코멘트 편집기">
-            <div class="verdict-card" id="verdict-card" title="확정 코멘트만 집계합니다.">
+            <div class="verdict-card" id="verdict-card" title="검토 판정" hidden aria-hidden="true">
               <div>
                 <span class="eyebrow">LIVE VERDICT</span>
                 <strong><span id="verdict-grade">A</span> <span id="verdict-label">승인</span></strong>
               </div>
               <div id="verdict-counts" class="verdict-counts">C:0 / M:0 / m:0</div>
-              <div id="axis-summary" class="axis-summary">확정 코멘트 없음</div>
+              <div id="axis-summary" class="axis-summary">코멘트 없음</div>
             </div>
 
             <div class="inspector-scroll">
@@ -1100,7 +1103,6 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
                     <p class="eyebrow">ANNOTATION</p>
                     <h2 id="editor-title">코멘트 선택</h2>
                   </div>
-                  <span id="selected-status-chip" class="status-chip pending" hidden>pending</span>
                 </div>
                 <div id="editor-empty" class="editor-empty">마킹 도구로 수정 부위를 표시하면 이동·편집 가능한 텍스트 박스가 자동으로 붙습니다.</div>
                 <div id="image-selection-panel" class="image-selection-panel" role="status" aria-live="polite" hidden>
@@ -1114,7 +1116,6 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
                   <div id="dynamic-fields" class="dynamic-fields"></div>
                   <div class="editor-actions">
                     <button id="save-comment-btn" class="button primary" type="submit">저장</button>
-                    <button id="cycle-status-btn" class="button secondary" type="button">상태 전환</button>
                     <button id="delete-comment-btn" class="button danger-text" type="button">삭제</button>
                   </div>
                 </form>
@@ -1130,7 +1131,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             </div>
 
             <div class="export-dock">
-              <div id="export-warning" class="gate-warning">확정할 코멘트를 추가해 주세요.</div>
+              <div id="export-warning" class="gate-warning">PDF를 열면 내용이 없어도 바로 저장할 수 있습니다.</div>
               <div id="image-export-note" class="image-export-note" role="status" hidden>붙여넣은 이미지는 현재 배치 그대로 PDF에 포함됩니다.</div>
               <div id="quick-cn-readiness" class="quick-cn-readiness" role="status" hidden>
                 <span id="quick-cn-readiness-text">중문 준비 상태 확인 중</span>
@@ -1417,7 +1418,7 @@ const state = {
   activeLineStyle: localStorage.getItem("drawing-review-line-style") === "dashed" ? "dashed" : "solid",
   commentLineStyles: new Map(),
   commentTemplateLinks: new Map(),
-  filters: { statuses: new Set(), axes: new Set(), severities: new Set(), drawings: new Set(), query: "" },
+  filters: { axes: new Set(), severities: new Set(), drawings: new Set(), query: "" },
   saveTimer: null,
   commentWriteChain: Promise.resolve(),
   commentWritePendingCount: 0,
@@ -1538,7 +1539,6 @@ function currentPageMeta() {
 }
 
 function severityColor(value) { return COLORS[value] || "#59647A"; }
-function statusDisplay(value) { return ({ pending: "작성 중", confirmed: "PDF 포함", dropped: "PDF 제외" })[value] || String(value || ""); }
 
 function loadScript(source) {
   return new Promise((resolve, reject) => {
@@ -2696,24 +2696,40 @@ function simplifyFreehandPoints(points, tolerance = .55) {
   ];
 }
 
+const ANNOTATION_TEXT_FONT_PT = 12;
+const ANNOTATION_TEXT_LINE_HEIGHT_PT = 17;
+const ANNOTATION_TEXT_PAD_X_PT = 8;
+const ANNOTATION_TEXT_PAD_Y_PT = 5;
+const ANNOTATION_TEXT_MEASURE_SLOP_PT = 4;
+
+function annotationViewportScale() {
+  const transform = state.viewport?.transform;
+  if (Array.isArray(transform) && transform.length >= 2) {
+    const scale = Math.hypot(Number(transform[0]) || 0, Number(transform[1]) || 0);
+    if (scale > 0) return scale;
+  }
+  return Math.max(.01, Number(state.viewport?.scale || state.scale || 1));
+}
+
 function defaultTextRect(markRect) {
   if (!state.viewport) {
     const meta = currentPageMeta();
     const pageWidth = Number(meta?.unrotated_width || meta?.width || 1000);
     const pageHeight = Number(meta?.unrotated_height || meta?.height || 1000);
-    const width = Math.min(110, pageWidth * .28);
-    const height = Math.min(34, pageHeight * .12);
+    const width = Math.min(110, Math.max(24, pageWidth - 8));
+    const height = Math.min(ANNOTATION_TEXT_LINE_HEIGHT_PT + 2 * ANNOTATION_TEXT_PAD_Y_PT, Math.max(18, pageHeight - 8));
     const x0 = markRect[2] + 12 + width <= pageWidth ? markRect[2] + 12 : Math.max(0, markRect[0] - width - 12);
     const y0 = Math.max(0, Math.min(pageHeight - height, markRect[1]));
     return [x0, y0, x0 + width, y0 + height].map((value) => Math.round(value * 100) / 100);
   }
   const [x0, y0, x1, y1] = rectToViewport(markRect);
-  const width = Math.max(96, Math.min(120, state.viewport.width * .22));
-  const height = 34;
-  let left = x1 + 14;
+  const scale = annotationViewportScale();
+  const width = 110 * scale;
+  const height = (ANNOTATION_TEXT_LINE_HEIGHT_PT + 2 * ANNOTATION_TEXT_PAD_Y_PT) * scale;
+  let left = x1 + 12 * scale;
   let top = y0;
-  if (left + width > state.viewport.width - 8) left = Math.max(8, x0 - width - 14);
-  if (top + height > state.viewport.height - 8) top = Math.max(8, state.viewport.height - height - 8);
+  if (left + width > state.viewport.width - 3) left = Math.max(3, x0 - width - 12 * scale);
+  if (top + height > state.viewport.height - 3) top = Math.max(3, state.viewport.height - height - 3);
   return viewportRectToFitz([left, top, left + width, top + height]);
 }
 
@@ -2727,26 +2743,22 @@ let textBoxMeasureCanvas = null;
 function compactTextBoxSize(value, placeholder = "") {
   textBoxMeasureCanvas ||= document.createElement("canvas");
   const context = textBoxMeasureCanvas.getContext("2d");
-  context.font = '800 12px "Noto Sans KR", "Microsoft YaHei", sans-serif';
+  const scale = annotationViewportScale();
+  const fontSize = ANNOTATION_TEXT_FONT_PT * scale;
+  const lineHeight = ANNOTATION_TEXT_LINE_HEIGHT_PT * scale;
+  const paddingX = ANNOTATION_TEXT_PAD_X_PT * scale;
+  const paddingY = ANNOTATION_TEXT_PAD_Y_PT * scale;
+  context.font = `800 ${fontSize}px "Noto Sans KR", "Microsoft YaHei", sans-serif`;
   const source = String(value || "").replace(/\r/g, "") || String(placeholder || "");
-  const maxTextWidth = Math.max(110, Math.min(250, Number(state.viewport?.width || 900) * .3));
-  const lines = [];
-  for (const paragraph of source.split("\n")) {
-    if (!paragraph) { lines.push(""); continue; }
-    let line = "";
-    for (const character of Array.from(paragraph)) {
-      const candidate = line + character;
-      if (line && context.measureText(candidate).width > maxTextWidth) {
-        lines.push(line);
-        line = character;
-      } else line = candidate;
-    }
-    lines.push(line);
-  }
-  const measured = Math.max(58, ...lines.map((line) => context.measureText(line || " ").width));
+  const lines = source.split("\n");
+  const measured = Math.max(32 * scale, ...lines.map((line) => context.measureText(line || " ").width));
   return {
-    width: Math.ceil(Math.min(maxTextWidth, measured) + 16),
-    height: Math.ceil(Math.max(30, lines.length * 17 + 10)),
+    width: Math.ceil(measured + 2 * paddingX + ANNOTATION_TEXT_MEASURE_SLOP_PT * scale),
+    height: Math.ceil(Math.max(lineHeight, lines.length * lineHeight) + 2 * paddingY),
+    fontSize,
+    lineHeight,
+    paddingX,
+    paddingY,
   };
 }
 
@@ -2822,7 +2834,6 @@ function canonicalDrawingNo(value) {
 function currentVisibleComments() {
   const query = normalizedSearch(state.filters.query);
   return state.comments.filter((comment) => {
-    if (state.filters.statuses.size && !state.filters.statuses.has(comment.status)) return false;
     if (state.filters.axes.size && !state.filters.axes.has(comment.axis)) return false;
     if (state.filters.severities.size && !state.filters.severities.has(comment.severity)) return false;
     if (state.filters.drawings.size && !state.filters.drawings.has(canonicalDrawingNo(comment.drawing_no))) return false;
@@ -2975,50 +2986,7 @@ function commentOverlapMetadata(comments = state.comments) {
 }
 
 function overlayBadgeLayout(drawable) {
-  const confirmed = state.comments.filter((comment) =>
-    Number(comment.page) === Number(state.page) && comment.status === "confirmed"
-  );
-  const extras = drawable.filter((comment) => !confirmed.includes(comment));
-  const result = badgeLayoutForComments(confirmed);
-  const extraLayout = badgeLayoutForComments(extras);
-  const pageScale = Number(state.viewport?.scale || state.scale || 1);
-  const collisionSpan = (2 * BADGE_RADIUS_PT + BADGE_COLLISION_PADDING_PT) * pageScale;
-  const step = BADGE_STAGGER_STEP_PT * pageScale;
-  const radius = BADGE_RADIUS_PT * pageScale;
-  const occupied = [...result.entries()].map(([comment, badge]) => ({
-    comment,
-    rect: rectToViewport(comment.rect),
-    center: badge.center,
-  }));
-  extras
-    .slice()
-    .sort((left, right) => Number(left.no || 0) - Number(right.no || 0) || drawable.indexOf(left) - drawable.indexOf(right))
-    .forEach((comment) => {
-      const badge = extraLayout.get(comment);
-      if (!badge) return;
-      const rect = rectToViewport(comment.rect);
-      let center = badge.center.slice();
-      const direction = center[1] + step <= state.viewport.height - radius ? 1 : -1;
-      let attempts = 0;
-      while (
-        attempts < 40 &&
-        occupied.some((item) =>
-          rectanglesOverlap(rect, item.rect) &&
-          Math.abs(center[0] - item.center[0]) < collisionSpan &&
-          Math.abs(center[1] - item.center[1]) < collisionSpan
-        )
-      ) {
-        center[1] = Math.min(Math.max(center[1] + direction * step, radius), state.viewport.height - radius);
-        attempts += 1;
-      }
-      result.set(comment, {
-        ...badge,
-        center,
-        offset: [center[0] - badge.base[0], center[1] - badge.base[1]],
-      });
-      occupied.push({ comment, rect, center });
-    });
-  return result;
+  return badgeLayoutForComments(drawable);
 }
 
 function commentViewportPoints(comment) {
@@ -3170,20 +3138,12 @@ async function deleteSelectedImageOverlay() {
 }
 
 function autoIncludeCompletedQuickComment(comment) {
-  if (!state.quickMode || !comment || comment.status !== "pending" || !String(comment.kr || "").trim()) return false;
-  comment.status = "confirmed";
-  return true;
+  return false;
 }
 
 async function finishOverlayTextEntry(editor, comment, field) {
   if (!editor || !comment?.no || editor.dataset.committing === "true") return false;
   const value = editor.innerText.replace(/\n$/, "");
-  if (!value.trim()) {
-    toast("내용을 입력해 주세요", "수정 내용을 입력한 뒤 Enter를 누르면 같은 도형으로 다음 영역을 표시할 수 있습니다.", "error");
-    editor.focus({ preventScroll: true });
-    return false;
-  }
-
   editor.dataset.committing = "true";
   comment[field] = value;
   if (field === "cn") comment.cn_status = comment.cn.trim() && String(comment.part_cn || "").trim() ? "reviewed" : "empty";
@@ -3218,19 +3178,24 @@ function appendTextBoxOverlay(group, comment, markRect) {
   const current = rectToViewport(resolvedTextRect(comment));
   let tx0 = current[0];
   let ty0 = current[1];
-  let { width, height } = compactTextBoxSize(comment[field], placeholder);
-  tx0 = Math.max(3, Math.min(Number(state.viewport.width) - width - 3, tx0));
-  ty0 = Math.max(3, Math.min(Number(state.viewport.height) - height - 3, ty0));
+  let metrics = compactTextBoxSize(comment[field], placeholder);
+  let { width, height } = metrics;
+  tx0 = Math.max(3, Math.min(Math.max(3, Number(state.viewport.width) - width - 3), tx0));
+  ty0 = Math.max(3, Math.min(Math.max(3, Number(state.viewport.height) - height - 3), ty0));
   const markCenter = [(markRect[0] + markRect[2]) / 2, (markRect[1] + markRect[3]) / 2];
+  const displayScale = annotationViewportScale();
   const link = svgElement("line", {
     x1: markCenter[0], y1: markCenter[1], x2: tx0, y2: ty0,
     class: "annotation-text-link", stroke: severityColor(comment.severity),
+    "stroke-width": .85 * displayScale,
+    "stroke-dasharray": `${4 * displayScale} ${3 * displayScale}`,
   });
   group.append(link);
 
   const box = svgElement("g", { class: "annotation-textbox", "data-language": language });
   const shell = svgElement("rect", {
-    class: "textbox-shell", x: tx0, y: ty0, width, height, rx: 5,
+    class: "textbox-shell", x: tx0, y: ty0, width, height, rx: 5 * displayScale,
+    "stroke-width": 1.1 * displayScale,
     tabindex: 0,
   });
   shell.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
@@ -3242,7 +3207,7 @@ function appendTextBoxOverlay(group, comment, markRect) {
   moveHandle.addEventListener("pointerdown", (event) => beginTextMoveGesture(event, comment));
   moveHandle.append(moveHandleCircle, moveHandleIcon);
 
-  const foreign = svgElement("foreignObject", { x: tx0 + 3, y: ty0 + 3, width: Math.max(24, width - 6), height: Math.max(22, height - 6) });
+  const foreign = svgElement("foreignObject", { x: tx0 + metrics.paddingX, y: ty0 + metrics.paddingY, width: Math.max(1, width - 2 * metrics.paddingX), height: Math.max(1, height - 2 * metrics.paddingY) });
   const editor = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
   editor.className = "annotation-text-editor";
   editor.contentEditable = "true";
@@ -3250,6 +3215,8 @@ function appendTextBoxOverlay(group, comment, markRect) {
   editor.setAttribute("aria-label", `코멘트 ${comment.no} ${language} 내용`);
   editor.dataset.placeholder = placeholder;
   editor.textContent = String(comment[field] || "");
+  editor.style.fontSize = `${metrics.fontSize}px`;
+  editor.style.lineHeight = `${metrics.lineHeight}px`;
   editor.addEventListener("pointerdown", (event) => event.stopPropagation());
   editor.addEventListener("focus", () => {
     state.selectedNo = Number(comment.no);
@@ -3271,9 +3238,10 @@ function appendTextBoxOverlay(group, comment, markRect) {
   editor.addEventListener("input", () => {
     comment[field] = editor.innerText.replace(/\n$/, "");
     if (field === "cn") comment.cn_status = comment.cn.trim() && String(comment.part_cn || "").trim() ? "reviewed" : "empty";
-    ({ width, height } = compactTextBoxSize(comment[field], placeholder));
-    tx0 = Math.max(3, Math.min(Number(state.viewport.width) - width - 3, tx0));
-    ty0 = Math.max(3, Math.min(Number(state.viewport.height) - height - 3, ty0));
+    metrics = compactTextBoxSize(comment[field], placeholder);
+    ({ width, height } = metrics);
+    tx0 = Math.max(3, Math.min(Math.max(3, Number(state.viewport.width) - width - 3), tx0));
+    ty0 = Math.max(3, Math.min(Math.max(3, Number(state.viewport.height) - height - 3), ty0));
     shell.setAttribute("x", tx0);
     shell.setAttribute("y", ty0);
     shell.setAttribute("width", width);
@@ -3282,10 +3250,12 @@ function appendTextBoxOverlay(group, comment, markRect) {
     moveHandleCircle.setAttribute("cy", ty0 + 2);
     moveHandleIcon.setAttribute("x", tx0 + 2);
     moveHandleIcon.setAttribute("y", ty0 + 5);
-    foreign.setAttribute("x", tx0 + 3);
-    foreign.setAttribute("y", ty0 + 3);
-    foreign.setAttribute("width", Math.max(24, width - 6));
-    foreign.setAttribute("height", Math.max(22, height - 6));
+    foreign.setAttribute("x", tx0 + metrics.paddingX);
+    foreign.setAttribute("y", ty0 + metrics.paddingY);
+    foreign.setAttribute("width", Math.max(1, width - 2 * metrics.paddingX));
+    foreign.setAttribute("height", Math.max(1, height - 2 * metrics.paddingY));
+    editor.style.fontSize = `${metrics.fontSize}px`;
+    editor.style.lineHeight = `${metrics.lineHeight}px`;
     const textCenter = [tx0 + width / 2, ty0 + height / 2];
     const towardMark = [markCenter[0] - textCenter[0], markCenter[1] - textCenter[1]];
     const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
@@ -3315,11 +3285,6 @@ function appendTextBoxOverlay(group, comment, markRect) {
   const edgeScale = 1 / Math.max(Math.abs(towardMark[0]) / Math.max(width / 2, .1), Math.abs(towardMark[1]) / Math.max(height / 2, .1), 1);
   link.setAttribute("x2", textCenter[0] + towardMark[0] * edgeScale);
   link.setAttribute("y2", textCenter[1] + towardMark[1] * edgeScale);
-  const compactRect = viewportRectToFitz([tx0, ty0, tx0 + width, ty0 + height]);
-  if (!Array.isArray(comment.text_rect) || comment.text_rect.some((value, index) => Math.abs(Number(value) - compactRect[index]) >= .25)) {
-    comment.text_rect = compactRect;
-    scheduleSave(comment);
-  }
 }
 
 function imageRuntime() {
@@ -3434,7 +3399,7 @@ function appendImageOverlays(layer) {
     const hit = svgElement("rect", { class: "image-overlay-hit", x: x0, y: y0, width, height });
     image.addEventListener("pointerdown", (event) => beginImageMoveGesture(event, item));
     hit.addEventListener("pointerdown", (event) => beginImageMoveGesture(event, item));
-    const redOutline = svgElement("rect", { class: "image-red-outline", x: x0, y: y0, width, height });
+    const redOutline = svgElement("rect", { class: "image-red-outline", x: x0, y: y0, width, height, "stroke-width": 2 * annotationViewportScale() });
     group.append(image, hit, redOutline);
     if (selected) {
       group.append(svgElement("rect", { class: "image-selection-border image-overlay-outline", x: x0, y: y0, width, height }));
@@ -3495,12 +3460,15 @@ function renderOverlay() {
     }
     const closedShape = ["rect", "circle", "polygon"].includes(comment.shape || "rect");
     const lineStyle = lineStyleForComment(comment);
+    const displayScale = annotationViewportScale();
     const shapeClass = `shape-${comment.shape || "rect"}`;
     const hit = svgElement(shapeName, { ...shapeAttrs, class: `annotation-hit ${shapeClass}` });
     const shape = svgElement(shapeName, {
       ...shapeAttrs,
-      class: `annotation-shape ${shapeClass}${closedShape ? " shape-closed" : ""} line-${lineStyle} severity-${comment.severity || "Major"} status-${comment.status || "pending"}${comment === state.draft && ["polygon", "polyline"].includes(comment.shape) ? " polygon-preview" : ""}`,
+      class: `annotation-shape ${shapeClass}${closedShape ? " shape-closed" : ""} line-${lineStyle} severity-${comment.severity || "Major"}${comment === state.draft && ["polygon", "polyline"].includes(comment.shape) ? " polygon-preview" : ""}`,
       stroke: severityColor(comment.severity),
+      "stroke-width": (comment.shape === "freehand" ? 2.2 : 1.5) * displayScale,
+      ...(lineStyle === "dashed" ? { "stroke-dasharray": `${8 * displayScale} ${5 * displayScale}` } : {}),
     });
     if (comment.no) {
       hit.addEventListener("pointerdown", (event) => beginMoveGesture(event, comment));
@@ -3521,7 +3489,7 @@ function renderOverlay() {
     const text = svgElement("text", { x: 5, y: 12 });
     text.textContent = labelText;
     label.append(text);
-    group.append(label);
+    if (!state.quickMode) group.append(label);
     if (supportsExtendedMarkup()) appendTextBoxOverlay(group, comment, [x0, y0, x1, y1]);
     if (isSelected && !isDraft && ["rect", "circle"].includes(comment.shape)) {
       [["nw", x0, y0], ["ne", x1, y0], ["se", x1, y1], ["sw", x0, y1]].forEach(([name, x, y]) => {
@@ -3544,7 +3512,7 @@ function defaultComment(rect) {
     axis: state.fields?.axes?.[0]?.code || "F",
     severity: state.fields?.severities?.[1] || state.fields?.severities?.[0] || "Major",
     part: "", part_cn: "", kr: "", cn: "", cn_status: "empty", cn_translated_at: "",
-    status: state.fields?.statuses?.[0] || "pending",
+    status: "confirmed",
     action: "", due: "", reply_status: "Open",
     related_drawings: [],
   };
@@ -3946,8 +3914,6 @@ async function handlePointerEnd(event) {
     }
   } else if (gesture.moved) {
     await saveSelectedComment(true);
-  } else if (gesture.mode === "move") {
-    await cycleSelectedStatus();
   }
 }
 
@@ -4409,30 +4375,6 @@ async function handleMemoryWatchdogReload() {
   }
 }
 
-function statusOrder() {
-  return state.fields?.statuses?.length ? state.fields.statuses : ["pending", "confirmed", "dropped"];
-}
-
-function cycleValue(value, values) {
-  const index = values.indexOf(value);
-  return values[(index + 1) % values.length];
-}
-
-async function cycleSelectedStatus() {
-  if (state.draft) {
-    state.draft.status = cycleValue(state.draft.status, statusOrder());
-    renderDerivedUI();
-    announce(`새 코멘트 상태 ${state.draft.status}`);
-    return;
-  }
-  const comment = selectedComment();
-  if (!comment) return;
-  comment.status = cycleValue(comment.status, statusOrder());
-  renderDerivedUI();
-  announce(`코멘트 ${comment.no} 상태 ${comment.status}`);
-  await saveSelectedComment(true);
-}
-
 function selectComment(number, navigate = true) {
   const comment = state.comments.find((item) => Number(item.no) === Number(number));
   if (!comment) return;
@@ -4490,7 +4432,7 @@ function appendSelectField(container, comment, key, label, values, full = false)
   const current = comment[key];
   const items = values.map((item) => typeof item === "object"
     ? { value: item.code, label: `${item.code} · ${item.label}` }
-    : { value: item, label: key === "status" ? statusDisplay(item) : item });
+    : { value: item, label: item });
   if (current && !items.some((item) => item.value === current)) items.unshift({ value: current, label: `${current} (미정의)` });
   items.forEach((item) => {
     const option = document.createElement("option");
@@ -4628,12 +4570,10 @@ function renderDynamicForm() {
   const empty = $("#editor-empty");
   const imagePanel = $("#image-selection-panel");
   const title = $("#editor-title");
-  const chip = $("#selected-status-chip");
   if (selectedImage) {
     form.hidden = true;
     empty.hidden = true;
     imagePanel.hidden = false;
-    chip.hidden = true;
     title.textContent = "붙여넣은 이미지";
     return;
   }
@@ -4641,23 +4581,17 @@ function renderDynamicForm() {
   if (!comment) {
     form.hidden = true;
     empty.hidden = false;
-    chip.hidden = true;
     title.textContent = "코멘트 선택";
     return;
   }
   empty.hidden = true;
   form.hidden = false;
   title.textContent = comment.no ? `코멘트 #${comment.no}` : "새 코멘트";
-  chip.hidden = false;
-  chip.className = `status-chip ${comment.status}`;
-  chip.textContent = statusDisplay(comment.status);
   const container = $("#dynamic-fields");
   container.replaceChildren();
   appendCommentTemplateField(container, comment);
   appendSelectField(container, comment, "axis", "검토 축", state.fields?.axes || []);
   appendSelectField(container, comment, "severity", "중요도", state.fields?.severities || []);
-  appendSelectField(container, comment, "shape", "도형", state.fields?.shapes || []);
-  appendSelectField(container, comment, "status", "상태", state.fields?.statuses || []);
 
   const drawingWrapper = document.createElement("label");
   drawingWrapper.className = "field-full";
@@ -4748,7 +4682,7 @@ function renderCommentList() {
   }
   visible.forEach((comment) => {
     const card = document.createElement("article");
-    card.className = `comment-card severity-${comment.severity} status-${comment.status}${Number(comment.no) === Number(state.selectedNo) ? " selected" : ""}`;
+    card.className = `comment-card severity-${comment.severity}${Number(comment.no) === Number(state.selectedNo) ? " selected" : ""}`;
     const line = document.createElement("span");
     line.className = "comment-severity-line";
     const main = document.createElement("button");
@@ -4768,36 +4702,19 @@ function renderCommentList() {
       top.append(chip);
     }
     const copy = document.createElement("p");
-    copy.textContent = comment.kr || comment.part || "검토의견 미입력";
+    copy.textContent = comment.kr || comment.part || "도형 표시";
     main.append(top, copy);
     main.addEventListener("click", () => selectComment(comment.no));
-    const status = document.createElement("button");
-    status.type = "button";
-    status.className = `comment-status-button ${comment.status}`;
-    status.textContent = statusDisplay(comment.status);
-    status.title = "클릭하면 작성 중 → PDF 포함 → PDF 제외 순서로 바뀝니다.";
-    status.addEventListener("click", async () => {
-      state.selectedNo = comment.no;
-      await cycleSelectedStatus();
-    });
-    const controls = document.createElement("span");
-    controls.className = "comment-card-controls";
-    const replyStatus = String(comment.reply_status || "Open").trim() || "Open";
-    const reply = document.createElement("span");
-    reply.className = `reply-status-badge reply-${replyStatus.toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "") || "open"}`;
-    reply.textContent = replyStatus;
-    reply.title = "중국팀 회신 상태";
-    controls.append(reply, status);
-    card.append(line, main, controls);
+    card.append(line, main);
     list.append(card);
   });
 }
 
 function renderVerdict() {
-  const confirmed = state.comments.filter((comment) => comment.status === "confirmed");
+  const included = state.comments;
   const counts = { Critical: 0, Major: 0, Minor: 0 };
   const axes = {};
-  confirmed.forEach((comment) => {
+  included.forEach((comment) => {
     if (Object.hasOwn(counts, comment.severity)) counts[comment.severity] += 1;
     axes[comment.axis] = (axes[comment.axis] || 0) + 1;
   });
@@ -4806,18 +4723,18 @@ function renderVerdict() {
   $("#verdict-grade").textContent = grade;
   $("#verdict-label").textContent = label;
   $("#verdict-counts").textContent = `C:${counts.Critical} / M:${counts.Major} / m:${counts.Minor}`;
-  $("#axis-summary").textContent = Object.keys(axes).length ? Object.entries(axes).map(([axis, count]) => `${axis} ${count}`).join(" · ") : "확정 코멘트 없음";
+  $("#axis-summary").textContent = Object.keys(axes).length ? Object.entries(axes).map(([axis, count]) => `${axis} ${count}`).join(" · ") : "코멘트 없음";
   $("#verdict-card").dataset.grade = grade;
 }
 
 function renderGate() {
-  const pending = state.comments.filter((comment) => comment.status === "pending").length;
-  const confirmed = state.comments.filter((comment) => comment.status === "confirmed");
-  const quickIncluded = state.comments.filter((comment) => comment.status !== "dropped");
+  const included = state.comments;
+  const quickIncluded = included;
   const imageCount = state.imageOverlays.filter(imageMatchesActivePdf).length;
   const quickHasOutput = quickIncluded.length > 0 || imageCount > 0;
   const quickHasSource = Boolean(state.activePdf);
-  const unreviewed = confirmed.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim() || comment.cn_status !== "reviewed").length;
+  const translatable = included.filter((comment) => String(comment.kr || "").trim() || String(comment.part || "").trim());
+  const unreviewed = translatable.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim() || comment.cn_status !== "reviewed").length;
   const quickCnMissing = quickIncluded.filter((comment) => {
     const kr = String(comment.kr || "").trim();
     return kr && !String(comment.cn || "").trim();
@@ -4832,10 +4749,10 @@ function renderGate() {
   const quickKrButton = $("#quick-export-kr");
   const quickCnButton = $("#quick-export-cn");
   const quickKrcnButton = $("#quick-export-krcn");
-  krButton.disabled = pending > 0;
-  cnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
-  krcnButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
-  replyButton.disabled = pending > 0 || unreviewed > 0 || noApiKey;
+  krButton.disabled = !quickHasSource;
+  cnButton.disabled = !quickHasSource || unreviewed > 0;
+  krcnButton.disabled = !quickHasSource || unreviewed > 0;
+  replyButton.disabled = !quickHasSource || unreviewed > 0;
   if (quickKrButton) {
     quickKrButton.disabled = !quickHasSource;
     quickKrButton.title = quickHasOutput ? "내용 유무와 관계없이 한글 PDF를 저장합니다." : "표시 없이 원본 PDF를 저장합니다.";
@@ -4852,25 +4769,24 @@ function renderGate() {
       ? (noApiKey ? "중문 누락을 확인한 뒤 API 키 설정 또는 한국어만 저장을 선택합니다." : "자동번역을 완료한 뒤 한·중 병기 PDF를 저장합니다.")
       : (quickHasOutput ? "한국어와 중국어를 함께 넣어 저장합니다." : "표시 없이 원본 PDF를 저장합니다.");
   }
-  const cnReason = pending
-    ? "pending 코멘트를 모두 정리해야 합니다."
-    : (noApiKey
-      ? "OpenAI API 키가 없습니다. 번역 없이 KR 산출까지만 가능합니다."
-      : (unreviewed ? "확정 코멘트의 CN·부위 번역을 모두 검수해야 합니다." : ""));
+  const cnReason = !quickHasSource
+    ? "먼저 PDF를 열어 주세요."
+    : (unreviewed
+      ? (noApiKey ? "중문 내용이 비어 있습니다. API 키를 설정하거나 직접 입력해 주세요." : "CN·부위 번역을 확인해 주세요.")
+      : "");
   cnButton.title = cnReason;
   krcnButton.title = cnReason;
   replyButton.title = cnReason;
   cnButton.setAttribute("aria-description", cnReason);
   krcnButton.setAttribute("aria-description", cnReason);
   replyButton.setAttribute("aria-description", cnReason);
-  warning.classList.toggle("alert", pending > 0 || unreviewed > 0 || noApiKey);
-  if (pending) warning.textContent = `미확인 ${pending}건 남음 · 모든 내보내기 차단`;
-  else if (noApiKey) warning.textContent = "OpenAI API 키 없음 · 번역 없이 KR 산출까지만 가능";
-  else if (unreviewed) warning.textContent = `번역 검수 미완료 ${unreviewed}건 · KR 통합 내보내기만 가능`;
-  else warning.textContent = confirmed.length ? "내보내기 준비 완료" : "확정 코멘트 없이 빈 산출물이 생성됩니다.";
+  warning.classList.toggle("alert", !quickHasSource || unreviewed > 0);
+  if (!quickHasSource) warning.textContent = "먼저 PDF를 열어 주세요.";
+  else if (unreviewed) warning.textContent = `중문 준비 미완료 ${unreviewed}건 · 한글 산출은 바로 가능합니다.`;
+  else warning.textContent = included.length ? "모든 표시를 포함해 내보낼 수 있습니다." : "표시 없이 원본 PDF를 저장할 수 있습니다.";
   if (state.quickMode) {
     warning.classList.remove("alert");
-    if (pending) warning.textContent = `내용이 비어 있는 표시 ${pending}건도 도형만 포함해 PDF로 저장됩니다.`;
+    if (!quickHasSource) warning.textContent = "PDF를 열면 한글·중문·한중 병기 PDF를 바로 저장할 수 있습니다.";
     else if (!quickHasOutput) warning.textContent = "표시가 없어도 원본 PDF를 그대로 저장할 수 있습니다.";
     else if (!quickIncluded.length && imageCount) warning.textContent = `붙여넣은 이미지 ${imageCount}개를 포함해 한글·중문·병기 PDF를 저장할 수 있습니다.`;
     else if (quickCnMissing && noApiKey) warning.textContent = "모든 PDF 저장 가능 · 중문이 없는 표시는 도형만, 병기본에는 한국어만 포함됩니다.";
@@ -4964,7 +4880,7 @@ function renderDerivedUI() {
   syncLineStyleControl();
   const quickMarkCount = $("#quick-mark-step em");
   if (quickMarkCount) quickMarkCount.textContent = String(
-    state.comments.filter((comment) => comment.status !== "dropped").length +
+    state.comments.length +
     state.imageOverlays.filter(imageMatchesActivePdf).length,
   );
   if (!$("#translation-panel").hidden) renderTranslationTable();
@@ -4978,7 +4894,6 @@ function renderFilters() {
     if (!drawings.includes(value)) state.filters.drawings.delete(value);
   });
   const definitions = [
-    ["statuses", "상태", state.fields?.statuses || []],
     ["axes", "축", (state.fields?.axes || []).map((item) => item.code)],
     ["severities", "중요도", state.fields?.severities || []],
     ["drawings", "도면번호", drawings],
@@ -4997,7 +4912,7 @@ function renderFilters() {
       input.type = "checkbox";
       input.checked = state.filters[key].has(value);
       const copy = document.createElement("span");
-      copy.textContent = key === "statuses" ? statusDisplay(value) : value;
+      copy.textContent = value;
       input.addEventListener("change", () => {
         if (input.checked) state.filters[key].add(value);
         else state.filters[key].delete(value);
@@ -5117,13 +5032,13 @@ function isTranslationReviewed(comment) {
 function renderTranslationTable() {
   const body = $("#translation-table-body");
   body.replaceChildren();
-  const comments = state.comments.filter((comment) => comment.status === "confirmed").sort((a, b) => Number(a.no) - Number(b.no));
+  const comments = state.comments.slice().sort((a, b) => Number(a.no) - Number(b.no));
   if (!comments.length) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
     cell.className = "glossary-empty";
-    cell.textContent = "확정된 코멘트가 없습니다.";
+    cell.textContent = "코멘트가 없습니다.";
     row.append(cell);
     body.append(row);
     return;
@@ -5210,7 +5125,7 @@ function renderTranslationTable() {
 }
 
 async function confirmAllTranslations() {
-  const targets = state.comments.filter((comment) => comment.status === "confirmed" && !isTranslationReviewed(comment));
+  const targets = state.comments.filter((comment) => !isTranslationReviewed(comment));
   const incomplete = targets.filter((comment) => !String(comment.cn || "").trim() || !String(comment.part_cn || "").trim());
   if (incomplete.length) {
     toast("전체 확인을 완료할 수 없습니다", `CN 의견 또는 부위가 비어 있는 코멘트: ${incomplete.map((item) => "#" + item.no).join(", ")}`, "error", 7000);
@@ -5341,7 +5256,7 @@ async function runTranslation() {
   button.disabled = true;
   $("#translation-progress").hidden = false;
   $("#translation-progress-bar").style.width = "12%";
-  $("#translation-progress-text").textContent = "확정 코멘트를 배치로 번역하는 중입니다…";
+  $("#translation-progress-text").textContent = "코멘트를 배치로 번역하는 중입니다…";
   $("#translation-results").replaceChildren();
   try {
     await flushPendingCommentSaves();
@@ -5590,10 +5505,7 @@ function handleKeyboard(event) {
     updateShortcutField("severity", state.fields.severities[severityIndex]);
     return;
   }
-  if (command === "Space" && !event.repeat) {
-    event.preventDefault();
-    cycleSelectedStatus();
-  } else if (command === "Delete" && !event.repeat) {
+  if (command === "Delete" && !event.repeat) {
     event.preventDefault();
     if (state.selectedImageId) void deleteSelectedImageOverlay();
     else deleteSelectedComment();
@@ -5702,7 +5614,6 @@ function bindEvents() {
     void finishPolygonGesture();
   });
   $("#comment-form").addEventListener("submit", (event) => { event.preventDefault(); saveSelectedComment(false); });
-  $("#cycle-status-btn").addEventListener("click", cycleSelectedStatus);
   $("#delete-comment-btn").addEventListener("click", deleteSelectedComment);
   $("#delete-image-btn")?.addEventListener("click", () => { void deleteSelectedImageOverlay(); });
   $("#toggle-filters-btn").addEventListener("click", (event) => {
@@ -5774,7 +5685,7 @@ const STATIC_CONFIG = { provider:"openai",model:"gpt-4o",batch_size:20,temperatu
 const STATIC_API_KEY_STORAGE = "drawing-review-openai-api-key";
 const STATIC_COMMENT_DEFAULTS = {
   drawing_no:"미상",related_drawings:[],page:1,shape:"rect",rect:[0,0,0,0],axis:"F",severity:"Major",
-  part:"",part_cn:"",kr:"",cn:"",cn_status:"empty",cn_translated_at:"",status:"pending",action:"",due:"",reply_status:"Open",reply_text:"",
+  part:"",part_cn:"",kr:"",cn:"",cn_status:"empty",cn_translated_at:"",status:"confirmed",action:"",due:"",reply_status:"Open",reply_text:"",
 };
 const STATIC_GLOSSARY = {
   "마구리":"端面","엣지밴딩":"封边","면접기":"倒角","줄눈":"接缝","이음매":"拼缝","실링":"密封胶","코킹":"填缝","공차":"公差",
@@ -5851,8 +5762,8 @@ function staticPointsRect(points) { const xs=points.map((point)=>point[0]),ys=po
 function staticCommentPayload(payload,fields,existing=null) {
   const c=existing?staticClone(existing):staticClone(STATIC_COMMENT_DEFAULTS),editable=Object.keys(STATIC_COMMENT_DEFAULTS).filter((k)=>!["reply_status","reply_text"].includes(k));for(const key of editable)if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);for(const key of["points","text_rect"])if(Object.hasOwn(payload,key))c[key]=staticClone(payload[key]);c.page=Math.max(1,Math.trunc(Number(c.page||1)));if(!new Set(fields.axes.map((a)=>a.code)).has(c.axis)||!fields.severities.includes(c.severity)||!fields.statuses.includes(c.status)||!fields.shapes.includes(c.shape))throw new StaticApiError("fields.json에 없는 코멘트 값입니다.");if(c.shape==="polygon"||c.shape==="polyline"||c.shape==="freehand"){c.points=staticPoints(c.points,c.shape==="polygon"?3:2);c.rect=staticPointsRect(c.points);}else c.rect=staticRect(c.rect);if(c.text_rect!=null)c.text_rect=staticRect(c.text_rect);c.related_drawings=staticRelated(c.related_drawings);for(const key of["drawing_no","part","part_cn","kr","cn","action","due","reply_status","reply_text"])c[key]=String(c[key]??"");const unresolved={};for(const key of["part","kr"]){const found=c[key].match(/\{[^{}]+\}/g)||[];if(found.length)unresolved[key]=found;}if(Object.keys(unresolved).length)throw new StaticApiError("미치환 플레이스홀더가 남아 있습니다. 값을 모두 입력해 주세요.",422,"unresolved_placeholder",{fields:Object.keys(unresolved),placeholders:unresolved});if(existing&&["cn","part_cn"].some((k)=>Object.hasOwn(payload,k)&&c[k]!==String(existing[k]??"")))c.cn_status=c.cn.trim()&&c.part_cn.trim()?"reviewed":"empty";if(!["empty","auto","reviewed"].includes(c.cn_status))c.cn_status="empty";return c;
 }
-function staticVerdict(ledger) { const severity={Critical:0,Major:0,Minor:0},axes={};for(const c of ledger.comments.filter((x)=>x.status==="confirmed")){if(Object.hasOwn(severity,c.severity))severity[c.severity]++;axes[c.axis]=(axes[c.axis]||0)+1;}const grade=severity.Critical>=1||severity.Major>=4?"C":severity.Major>=1?"B":"A";return{grade,label:{A:"승인",B:"조건부승인",C:"재제출"}[grade],severity,axes}; }
-function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["KR","CN","KRCN"].includes(mode))throw new StaticApiError("내보내기 모드가 올바르지 않습니다.");const pending=ledger.comments.filter((c)=>c.status==="pending");if(pending.length)throw new StaticApiError(`작성 중인 지적 ${pending.length}건을 PDF 포함 또는 PDF 제외로 정리해 주세요.`,409,"pending_comments",{count:pending.length});if(mode!=="KR"){const un=ledger.comments.filter((c)=>c.status==="confirmed"&&(!String(c.cn||"").trim()||!String(c.part_cn||"").trim()||c.cn_status!=="reviewed"));if(un.length)throw new StaticApiError(`번역 검수 미완료 ${un.length}건`,409,"translation_unreviewed",{count:un.length});}return mode; }
+function staticVerdict(ledger) { const severity={Critical:0,Major:0,Minor:0},axes={};for(const c of ledger.comments){if(Object.hasOwn(severity,c.severity))severity[c.severity]++;axes[c.axis]=(axes[c.axis]||0)+1;}const grade=severity.Critical>=1||severity.Major>=4?"C":severity.Major>=1?"B":"A";return{grade,label:{A:"승인",B:"조건부승인",C:"재제출"}[grade],severity,axes}; }
+function staticGate(ledger,mode) { mode=String(mode||"KR").toUpperCase();if(!["KR","CN","KRCN"].includes(mode))throw new StaticApiError("내보내기 모드가 올바르지 않습니다.");if(mode!=="KR"){const un=ledger.comments.filter((c)=>(String(c.kr||"").trim()||String(c.part||"").trim())&&(!String(c.cn||"").trim()||(String(c.part||"").trim()&&!String(c.part_cn||"").trim())||c.cn_status!=="reviewed"));if(un.length)throw new StaticApiError(`번역 검수 미완료 ${un.length}건`,409,"translation_unreviewed",{count:un.length});}return mode; }
 
 /* PDF.js and pdf-lib are loaded directly from pinned CDNs. */
 function staticLoadScript(src,test) {
@@ -5978,10 +5889,10 @@ async function staticTranslateBatch(config,key,glossary,items) {
     try{const body=await response.json();return staticCleanTranslation(body.choices?.[0]?.message?.content);}catch(error){if(parseAttempt<1){parseAttempt++;payload.messages.push({role:"user",content:"앞 응답을 설명 없이 올바른 JSON 객체로만 다시 출력하세요."});continue;}if(error instanceof StaticApiError)throw error;throw new StaticApiError("번역 응답 형식을 해석하지 못했습니다.",502,"translation_parse");}
   }
 }
-function staticTranslationTargets(ledger) { return ledger.comments.filter((c)=>c.status==="confirmed"&&(c.cn_status||"empty")==="empty"&&(!String(c.cn||"").trim()||(String(c.part||"").trim()&&!String(c.part_cn||"").trim()))); }
+function staticTranslationTargets(ledger) { return ledger.comments.filter((c)=>(String(c.kr||"").trim()||String(c.part||"").trim())&&(c.cn_status||"empty")==="empty"&&(!String(c.cn||"").trim()||(String(c.part||"").trim()&&!String(c.part_cn||"").trim()))); }
 function staticApplyTranslations(ledger,items,expected=null) {
   const byNo=new Map(ledger.comments.map((c)=>[Number(c.no),c])),unmatched=[];let matched=0;
-  for(const source of items||[]){const no=Number(source?.no),c=byNo.get(no),cn=String(source?.cn||"").trim(),partCn=String(source?.part_cn||"").trim(),needsCn=!String(c?.cn||"").trim(),needsPart=Boolean(String(c?.part||"").trim())&&!String(c?.part_cn||"").trim();if(!Number.isInteger(no)||!c||(expected&&!expected.has(no))||(!needsCn&&!needsPart)||(needsCn&&!cn)||(needsPart&&!partCn)||c.status!=="confirmed"||(c.cn_status||"empty")!=="empty"){unmatched.push(Number.isFinite(no)?no:source?.no);continue;}if(needsCn)c.cn=cn;if(needsPart)c.part_cn=partCn;c.cn_status="auto";c.cn_translated_at=staticNowIso();c.updated_at=staticNowIso();matched++;}
+  for(const source of items||[]){const no=Number(source?.no),c=byNo.get(no),cn=String(source?.cn||"").trim(),partCn=String(source?.part_cn||"").trim(),needsCn=!String(c?.cn||"").trim(),needsPart=Boolean(String(c?.part||"").trim())&&!String(c?.part_cn||"").trim();if(!Number.isInteger(no)||!c||(expected&&!expected.has(no))||(!needsCn&&!needsPart)||(needsCn&&!cn)||(needsPart&&!partCn)||(c.cn_status||"empty")!=="empty"){unmatched.push(Number.isFinite(no)?no:source?.no);continue;}if(needsCn)c.cn=cn;if(needsPart)c.part_cn=partCn;c.cn_status="auto";c.cn_translated_at=staticNowIso();c.updated_at=staticNowIso();matched++;}
   return{matched,unmatched};
 }
 async function staticRunTranslation() {
@@ -6012,7 +5923,6 @@ async function staticSaveConfig(payload) {
 }
 async function staticOpenPayload(base,requestedPdf="") {
   let ledger=await staticLoadLedger(),ledgerChanged=false;
-  if(STATIC_RUNTIME.quickMode){for(const comment of ledger.comments){if(comment.status==="pending"&&String(comment.kr||"").trim()){comment.status="confirmed";comment.updated_at=staticNowIso();ledgerChanged=true;}}}
   const names=await staticSourcePdfs(),available=new Set(names);if(requestedPdf&&available.has(requestedPdf)){ledger.source_pdf=requestedPdf;ledger.zone=ledger.zone||staticInferZone(requestedPdf);ledgerChanged=true;}else if(!ledger.source_pdf&&names.length){ledger.source_pdf=names[0];ledger.zone=ledger.zone||staticInferZone(names[0]);ledgerChanged=true;}if(ledgerChanged)await staticSaveLedger(ledger);
   let recent={id:STATIC_RUNTIME.rootId||base.folder_id||"current"};try{recent=await staticRememberRecent(STATIC_RUNTIME.rootHandle,ledger);STATIC_RUNTIME.rootId=recent.id;}catch(error){console.warn("최근 폴더 갱신을 건너뜁니다.",error);}
   const pdfs=[];for(const name of names)pdfs.push(await staticScanPdf(name));
@@ -6029,7 +5939,7 @@ async function staticLazyPageMeta(pdfName,pageNumber) {
 }
 function staticExternal(name) { const fn=window[name];if(typeof fn!=="function")throw new StaticApiError(`${name} 구현이 정적 페이지에 연결되지 않았습니다.`,501,"static_export_missing",{function:name});return fn; }
 async function staticUnifiedExport(mode) {
-  const ledger=await staticLoadLedger();staticGate(ledger,mode);if(mode!=="KR"&&!staticGetApiKey())throw new StaticApiError("OpenAI API 키가 없습니다. 번역 없이 KR 산출까지만 가능합니다.",409,"api_key_missing");
+  const ledger=await staticLoadLedger();staticGate(ledger,mode);
   const outputs=[],pdf=await staticExternal("staticCreateMarkupPdf")();if(pdf)outputs.push(...(Array.isArray(pdf)?pdf:[pdf]));
   const out=await staticCreateXlsx({mode,ledger});if(out)outputs.push(...(Array.isArray(out)?out:[out]));
   return{ok:true,mode,outputs:outputs.map((x)=>typeof x==="string"?x:(x.relative_path||x.path||x.filename||x.name||String(x)))};
@@ -6069,8 +5979,8 @@ async function staticExportReplyPackage({ledger=null}={}) {
   const outputDir=await staticGetDirectory(STATIC_RUNTIME.rootHandle,["04_회신본"],{create:true}),names=await staticNextReplyPackage(outputDir,`REPLY_${zone}_${date}`);
   await staticWriteBinary(outputDir,[names.pdf],new Uint8Array(await markup.file.arrayBuffer()));
   await staticWriteBinary(outputDir,[names.xlsx],new Uint8Array(await sheet.file.arrayBuffer()));
-  const result=staticVerdict(current),confirmed=current.comments.filter((item)=>item.status==="confirmed"),due=[...new Set(confirmed.map((item)=>String(item.due||"").trim()).filter(Boolean))];
-  const record=[`발송일: ${staticNowIso()}`,`건수: ${confirmed.length}`,`판정: ${result.grade} ${result.label}`,`PDF 파일명: ${names.pdf}`,`XLSX 파일명: ${names.xlsx}`,`회신기한: ${due.length?due.join(", "):"미지정"}`].join("\n");
+  const result=staticVerdict(current),included=current.comments,due=[...new Set(included.map((item)=>String(item.due||"").trim()).filter(Boolean))];
+  const record=[`발송일: ${staticNowIso()}`,`건수: ${included.length}`,`판정: ${result.grade} ${result.label}`,`PDF 파일명: ${names.pdf}`,`XLSX 파일명: ${names.xlsx}`,`회신기한: ${due.length?due.join(", "):"미지정"}`].join("\n");
   await staticWriteBinary(outputDir,[names.record],new TextEncoder().encode(record));
   return{ok:true,pdf:`04_회신본/${names.pdf}`,xlsx:`04_회신본/${names.xlsx}`,record:`04_회신본/${names.record}`,sources:{pdf:`03_마크업/${markup.entry.name}`,xlsx:`02_코멘트시트/${sheet.entry.name}`}};
 }
@@ -6097,7 +6007,7 @@ async function staticRouteApi(rawUrl,options={}) {
   if(path==="/api/translate/export")return staticTranslationExport();
   if(path==="/api/translate/import"&&method==="POST")return staticTranslationImport(body);
   if(path==="/api/export"&&method==="POST")return staticUnifiedExport(String(body.mode||"KR").toUpperCase());
-  if(path==="/api/export/reply"&&method==="POST"){const ledger=await staticLoadLedger();staticGate(ledger,"CN");if(!staticGetApiKey())throw new StaticApiError("OpenAI API 키가 없습니다. 중국팀 발송본을 만들 수 없습니다.",409,"api_key_missing");return staticExportReplyPackage({ledger});}
+  if(path==="/api/export/reply"&&method==="POST"){const ledger=await staticLoadLedger();staticGate(ledger,"CN");return staticExportReplyPackage({ledger});}
   if(path==="/api/import/reply"&&method==="POST"){const file=body instanceof FormData?body.get("file"):body.file;if(!(file instanceof Blob))throw new StaticApiError("회신 XLSX 파일이 필요합니다.");const result=await staticImportReplyWorkbook({file});if(result?.ledger)await staticSaveLedger(result.ledger);return result;}
   throw new StaticApiError(`지원하지 않는 정적 API: ${method} ${path}`,404,"static_route_missing");
 }
@@ -6640,10 +6550,9 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const boldFont = await pdfDocument.embedFont(PDFLib.StandardFonts.HelveticaBold);
     const pages = pdfDocument.getPages();
     const imageRecords = await global.staticImageOverlayRuntime?.embedIntoPdf(pdfDocument, pages, PDFLib, { pdfName: sourceName }) || [];
-    const confirmed = ledger.comments
+    const included = ledger.comments
       .map((comment, ledgerIndex) => ({ comment, ledgerIndex }))
-      .filter((entry) => entry.comment?.status === "confirmed")
-      .map((entry, confirmedIndex) => ({ ...entry, confirmedIndex }));
+      .map((entry, includedIndex) => ({ ...entry, includedIndex }));
 
     const pageInfo = pages.map((page, pageIndex) => {
       const media = page.getMediaBox();
@@ -6664,7 +6573,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
 
     const byPage = new Map();
     const skipped = [];
-    for (const entry of confirmed) {
+    for (const entry of included) {
       const pageIndex = Math.trunc(Number(entry.comment.page || 1)) - 1;
       if (pageIndex < 0 || pageIndex >= pages.length) {
         skipped.push({ no: entry.comment.no, reason: "page_out_of_range", page: entry.comment.page });
@@ -6673,7 +6582,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       const box = commentBox(entry.comment);
       if (!byPage.has(pageIndex)) byPage.set(pageIndex, []);
       byPage.get(pageIndex).push({
-        key: entry.confirmedIndex,
+        key: entry.includedIndex,
         no: entry.comment.no,
         box,
         entry,
@@ -7036,14 +6945,14 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return normalized;
   }
 
-  function confirmedComments(ledger) {
+  function exportComments(ledger) {
     return Array.isArray(ledger?.comments)
-      ? ledger.comments.filter((comment) => comment?.status === "confirmed")
+      ? ledger.comments
       : [];
   }
 
   function verdict(ledger) {
-    const comments = confirmedComments(ledger);
+    const comments = exportComments(ledger);
     const severity = { Critical: 0, Major: 0, Minor: 0 };
     const axes = Object.fromEntries(AXIS_ORDER.map((axis) => [axis, 0]));
     comments.forEach((comment) => {
@@ -7065,18 +6974,13 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
 
   function assertExportable(ledger, mode) {
     const normalized = normalizeMode(mode);
-    const all = Array.isArray(ledger?.comments) ? ledger.comments : [];
-    const pending = all.filter((comment) => comment?.status === "pending");
-    if (pending.length) {
-      throw new ExcelRuntimeError(`미확인 ${pending.length}건 남음`, "pending_comments", {
-        count: pending.length,
-      });
-    }
     if (normalized === "CN" || normalized === "KRCN") {
-      const unreviewed = confirmedComments(ledger).filter((comment) => (
-        !String(comment?.cn || "").trim()
-        || !String(comment?.part_cn || "").trim()
+      const unreviewed = exportComments(ledger).filter((comment) => (
+        (String(comment?.kr || "").trim() || String(comment?.part || "").trim())
+        && (!String(comment?.cn || "").trim()
+        || (String(comment?.part || "").trim() && !String(comment?.part_cn || "").trim())
         || comment?.cn_status !== "reviewed"
+        )
       ));
       if (unreviewed.length) {
         throw new ExcelRuntimeError(`번역 검수 미완료 ${unreviewed.length}건`, "translation_unreviewed", {
@@ -7333,8 +7237,8 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       cell.alignment = { horizontal: "center", vertical: "middle" };
     });
 
-    const confirmed = confirmedComments(ledger);
-    confirmed.forEach((comment) => commentsSheet.addRow(xlsxRow(comment, normalized)));
+    const exported = exportComments(ledger);
+    exported.forEach((comment) => commentsSheet.addRow(xlsxRow(comment, normalized)));
     const sourceEnd = headers.length - 4;
     const lastDataRow = Math.max(2, commentsSheet.rowCount);
     for (let rowNumber = 2; rowNumber <= lastDataRow; rowNumber += 1) {
@@ -7385,7 +7289,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
       selectLockedCells: false,
       selectUnlockedCells: true,
     });
-    return { workbook, confirmed, result };
+    return { workbook, exported, result };
   }
 
   function createExcelRuntime(options = {}) {
@@ -7483,7 +7387,7 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
         path: `02_코멘트시트/${versioned.fileName}`,
         filename: versioned.fileName,
         version: versioned.version,
-        rows: built.confirmed.length,
+        rows: built.exported.length,
         sheets: [...SHEETS],
         verdict: built.result,
         writeResult,
@@ -8051,39 +7955,36 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     Minor: [0.184, 0.435, 0.816],
   };
   const QUICK_FILL_RGB = [1, 0.902, 0];
+  const QUICK_TEXT_FONT_PT = 12;
+  const QUICK_TEXT_LINE_HEIGHT_PT = 17;
+  const QUICK_TEXT_PAD_X_PT = 8;
+  const QUICK_TEXT_PAD_Y_PT = 5;
 
   function quickAutoIncludeCompleted(ledger) {
-    let changed = 0;
-    for (const comment of ledger?.comments || []) {
-      if (comment.status !== "pending" || !String(comment.kr || "").trim()) continue;
-      comment.status = "confirmed";
-      comment.updated_at = staticNowIso();
-      changed += 1;
-    }
-    return changed;
+    return 0;
   }
 
   function quickExportComments(ledger) {
-    return (ledger?.comments || []).filter((comment) => comment.status !== "dropped");
+    return Array.isArray(ledger?.comments) ? ledger.comments : [];
   }
 
   function quickCommentBody(comment, mode) {
-    const kr = String(comment?.kr || "").trim();
-    const cn = String(comment?.cn || "").trim();
+    const kr = String(comment?.kr || "").replace(/\r/g, "");
+    const cn = String(comment?.cn || "").replace(/\r/g, "");
     if (mode === "CN") return cn;
-    if (mode === "KRCN") return [kr, cn].filter(Boolean).join("\n");
+    if (mode === "KRCN") return [kr, cn].filter((value) => value.trim()).join("\n");
     return kr;
   }
 
   function quickCommentSegments(comment, mode, fonts) {
-    const kr = String(comment?.kr || "").trim();
-    const cn = String(comment?.cn || "").trim();
-    if (mode === "CN") return cn ? [{ text: cn, font: fonts.CN, language: "CN" }] : [];
+    const kr = String(comment?.kr || "").replace(/\r/g, "");
+    const cn = String(comment?.cn || "").replace(/\r/g, "");
+    if (mode === "CN") return cn.trim() ? [{ text: cn, font: fonts.CN, language: "CN" }] : [];
     if (mode === "KRCN") return [
-      kr ? { text: kr, font: fonts.KR, language: "KR" } : null,
-      cn ? { text: cn, font: fonts.CN, language: "CN" } : null,
+      kr.trim() ? { text: kr, font: fonts.KR, language: "KR" } : null,
+      cn.trim() ? { text: cn, font: fonts.CN, language: "CN" } : null,
     ].filter(Boolean);
-    return kr ? [{ text: kr, font: fonts.KR, language: "KR" }] : [];
+    return kr.trim() ? [{ text: kr, font: fonts.KR, language: "KR" }] : [];
   }
 
   function quickCnMissing(comments) {
@@ -8215,28 +8116,39 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
   }
 
-  function quickWrapText(font, value, size, maxWidth) {
-    const paragraphs = String(value || "").replace(/\r/g, "").split("\n");
-    const lines = [];
-    for (const paragraph of paragraphs) {
-      if (!paragraph) { lines.push(""); continue; }
-      let line = "";
-      for (const character of Array.from(paragraph)) {
-        const candidate = line + character;
-        if (line && font.widthOfTextAtSize(candidate, size) > maxWidth) {
-          lines.push(line);
-          line = character;
-        } else line = candidate;
-      }
-      if (line) lines.push(line);
-    }
-    return lines;
+  function quickWrapText(font, value) {
+    return String(value || "").replace(/\r/g, "").split("\n");
   }
 
-  function quickWrapSegments(segments, size, maxWidth) {
+  function quickWhitespaceWidth(font, value, size) {
+    const measured = Number(font.widthOfTextAtSize(" ", size));
+    const single = Number.isFinite(measured) && measured > 0 ? measured : size * .28;
+    return Array.from(String(value || "")).reduce((total, character) => total + (character === "\t" ? single * 4 : single), 0);
+  }
+
+  function quickTextRuns(font, value, size) {
+    const runs = [];
+    let offset = 0;
+    for (const part of String(value || "").split(/([ \t]+)/)) {
+      if (!part) continue;
+      if (/^[ \t]+$/.test(part)) {
+        offset += quickWhitespaceWidth(font, part, size);
+        continue;
+      }
+      runs.push({ text: part, offset });
+      offset += font.widthOfTextAtSize(part, size);
+    }
+    return { runs, width: offset };
+  }
+
+  function quickTextWidth(font, value, size) {
+    return quickTextRuns(font, value, size).width;
+  }
+
+  function quickWrapSegments(segments) {
     const lines = [];
     for (const segment of segments) {
-      for (const line of quickWrapText(segment.font, segment.text, size, maxWidth)) {
+      for (const line of quickWrapText(segment.font, segment.text)) {
         lines.push({ ...segment, text: line });
       }
     }
@@ -8244,22 +8156,25 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
   }
 
   function quickTextLayout(segments, width, height) {
-    for (let size = 10; size >= 7; size -= .5) {
-      const lineHeight = size * 1.38;
-      const lines = quickWrapSegments(segments, size, Math.max(20, width - 12));
-      const maxLines = Math.max(1, Math.floor((height - 10) / lineHeight));
-      if (lines.length <= maxLines) return { size, lineHeight, lines, overflow: false };
-    }
-    return { size: 7, lineHeight: 9.66, lines: [], overflow: true };
+    const lines = quickWrapSegments(segments);
+    const availableWidth = Math.max(1, width - 2 * QUICK_TEXT_PAD_X_PT);
+    const availableHeight = Math.max(1, height - 2 * QUICK_TEXT_PAD_Y_PT);
+    const maxWidth = Math.max(1, ...lines.map((line) => quickTextWidth(line.font, line.text || " ", QUICK_TEXT_FONT_PT)));
+    const naturalHeight = Math.max(1, lines.length) * QUICK_TEXT_LINE_HEIGHT_PT;
+    const scale = Math.min(1, availableWidth / maxWidth, availableHeight / naturalHeight);
+    const size = Math.max(4, QUICK_TEXT_FONT_PT * scale);
+    return {
+      size,
+      lineHeight: QUICK_TEXT_LINE_HEIGHT_PT * (size / QUICK_TEXT_FONT_PT),
+      lines,
+    };
   }
 
   function quickCompactTextRect(segments, preferredRect, media) {
-    const size = 10;
-    const maxTextWidth = Math.max(90, Math.min(230, media.width * .38));
-    const lines = quickWrapSegments(segments, size, maxTextWidth);
-    const textWidth = Math.max(56, ...lines.map((line) => line.font.widthOfTextAtSize(line.text || " ", size)));
-    const width = Math.ceil(Math.min(maxTextWidth, textWidth) + 12);
-    const height = Math.min(media.height - 8, Math.ceil(Math.max(26, lines.length * size * 1.38 + 10)));
+    const lines = quickWrapSegments(segments);
+    const textWidth = Math.max(32, ...lines.map((line) => quickTextWidth(line.font, line.text || " ", QUICK_TEXT_FONT_PT)));
+    const width = Math.min(media.width - 8, Math.ceil(textWidth + 2 * QUICK_TEXT_PAD_X_PT));
+    const height = Math.min(media.height - 8, Math.ceil(Math.max(1, lines.length) * QUICK_TEXT_LINE_HEIGHT_PT + 2 * QUICK_TEXT_PAD_Y_PT));
     let x0 = Number(preferredRect?.[0] || 8);
     let y0 = Number(preferredRect?.[1] || 8);
     x0 = Math.max(4, Math.min(media.width - width - 4, x0));
@@ -8294,15 +8209,18 @@ installStaticPortOverrides();if(document.readyState==="loading")document.addEven
     const width = displayRect.x1 - displayRect.x0;
     const height = displayRect.y1 - displayRect.y0;
     const layout = quickTextLayout(segments, width, height);
-    if (layout.overflow) throw new StaticApiError(`코멘트 #${commentNo}의 내용이 텍스트 상자보다 깁니다. 내용을 줄인 뒤 다시 저장해 주세요.`, 422, "textbox_overflow");
     layout.lines.forEach((line, index) => {
       if (!line.text) return;
-      const displayOrigin = [displayRect.x0 + 6, displayRect.y0 + 7 + layout.size + index * layout.lineHeight];
-      const pageOrigin = global.staticPdfDisplayPointToPage(displayOrigin, info.media.width, info.media.height, info.rotation);
-      const nativeOrigin = global.staticPdfTopLeftPointToNative(pageOrigin, info.media);
-      const options = { ...nativeOrigin, font: line.font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) };
-      page.drawText(line.text, options);
-      page.drawText(line.text, { ...options, x: options.x + .18 });
+      const baseline = displayRect.y0 + QUICK_TEXT_PAD_Y_PT + layout.size + index * layout.lineHeight;
+      const measured = quickTextRuns(line.font, line.text, layout.size);
+      for (const run of measured.runs) {
+        const displayOrigin = [displayRect.x0 + QUICK_TEXT_PAD_X_PT + run.offset, baseline];
+        const pageOrigin = global.staticPdfDisplayPointToPage(displayOrigin, info.media.width, info.media.height, info.rotation);
+        const nativeOrigin = global.staticPdfTopLeftPointToNative(pageOrigin, info.media);
+        const options = { ...nativeOrigin, font: line.font, size: layout.size, color, rotate: PDFLib.degrees(info.rotation) };
+        page.drawText(run.text, options);
+        page.drawText(run.text, { ...options, x: options.x + .18 });
+      }
     });
   }
 
