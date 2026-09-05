@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16181d">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="icon" href="data:,">
+<title>Guitar Practice · 나의 연습실</title>
+<style>
+:root{color-scheme:dark;--bg:#16181d;--card:#1e2128;--text:#e8eaed;--muted:#9aa0a8;--amber:#f0a830;--line:#2e323b;--blue:#2a3a52;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;--sticky-height:155px;--keypad-height:0px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,textarea{font:inherit}button{cursor:pointer;color:inherit;background:#252932;border:1px solid var(--line);border-radius:8px;min-height:36px;padding:6px 12px;touch-action:manipulation;transition:background .15s,border-color .15s,transform .1s}button:hover{background:#323743;border-color:#555c6b}button:active{transform:translateY(1px);background:#3b414e}button:disabled{cursor:not-allowed;opacity:.3}button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:3px}input,textarea{color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:9px 10px;min-width:0}input::placeholder,textarea::placeholder{color:#626976}input[type=number]{font-family:var(--mono);appearance:textfield}input::-webkit-inner-spin-button{appearance:none}input[type=checkbox],input[type=range]{accent-color:var(--amber)}input[type=range]{padding:0;cursor:pointer;height:24px;border:0;background:transparent}button svg{display:block}button[aria-pressed=true]{border-color:var(--amber);color:var(--amber);background:#3a3021}[hidden]{display:none!important}.muted{color:var(--muted)}.mono{font-family:var(--mono)}.eyebrow{color:var(--amber);font-size:10px;letter-spacing:2.4px;font-weight:750}.icon-button{width:36px;padding:4px;font-size:21px;flex-shrink:0}.chrome{position:sticky;top:0;z-index:20;background:rgba(22,24,29,.98);border-bottom:1px solid var(--line);box-shadow:0 8px 28px #0002}.tabs-shell{max-width:1500px;margin:auto;display:flex;align-items:center;gap:20px;padding:16px 32px 12px}.brand{display:flex;align-items:center;gap:9px;flex-shrink:0;font-size:11px;font-weight:800;letter-spacing:1.6px}.brand-mark{display:grid;grid-template-columns:repeat(4,3px);align-items:center;gap:3px;height:25px}.brand-mark i{display:block;background:var(--amber);border-radius:2px;height:12px}.brand-mark i:nth-child(2){height:24px}.brand-mark i:nth-child(3){height:18px}.tab-list{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0;padding:4px 2px}.tab-list::-webkit-scrollbar{display:none}.song-tab{white-space:nowrap;border-color:transparent;background:transparent;color:var(--muted);max-width:240px;overflow:hidden;text-overflow:ellipsis;min-height:40px}.song-tab[aria-selected=true]{background:#382d1d;border-color:#67502a;color:var(--amber);font-weight:650}.tab-dot{display:inline-block;width:5px;height:5px;background:currentColor;border-radius:50%;margin-right:8px;vertical-align:middle}.new-song{background:transparent;border-style:dashed;white-space:nowrap;color:var(--muted);min-height:40px}.control-bar{max-width:1500px;margin:auto;padding:8px 32px 17px;display:flex;align-items:center;flex-wrap:wrap;gap:12px}.control-primary,.control-secondary{display:flex;align-items:center;gap:12px}.control-secondary{flex:1}.play{background:var(--amber);color:#221b10;border-color:var(--amber);font-weight:750;min-height:46px;min-width:105px;font-size:14px}.play:hover{background:#ffc261;border-color:#ffc261}.play:active{background:#dc9521}.play.playing{background:#3a3021;color:var(--amber);border-color:#7b5b2e}.tempo{display:flex;align-items:center;gap:7px}.tempo label{font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:750}.bpm-input{width:55px;height:38px;text-align:center;padding:5px}.tempo input[type=range]{width:100px}.step{min-height:32px;width:30px;padding:0;font-size:19px}.time-signature{font:13px var(--mono);color:var(--muted);padding:0 10px;border-right:1px solid var(--line)}.loop-controls{display:flex;align-items:center;gap:6px}.loop-status{white-space:nowrap;font-size:12px;color:#b3c6e3;min-width:74px}.small-button{font-size:12px;white-space:nowrap;padding:6px 9px}.clear-loop{background:transparent;color:var(--muted)}.count-check{display:flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;color:var(--muted);cursor:pointer;min-height:36px}.count-check input{width:15px;height:15px;margin:0}.more{margin-left:auto;background:transparent}.workspace{max-width:1500px;margin:auto;padding:32px 32px calc(32px + var(--keypad-height))}.intro{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:25px}.intro h1{margin:5px 0 6px;font-size:clamp(23px,3vw,32px);font-weight:650;letter-spacing:-1px;overflow-wrap:anywhere}.song-meta{font-size:12px;color:var(--muted)}.intro-right{text-align:right;flex-shrink:0}.save-state{font-size:11px;color:var(--muted);display:block}.save-state::before{content:"";display:inline-block;background:#86a590;width:5px;height:5px;border-radius:50%;margin-right:7px}.save-state.error{color:#efa39a}.save-state.error::before{background:#efa39a}.beat-monitor{display:flex;justify-content:flex-end;align-items:center;gap:7px;margin-bottom:9px}.beat-dot{width:9px;height:9px;border:1px solid #535967;border-radius:50%;transition:background .07s}.beat-dot.on{background:#bdc4d0;border-color:#bdc4d0}.beat-dot.on:first-child{background:var(--amber);border-color:var(--amber);box-shadow:0 0 12px #f0a83044}.transport-status{font:11px var(--mono);color:var(--muted);margin-right:4px}.score-section{background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}.score-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line)}.score-label{font:700 11px var(--mono);letter-spacing:1.5px;display:flex;align-items:center;gap:10px}.score-label span{color:var(--muted);font-size:10px;font-weight:400;letter-spacing:.5px}.score-hint{font-size:11px;color:var(--muted);text-align:right}.score-hint.selecting{color:#bdd4f4}.score{padding:20px 18px 0 12px}.score-row{display:grid;grid-template-columns:22px repeat(4,minmax(0,1fr));column-gap:10px;margin-bottom:23px;scroll-margin-top:calc(var(--sticky-height) + 14px);scroll-margin-bottom:calc(var(--keypad-height) + 18px)}.string-labels{padding-top:78px;display:grid;grid-template-rows:repeat(6,30px);font:11px var(--mono);color:var(--muted)}.string-labels span{display:flex;align-items:center;justify-content:center}.bar{--bar-bg:var(--card);min-width:0;border:1px solid transparent;border-radius:7px;padding:0 0 7px;background:var(--bar-bg);transition:border-color .12s,background .12s}.bar.in-loop{--bar-bg:#243247;background:var(--bar-bg)}.bar.loop-anchor{border-color:#7699c8}.bar.current-bar{border-color:#847049}.bar-header{height:77px;padding:5px 5px 9px;min-width:0}.bar-tools{display:flex;align-items:center;justify-content:space-between;height:28px;margin-bottom:3px}.bar-number{min-height:28px;padding:0 4px;background:transparent;border-color:transparent;color:var(--muted);font:14px var(--mono);border-radius:5px}.bar-number:hover{color:var(--amber)}.bar.in-loop .bar-number{color:#bcd6fc}.bar-delete{min-height:26px;width:24px;padding:0;font-size:17px;color:#666e7b;background:transparent;border-color:transparent;line-height:1}.bar-delete:hover{background:#51302f;color:#ffb3a7;border-color:#6c4140}.chord{display:block;width:100%;height:30px;padding:3px 6px;background:transparent;border-color:transparent;font:600 16px var(--mono);color:var(--amber)}.chord:hover{border-color:#3c424d}.chord:focus{background:#16181d66}.staff{position:relative;border-left:1px solid #5b626f;border-right:1px solid #5b626f}.string-row{display:grid;grid-template-columns:repeat(var(--subdiv),minmax(0,1fr));height:30px;background:linear-gradient(to bottom,transparent calc(50% - .5px),#525966 calc(50% - .5px),#525966 calc(50% + .5px),transparent calc(50% + .5px))}.cell{position:relative;display:flex;align-items:center;justify-content:center;border:0;border-radius:0;min-height:0;min-width:0;height:30px;padding:0;background:transparent;font:500 clamp(6px,1.1vw,14px) var(--mono);transition:none}.cell.beat-edge{border-left:1px solid #78869a25}.cell:hover{background:#ffffff09}.cell:active{transform:none;background:#f0a83015}.cell[aria-selected=true]{background:#f0a83014;box-shadow:inset 0 0 0 1px var(--amber);z-index:3}.cell:focus{outline:none}.cell:focus-visible{outline:2px solid var(--amber);outline-offset:0;z-index:4}.fret{position:relative;z-index:2;background:var(--bar-bg);line-height:1.2;min-width:0;letter-spacing:-.5px;pointer-events:none}.fret:not(:empty){padding:0 1px}.subdiv-16 .cell{font-size:clamp(5px,.72vw,13px)}.subdiv-16 .fret:not(:empty){padding:0}.play-cursor{position:absolute;left:0;top:0;bottom:0;width:calc(100% / var(--subdiv));background:#f0a83023;border-left:1px solid #f0a830b3;border-right:1px solid #f0a830b3;z-index:1;pointer-events:none;will-change:transform}.play-cursor.parked{opacity:.5}.score-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 20px 18px 44px}.add-bar{color:var(--muted);background:transparent;border-style:dashed;font-size:12px;min-height:40px}.selection-readout{font:11px var(--mono);color:var(--muted)}.keyboard-help{display:flex;justify-content:space-between;gap:12px;color:#78818e;font-size:11px;padding:13px 2px 0}.keyboard-help kbd{font:10px var(--mono);padding:2px 4px;border:1px solid #383e49;border-radius:4px;color:#aeb5c1}.memo-section{margin-top:33px}.memo-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}.memo-heading label{font-size:13px;font-weight:600}.memo-heading span{font-size:10px;letter-spacing:1px;color:#666e7b}.memo{display:block;width:100%;resize:none;overflow:hidden;min-height:113px;background:#1b1e24;padding:17px 20px;line-height:1.8;border-color:var(--line);border-radius:10px}.page-footer{margin-top:24px;display:flex;justify-content:space-between;font:10px var(--mono);color:#636b77;letter-spacing:.5px}.popover{position:fixed;z-index:40;width:290px;background:#242831;border:1px solid #464d59;border-radius:12px;padding:18px;box-shadow:0 18px 60px #0007;max-height:calc(100dvh - 30px);overflow:auto}.popover h2{font-size:14px;margin:0 0 16px}.field{display:block;margin-bottom:13px;font-size:12px;color:var(--muted)}.field input{display:block;width:100%;margin-top:5px}.subdiv-options{display:flex;gap:6px;margin-top:7px}.subdiv-options button{flex:1}.danger{color:#efa39a;border-color:#69433f;background:#3b2929;width:100%;margin-top:7px}.danger:hover{background:#563431}.popover-close{position:absolute;top:9px;right:10px;background:transparent;border-color:transparent}.popover-note{font-size:11px;color:var(--muted);margin:10px 0}.backup-menu{width:190px;padding:7px}.backup-menu button{width:100%;text-align:left;border-color:transparent;background:transparent;font-size:12px;min-height:40px}.backup-menu button:hover{background:#343b48}dialog{color:var(--text);background:#242831;border:1px solid #464d59;border-radius:14px;padding:24px;width:min(420px,calc(100vw - 32px));box-shadow:0 24px 90px #0008}dialog::backdrop{background:#07090db3;backdrop-filter:blur(3px)}dialog h2{font-size:18px;margin:0 0 9px}dialog p{font-size:12px;color:var(--muted);overflow-wrap:anywhere}dialog input{width:100%;margin:10px 0 20px}.dialog-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap}.primary{background:var(--amber);border-color:var(--amber);color:#241a09;font-weight:650}.primary:hover{background:#ffc261;border-color:#ffc261}.toast{position:fixed;bottom:calc(var(--keypad-height) + 24px);left:50%;transform:translateX(-50%);background:#343b48;border:1px solid #616c7d;box-shadow:0 10px 40px #0006;color:var(--text);padding:11px 18px;border-radius:9px;z-index:100;font-size:13px;max-width:calc(100vw - 28px);width:max-content}.keypad{position:fixed;z-index:30;bottom:0;left:0;right:0;background:#222730;border-top:1px solid #58606f;padding:8px max(10px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));box-shadow:0 -12px 35px #0004}.keypad-top{display:flex;align-items:center;gap:5px;max-width:560px;margin:0 auto 7px}.keypad-position{font:11px var(--mono);color:var(--muted);margin-right:auto}.keypad-top button{min-height:40px;width:40px;padding:0;font-size:17px}.keys{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;max-width:560px;margin:auto}.keys button{height:44px;font:19px var(--mono);background:#303744;border-color:#424b5c}.keys button:hover{background:#414c60}.keys button:active{background:#71532a}.keys button[data-key=x]{color:var(--amber)}.touch-hint{display:none}
+.bar.in-loop{--bar-bg:var(--blue)}
+.song-tab{flex-shrink:0}
+.control-primary,.control-secondary,.tempo{min-width:0}
+@media(min-width:1500px){.cell{font-size:15px}.subdiv-16 .cell{font-size:13px}}
+@media(max-width:1150px){.tabs-shell{gap:14px}.brand-word{display:none}.control-bar{gap:9px}.control-primary,.control-secondary{gap:9px}.tempo input[type=range]{width:70px}.time-signature{padding:0 7px}.loop-controls{gap:4px}}
+@media(max-width:1000px){.control-primary,.control-secondary{flex:1 1 100%;gap:12px}.tempo{flex:1}.tempo input[type=range]{width:auto;flex:1;min-width:30px}.time-signature{border:0;padding:0 7px}.control-secondary{gap:10px}.count-check{margin-left:auto}.more{margin-left:0}.score-hint{max-width:50%}}
+@media(max-width:600px){.tabs-shell{padding:9px 12px 4px;gap:8px}.brand{display:none}.song-tab{font-size:12px;padding:5px 10px;max-width:150px;min-height:38px}.new-song{padding:5px 9px;font-size:11px;min-height:38px}.control-bar{padding:7px 12px 10px;gap:7px}.control-primary,.control-secondary{gap:7px}.play{min-width:77px;min-height:44px;padding:7px 9px;font-size:13px}.tempo{gap:4px}.tempo label{font-size:8px}.bpm-input{width:40px;padding:4px;font-size:13px;height:34px}.step{width:25px;min-height:32px}.time-signature{font-size:11px;padding:0 0 0 2px}.loop-status{min-width:62px;font-size:10px}.loop-controls{gap:3px}.small-button{padding:5px 7px;font-size:10px;min-height:33px}.count-check{font-size:10px;gap:4px}.count-check input{width:14px;height:14px}.more{width:29px;min-height:33px}.workspace{padding:23px 10px calc(22px + var(--keypad-height))}.intro{margin-bottom:20px;padding:0 3px}.intro h1{font-size:24px}.eyebrow{font-size:8px;letter-spacing:1.8px}.song-meta{font-size:10px}.intro-right{max-width:125px}.save-state{font-size:9px}.transport-status{font-size:9px}.beat-monitor{gap:5px}.beat-dot{width:7px;height:7px}.score-toolbar{padding:12px 10px}.score-label{font-size:10px;gap:7px}.score-label span{font-size:8px}.score-hint{font-size:9px;max-width:54%}.score{padding:11px 5px 0 2px}.score-row{grid-template-columns:15px repeat(4,minmax(0,1fr));column-gap:3px;margin-bottom:17px}.bar-header{padding:4px 2px 9px}.bar-number{font-size:12px;padding:0 1px;min-width:23px}.bar-delete{width:21px}.chord{font-size:12px;padding:3px 2px}.string-labels{font-size:9px}.score-footer{padding:0 8px 12px 20px;gap:5px}.add-bar{font-size:10px;padding:5px 9px}.selection-readout{font-size:9px}.keyboard-help{font-size:9px;padding:11px 3px 0}.desktop-hint{display:none}.touch-hint{display:inline}.memo-section{margin-top:25px;padding:0 3px}.memo{padding:13px;min-height:105px;font-size:12px}.memo-heading label{font-size:12px}.memo-heading span{font-size:8px}.page-footer{font-size:8px;padding:0 3px;letter-spacing:0}.cell{font-size:clamp(5px,1.65vw,9px)}.subdiv-16 .cell{font-size:clamp(4px,1.25vw,7px)}.fret:not(:empty){padding:0;letter-spacing:-.6px}.popover{width:min(290px,calc(100vw - 24px))}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+.auth-locked .chrome,.auth-locked .workspace{display:none}.auth-gate{min-height:100dvh;display:grid;place-items:center;padding:24px}.auth-card{width:min(100%,460px);padding:38px 32px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 80px #0003}.auth-art{height:80px;position:relative;margin-bottom:26px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 12px,#434b5914 12px,#434b59aa 13px)}.auth-art::after{content:"";position:absolute;left:22%;top:0;bottom:0;width:34px;border-inline:1px solid var(--amber);background:#f0a83022}.auth-card h1{font-size:29px;letter-spacing:-1px;line-height:1.35;margin:10px 0 14px}.auth-card p{color:var(--muted);font-size:13px;line-height:1.85}.google-login{width:100%;min-height:48px;background:#f3f4f6;border-color:#f3f4f6;color:#222733;font-weight:650;margin:14px 0 3px}.google-login:hover{background:#fff;border-color:#fff}.auth-message{min-height:42px;font-size:12px!important;color:#b8c6db!important;white-space:pre-line}.auth-footnote{border-top:1px solid var(--line);padding-top:15px;margin-top:14px;font-size:11px!important}.account-strip{max-width:1500px;margin:auto;display:flex;align-items:center;gap:10px;padding:0 32px 11px;font-size:11px;color:var(--muted)}.account-indicator{width:6px;height:6px;border-radius:50%;background:#8f99a8;flex-shrink:0}.account-indicator.connected{background:#81b995}.account-indicator.pending{background:var(--amber)}.account-strip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}.account-button{min-height:28px;padding:3px 9px;font-size:11px;background:transparent;color:#b8c6db;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.account-menu{width:310px}.account-menu h2{margin-bottom:4px}.account-email{font-size:11px;overflow-wrap:anywhere;color:var(--muted);margin:0 0 14px}.account-menu button,.account-menu a{display:block;width:100%;text-align:left;min-height:38px;padding:8px 10px;margin:5px 0;font-size:12px}.account-menu a{color:#b8d2f4;border-radius:7px;text-decoration:none;border:1px solid var(--line)}.account-menu a:hover{background:#343b48}.account-menu a:focus-visible{outline:2px solid var(--amber);outline-offset:2px}.drive-detail{font-size:11px;line-height:1.75;color:var(--muted);padding:9px 0}.cloud-dialog-actions{display:grid;gap:8px;margin-top:20px}.cloud-dialog-actions button{min-height:42px}.online-link{display:block;text-align:center;text-decoration:none;border-radius:8px;padding:11px;margin:12px 0;background:var(--amber);color:#231d13;font-weight:650}.online-link:focus-visible{outline:2px solid var(--amber);outline-offset:3px}.cloud-busy{opacity:.7;pointer-events:none}.cloud-conflict-detail{padding:10px 12px;border:1px solid #665738;background:#3a302155;border-radius:8px;line-height:1.8}
+@media(max-width:600px){.account-strip{padding:0 12px 9px;gap:6px;font-size:9px}.account-button{font-size:9px;max-width:155px;min-height:29px}.auth-card{padding:28px 24px}.auth-card h1{font-size:27px}.account-menu{max-width:calc(100vw - 24px)}}
+.score-editor-tools{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:10px 20px;border-bottom:1px solid var(--line)}.subdivision-picker{display:flex;align-items:center;gap:9px;margin-right:auto}.subdivision-picker>span{font-size:11px;color:var(--muted)}.subdivision-buttons{display:flex;gap:3px}.subdivision-buttons button{min-height:32px;min-width:39px;padding:4px 8px;font:12px var(--mono)}.editor-tool{font-size:11px;min-height:32px;padding:5px 9px;background:transparent}.clear-score-button{color:#dfa799}.clear-score-button:hover{color:#ffc3b5;background:#482e2c}.undo-clear-button{color:var(--amber)}.subdiv-options button{padding:7px 3px;font-size:12px}.subdiv-options small{display:block;font-size:9px;color:var(--muted);margin-top:3px}
+@media(max-width:600px){.score-editor-tools{gap:5px;padding:8px}.subdivision-picker{gap:5px}.subdivision-picker>span{font-size:9px}.subdivision-buttons button{min-width:29px;padding:4px 5px;font-size:10px}.editor-tool{font-size:9px;padding:5px 6px}}
+.cell.has-value{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.cell.drag-source{opacity:.35}.cell.drop-target{background:#f0a83040;box-shadow:inset 0 0 0 2px var(--amber);z-index:5}.cell.drop-target.has-value{background:#547fa653;box-shadow:inset 0 0 0 2px #8db9ee}.fret-drag-ghost{position:fixed;left:0;top:0;z-index:110;pointer-events:none;display:grid;place-items:center;min-width:36px;height:36px;padding:0 8px;border:1px solid var(--amber);border-radius:8px;background:#382d1d;color:var(--amber);font:700 20px var(--mono);box-shadow:0 6px 20px #0007;will-change:transform}body.dragging-fret,body.dragging-fret *{cursor:grabbing!important;user-select:none!important}.drag-help{color:var(--muted);font-size:10px;padding:8px 20px 0;margin:0}
+@media(max-width:600px){.drag-help{padding:7px 10px 0;font-size:9px}}
+</style>
+</head>
+<body>
+<section class="auth-gate" id="authGate" aria-label="Google 로그인" hidden>
+  <div class="auth-card"><div class="eyebrow">GUITAR PRACTICE</div><div class="auth-art" aria-hidden="true"></div><h1>어디서든 이어지는<br>나의 기타 연습</h1><p>Google 계정으로 로그인하면 연습곡과 레슨 메모가 내 Google Drive에 자동 저장됩니다.</p><button class="google-login" id="googleLogin">Google 계정으로 계속</button><p class="auth-message" id="authMessage" role="status">로그인을 준비하고 있습니다.</p><p class="auth-footnote">저장 위치: 내 드라이브 / Guitar Practice<br>로그인한 계정의 연습곡만 표시됩니다.</p></div>
+</section>
+<header class="chrome" id="chrome">
+  <div class="tabs-shell">
+    <div class="brand" aria-label="Guitar Practice"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="brand-word">PRACTICE</span></div>
+    <nav class="tab-list" id="songTabs" role="tablist" aria-label="연습곡"></nav>
+    <button class="new-song" id="newSong">+ 새 곡</button>
+  </div>
+  <div class="control-bar" aria-label="연습 컨트롤">
+    <div class="control-primary">
+      <button class="play" id="playButton" aria-pressed="false" aria-keyshortcuts="Space">▶ 재생</button>
+      <div class="tempo"><label for="bpm">BPM</label><input class="bpm-input" id="bpm" type="number" min="40" max="240" step="1" value="90" aria-label="BPM"><input id="bpmSlider" type="range" min="40" max="240" step="1" value="90" aria-label="BPM 슬라이더"><button class="step" id="bpmDown" aria-label="BPM 1 낮추기">−</button><button class="step" id="bpmUp" aria-label="BPM 1 높이기">+</button></div>
+      <span class="time-signature" aria-label="4분의 4박자">4/4</span>
+    </div>
+    <div class="control-secondary">
+      <span class="loop-status" id="loopStatus">🔁 전체</span>
+      <div class="loop-controls"><button class="small-button" id="selectLoop" aria-pressed="false">구간지정</button><button class="small-button clear-loop" id="clearLoop" disabled>해제</button></div>
+      <label class="count-check"><input id="countIn" type="checkbox">카운트인</label>
+      <button class="icon-button more" id="moreButton" aria-label="데이터 백업 메뉴" aria-expanded="false" aria-controls="backupMenu">⋯</button>
+    </div>
+  </div>
+  <div class="account-strip"><span class="account-indicator" id="accountIndicator" aria-hidden="true"></span><span class="account-strip-text" id="accountStripText">이 기기에 저장 중 · Google Drive로 이어서 연습하세요</span><button class="account-button" id="accountButton" aria-expanded="false" aria-controls="accountMenu">Google Drive 연결</button></div>
+</header>
+<main class="workspace">
+  <section class="intro" aria-label="곡 정보">
+    <div><div class="eyebrow">YOUR DAILY GUITAR SESSION</div><h1 id="songTitle">연습곡 1</h1><div class="song-meta" id="songMeta">4마디 · 8분음표 · Standard E</div></div>
+    <div class="intro-right"><div class="beat-monitor" aria-hidden="true"><span class="transport-status" id="transportStatus">READY</span><i class="beat-dot"></i><i class="beat-dot"></i><i class="beat-dot"></i><i class="beat-dot"></i></div><span class="save-state" id="saveStatus" role="status">이 브라우저에 저장됨</span></div>
+  </section>
+  <section class="score-section" aria-label="TAB 악보">
+    <div class="score-toolbar"><div class="score-label">TAB <span id="divisionLabel">1/8 NOTE</span></div><div class="score-hint" id="scoreHint" role="status">셀을 선택하고 프렛 번호를 입력하세요</div></div>
+    <div class="score-editor-tools"><div class="subdivision-picker"><span>마디당 칸</span><div class="subdivision-buttons" role="group" aria-label="마디당 4·8·16칸"><button id="quickSubdiv4" aria-pressed="false" aria-label="4칸 · 4분음표">4</button><button id="quickSubdiv8" aria-pressed="true" aria-label="8칸 · 8분음표">8</button><button id="quickSubdiv16" aria-pressed="false" aria-label="16칸 · 16분음표">16</button></div></div><button class="editor-tool" id="toggleKeypad" aria-controls="keypad" aria-pressed="false">숫자패드</button><button class="editor-tool undo-clear-button" id="undoClearScore" hidden>지우기 취소</button><button class="editor-tool clear-score-button" id="clearScore">전체 지우기</button></div>
+    <p class="drag-help">프렛 숫자를 드래그해 이동 · 음이 있는 칸에 놓으면 서로 자리 바꿈</p>
+    <div class="score" id="score"></div>
+    <div class="score-footer"><button class="add-bar" id="addBar">+ 마디 추가</button><span class="selection-readout" id="selectionReadout">프렛 0–24 · x 뮤트</span></div>
+  </section>
+  <div class="keyboard-help"><span class="desktop-hint"><kbd>← ↑ ↓ →</kbd> 이동 &nbsp; <kbd>0–9</kbd> 프렛 &nbsp; <kbd>x</kbd> 뮤트 &nbsp; <kbd>⌫</kbd> 삭제</span><span class="touch-hint">셀을 탭하면 숫자 키패드가 열립니다</span><span><span class="desktop-hint"><kbd>Space</kbd> 재생 / 정지 · </span>소리는 메트로놈만</span></div>
+  <section class="memo-section"><div class="memo-heading"><label for="memo">레슨 메모</label><span>LESSON NOTES</span></div><textarea class="memo" id="memo" rows="3" placeholder="오늘 배운 포인트 · 주의할 부분"></textarea></section>
+  <footer class="page-footer"><span>작은 구간부터, 천천히 정확하게.</span><span>GUITAR PRACTICE / 01</span></footer>
+</main>
+<div class="popover" id="songSettings" role="dialog" aria-label="곡 설정" hidden>
+  <h2>곡 설정</h2><button class="icon-button popover-close" id="closeSettings" aria-label="곡 설정 닫기">×</button>
+  <label class="field">곡 제목<input id="settingsTitle" autocomplete="off"></label>
+  <label class="field">BPM · 40–240<input id="settingsBpm" type="number" min="40" max="240" step="1"></label>
+  <div class="field">한 마디의 칸 수<div class="subdiv-options"><button id="subdiv4" aria-pressed="false">4칸<small>4분음표</small></button><button id="subdiv8" aria-pressed="true">8칸<small>8분음표</small></button><button id="subdiv16" aria-pressed="false">16칸<small>16분음표</small></button></div></div>
+  <p class="popover-note">활성 곡 탭을 다시 누르면 설정이 열립니다.</p><button class="danger" id="deleteSong">곡 삭제</button>
+</div>
+<div class="popover backup-menu" id="backupMenu" role="dialog" aria-label="데이터 백업" hidden><button id="exportJson">↓ JSON 내보내기</button><button id="importJson">↑ JSON 가져오기</button></div>
+<div class="popover account-menu" id="accountMenu" role="dialog" aria-label="Google Drive 계정" hidden><h2>Google Drive</h2><p class="account-email" id="accountEmail"></p><div class="drive-detail" id="driveDetail" role="status"></div><button id="syncDrive">지금 동기화</button><button id="reconnectGoogle" hidden>Google 계정 다시 연결</button><button id="migrateLocal" hidden>이 기기의 기존 곡 추가</button><a id="openDriveFolder" href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer" hidden>Drive 저장 폴더 열기 ↗</a><button id="googleLogout">로그아웃</button></div>
+<dialog id="cloudConflictDialog"><h2>다른 곳에서 수정한 곡이 있습니다</h2><p>이 기기의 변경사항과 Drive의 내용이 다릅니다. 저장할 내용을 선택해 주세요.</p><p class="cloud-conflict-detail" id="cloudConflictDetail"></p><div class="cloud-dialog-actions"><button class="primary" id="keepBothCloud">두 버전 모두 보관</button><button id="useDriveVersion">Drive 내용 사용</button><button id="cancelCloudConflict">나중에 선택</button></div></dialog>
+<dialog id="onlineDialog"><h2>Google Drive에 연결하기</h2><p>Google 로그인은 온라인 앱에서 사용할 수 있습니다. 현재 파일에 적은 곡은 JSON으로 내보낸 뒤 온라인 앱에서 가져오세요.</p><button id="exportBeforeOnline">현재 곡 JSON 내보내기</button><a class="online-link" id="openOnlineApp" target="_blank" rel="noopener noreferrer">온라인 앱 열기 ↗</a><div class="dialog-actions"><button id="closeOnlineDialog">닫기</button></div></dialog>
+<input id="importFile" type="file" accept=".json,application/json" hidden>
+<dialog id="newSongDialog"><form id="newSongForm"><h2>새 연습곡</h2><p>오늘 연습할 곡의 이름을 적어주세요.</p><input id="newSongTitle" aria-label="새 곡 제목" placeholder="곡 제목" autocomplete="off" required><div class="dialog-actions"><button type="button" id="cancelNewSong">취소</button><button class="primary" type="submit">곡 만들기</button></div></form></dialog>
+<dialog id="importDialog"><h2>연습곡 가져오기</h2><p id="importSummary"></p><p>덮어쓰기는 현재 곡 전체를 교체합니다. 병합은 가져온 곡을 새 곡으로 추가합니다.</p><div class="dialog-actions"><button id="cancelImport">취소</button><button id="overwriteImport">덮어쓰기</button><button class="primary" id="mergeImport">병합(곡 추가)</button></div></dialog>
+<aside class="keypad" id="keypad" aria-label="TAB 숫자 키패드" hidden><div class="keypad-top"><span class="keypad-position" id="keypadPosition">1마디 · 1번줄 · 1칸</span><button data-move="left" aria-label="이전 칸">←</button><button data-move="up" aria-label="위 기타줄">↑</button><button data-move="down" aria-label="아래 기타줄">↓</button><button data-move="right" aria-label="다음 칸">→</button><button id="closeKeypad" aria-label="키패드 닫기">×</button></div><div class="keys"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="0">0</button><button data-key="x" aria-label="뮤트">x</button><button data-key="Backspace" aria-label="프렛 삭제">⌫</button></div></aside>
+<div class="toast" id="toast" role="status" hidden></div>
+<script>
+'use strict';
+// One HTML file. Only Google's official sign-in client is loaded in the hosted app.
+// Access tokens remain in memory. User strings enter the DOM as text.
+const STORAGE_KEY='guitar-practice-v1';
+const $=id=>document.getElementById(id);
+const stringNames=['e','B','G','D','A','E'];
+const makeBar=subdiv=>({chord:'',cells:Array.from({length:6},()=>Array(subdiv).fill(''))});
+const makeSong=(title='연습곡 1')=>({id:crypto.randomUUID(),title,bpm:90,subdiv:8,beatsPerBar:4,bars:Array.from({length:4},()=>makeBar(8)),memo:''});
+const makeState=()=>{const song=makeSong();return{songs:[song],activeSongId:song.id};};
+function validateState(data){
+  const fail=message=>{throw new Error(message);};
+  const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+  if(!object(data)||!Array.isArray(data.songs)||!data.songs.length||typeof data.activeSongId!=='string')fail('곡 목록과 활성 곡 정보가 올바르지 않습니다.');
+  const ids=new Set();
+  const songs=data.songs.map((song,i)=>{
+    const where=`${i+1}번째 곡`;
+    if(!object(song)||typeof song.id!=='string'||!song.id.trim()||ids.has(song.id))fail(`${where}: 곡 ID가 없거나 중복되었습니다.`);
+    ids.add(song.id);
+    if(typeof song.title!=='string'||!song.title.trim()||typeof song.memo!=='string')fail(`${where}: 제목 또는 메모가 올바르지 않습니다.`);
+    if(!Number.isInteger(song.bpm)||song.bpm<40||song.bpm>240)fail(`${where}: BPM은 40–240의 정수여야 합니다.`);
+    if(![4,8,16].includes(song.subdiv)||song.beatsPerBar!==4||!Array.isArray(song.bars)||!song.bars.length)fail(`${where}: 칸 수, 박자 또는 마디가 올바르지 않습니다.`);
+    const bars=song.bars.map((bar,j)=>{
+      if(!object(bar)||typeof bar.chord!=='string'||!Array.isArray(bar.cells)||bar.cells.length!==6)fail(`${where}, ${j+1}마디: 코드 또는 기타줄 형식이 올바르지 않습니다.`);
+      const cells=bar.cells.map(row=>{
+        if(!Array.isArray(row)||row.length!==song.subdiv||row.some(v=>typeof v!=='string'||! /^(?:|x|[0-9]|1[0-9]|2[0-4])$/.test(v)))fail(`${where}, ${j+1}마디: 셀은 빈칸, 0–24 또는 x여야 합니다.`);
+        return row.slice();
+      });
+      return{chord:bar.chord,cells};
+    });
+    return{id:song.id,title:song.title,bpm:song.bpm,subdiv:song.subdiv,beatsPerBar:4,bars,memo:song.memo};
+  });
+  if(!ids.has(data.activeSongId))fail('활성 곡 ID가 곡 목록에 없습니다.');
+  return{songs,activeSongId:data.activeSongId};
+}
+let initialNotice='',isFresh=false;
+let state;
+try{const saved=localStorage.getItem(STORAGE_KEY);if(saved){state=validateState(JSON.parse(saved));}else{state=makeState();isFresh=true;}}catch(error){state=makeState();initialNotice='저장 데이터를 읽지 못했습니다. 새 연습곡을 표시합니다. '+error.message;}
+const activeSong=()=>state.songs.find(song=>song.id===state.activeSongId);
+let saveTimer=0,dirty=false,saveFailed=false,toastTimer=0,cloud=null;
+function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,4500);}
+function flushSave(){
+  clearTimeout(saveTimer);if(!dirty)return;
+  try{if(cloud?.account){cloud.storeCache();dirty=false;saveFailed=false;cloud.updateStatus();}else{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));dirty=false;saveFailed=false;$('saveStatus').textContent='이 브라우저에 저장됨';$('saveStatus').classList.remove('error');}}
+  catch(error){$('saveStatus').textContent='저장 실패 · JSON 백업 필요';$('saveStatus').classList.add('error');if(!saveFailed)toast('브라우저 저장 공간을 사용할 수 없습니다. JSON으로 내보내 주세요.');saveFailed=true;}
+}
+function save(keepUndo=false){if(!keepUndo)discardClearUndo();dirty=true;$('saveStatus').textContent='저장 중…';clearTimeout(saveTimer);saveTimer=setTimeout(flushSave,200);if(cloud?.account)cloud.onEdit();}
+window.addEventListener('pagehide',flushSave);window.addEventListener('beforeunload',flushSave);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSave();});
+let loop=null,choosingLoop=false,loopAnchor=null,selection=null,digitEntry=null;
+let clearUndo=null,fretDrag=null,suppressDragClickUntil=0;
+let barViews=[],cellViews=[],tabViews=new Map(),cursorBar=-1,cursorCell=-1,lastScrollRow=-1,lastScrollAt=0;
+const cursor=document.createElement('div');cursor.className='play-cursor parked';cursor.setAttribute('aria-hidden','true');
+const beatDots=Array.from(document.querySelectorAll('.beat-dot'));
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+function circled(n){return n<=20?String.fromCodePoint(0x2460+n-1):n<=35?String.fromCodePoint(0x3251+n-21):n<=50?String.fromCodePoint(0x32b1+n-36):String(n);}
+function renderTabs(){
+  const frag=document.createDocumentFragment();tabViews.clear();
+  for(const song of state.songs){const button=document.createElement('button');button.className='song-tab';button.setAttribute('role','tab');button.setAttribute('aria-selected',String(song.id===state.activeSongId));button.setAttribute('aria-controls','score');button.dataset.songId=song.id;button.title=song.id===state.activeSongId?'다시 클릭하여 곡 설정 열기':song.title;const dot=document.createElement('span');dot.className='tab-dot';dot.setAttribute('aria-hidden','true');const name=document.createElement('span');name.textContent=song.title;button.append(dot,name);frag.append(button);tabViews.set(song.id,button);}
+  $('songTabs').replaceChildren(frag);
+  tabViews.get(state.activeSongId).scrollIntoView({block:'nearest',inline:'nearest'});
+}
+function updateSubdivisionControls(){for(const count of [4,8,16]){const pressed=String(activeSong().subdiv===count);$('subdiv'+count).setAttribute('aria-pressed',pressed);$('quickSubdiv'+count).setAttribute('aria-pressed',pressed);}}
+function updateMeta(){const song=activeSong();$('songTitle').textContent=song.title;$('songMeta').textContent=`${song.bars.length}마디 · ${song.subdiv}분음표 · Standard E`;$('divisionLabel').textContent=`1/${song.subdiv} NOTE`;updateSubdivisionControls();}
+function renderScore(){
+  cancelFretDrag();discardClearUndo();
+  const song=activeSong(),frag=document.createDocumentFragment();barViews=[];cellViews=[];cursorBar=-1;cursorCell=-1;lastScrollRow=-1;selection=null;digitEntry=null;
+  $('score').classList.toggle('subdiv-16',song.subdiv===16);$('score').style.setProperty('--subdiv',song.subdiv);
+  let row;
+  song.bars.forEach((bar,b)=>{
+    if(b%4===0){row=document.createElement('div');row.className='score-row';const names=document.createElement('div');names.className='string-labels';names.setAttribute('aria-hidden','true');for(const name of stringNames){const label=document.createElement('span');label.textContent=name;names.append(label);}row.append(names);frag.append(row);}
+    const article=document.createElement('article');article.className='bar';article.dataset.bar=b;article.setAttribute('aria-label',`${b+1}마디`);
+    const header=document.createElement('div');header.className='bar-header';const tools=document.createElement('div');tools.className='bar-tools';
+    const number=document.createElement('button');number.className='bar-number';number.textContent=circled(b+1);number.dataset.bar=b;number.title=`${b+1}마디 · 구간지정 시 시작 또는 끝 선택`;number.setAttribute('aria-label',`${b+1}마디 번호`);
+    const remove=document.createElement('button');remove.className='bar-delete';remove.textContent='×';remove.dataset.bar=b;remove.setAttribute('aria-label',`${b+1}마디 삭제`);remove.disabled=song.bars.length===1;tools.append(number,remove);
+    const chord=document.createElement('input');chord.className='chord';chord.placeholder='–';chord.value=bar.chord;chord.dataset.bar=b;chord.setAttribute('aria-label',`${b+1}마디 코드`);chord.autocomplete='off';chord.spellcheck=false;header.append(tools,chord);
+    const staff=document.createElement('div');staff.className='staff';staff.setAttribute('role','grid');staff.setAttribute('aria-label',`${b+1}마디 TAB`);staff.setAttribute('aria-rowcount','6');staff.setAttribute('aria-colcount',String(song.subdiv));
+    const cells=[];
+    for(let s=0;s<6;s++){const line=document.createElement('div');line.className='string-row';line.setAttribute('role','row');const stringCells=[];for(let c=0;c<song.subdiv;c++){const cell=document.createElement('button');cell.className='cell'+(c>0&&c%(song.subdiv/4)===0?' beat-edge':'');cell.setAttribute('role','gridcell');cell.setAttribute('aria-selected','false');cell.dataset.bar=b;cell.dataset.string=s;cell.dataset.cell=c;cell.tabIndex=b===0&&s===0&&c===0?0:-1;const fret=document.createElement('span');fret.className='fret';fret.textContent=bar.cells[s][c];cell.append(fret);updateCellLabel(cell,b,s,c,bar.cells[s][c]);line.append(cell);stringCells.push(cell);}cells.push(stringCells);staff.append(line);}
+    article.append(header,staff);row.append(article);barViews.push({article,staff,row});cellViews.push(cells);
+  });
+  $('score').replaceChildren(frag);updateLoopUI();parkCursor();updateSelectionReadout();
+}
+function updateCellLabel(cell,b,s,c,value){cell.classList.toggle('has-value',value!=='');cell.setAttribute('aria-label',`${b+1}마디 ${s+1}번줄 ${c+1}칸: ${value===''?'빈칸':value==='x'?'뮤트':value+'프렛'}`);}
+function writeCell(b,s,c,value){activeSong().bars[b].cells[s][c]=value;const cell=cellViews[b][s][c];cell.firstChild.textContent=value;updateCellLabel(cell,b,s,c,value);}
+function discardClearUndo(){clearUndo=null;$('undoClearScore').hidden=true;}
+function clearScore(){
+  const song=activeSong();if(!song.bars.some(bar=>bar.chord||bar.cells.some(row=>row.some(Boolean)))){toast('현재 곡의 TAB 악보가 이미 비어 있습니다.');return;}
+  if(!confirm(`“${song.title}”의 모든 프렛과 코드를 지울까요? 마디 수, BPM, 레슨 메모와 다른 곡은 유지됩니다.`))return;
+  engine.stop();cancelFretDrag();digitEntry=null;clearUndo={songId:song.id,bars:song.bars.map(bar=>({chord:bar.chord,cells:bar.cells.map(row=>row.slice())}))};
+  song.bars.forEach((bar,b)=>{if(bar.chord){bar.chord='';barViews[b].article.querySelector('.chord').value='';}bar.cells.forEach((row,s)=>row.forEach((value,c)=>{if(value!=='')writeCell(b,s,c,'');}));});
+  $('undoClearScore').hidden=false;save(true);toast('현재 곡의 TAB을 비웠습니다. 다음 편집 전까지 지우기를 취소할 수 있습니다.');
+}
+function undoClearScore(){
+  if(!clearUndo||clearUndo.songId!==state.activeSongId)return;
+  engine.stop();const restored=clearUndo.bars;restored.forEach((bar,b)=>{activeSong().bars[b].chord=bar.chord;barViews[b].article.querySelector('.chord').value=bar.chord;bar.cells.forEach((row,s)=>row.forEach((value,c)=>{if(value!=='')writeCell(b,s,c,value);}));});digitEntry=null;save();toast('지우기 전의 프렛과 코드를 복원했습니다.');
+}
+function renderSong(){hideKeypad();closePopovers();renderTabs();renderScore();updateMeta();syncBpm();$('memo').value=activeSong().memo;resizeMemo();}
+function resizeMemo(){const memo=$('memo');memo.style.height='auto';memo.style.height=(memo.scrollHeight+memo.offsetHeight-memo.clientHeight)+'px';}
+function loopBounds(){return loop||{start:0,end:activeSong().bars.length-1};}
+function updateLoopUI(){
+  $('loopStatus').textContent=loop?`🔁 ${loop.start+1}–${loop.end+1}마디`:'🔁 전체';$('selectLoop').setAttribute('aria-pressed',String(choosingLoop));$('selectLoop').textContent=choosingLoop?'지정 취소':'구간지정';$('clearLoop').disabled=!loop&&!choosingLoop;
+  $('scoreHint').textContent=choosingLoop?(loopAnchor===null?'시작 마디의 번호를 선택하세요':`${loopAnchor+1}마디 선택됨 · 끝 마디의 번호를 선택하세요`):'셀을 선택하고 프렛 번호를 입력하세요';$('scoreHint').classList.toggle('selecting',choosingLoop);
+  barViews.forEach(({article},i)=>{article.classList.toggle('in-loop',!!loop&&i>=loop.start&&i<=loop.end);article.classList.toggle('loop-anchor',choosingLoop&&i===loopAnchor);});
+}
+function scrollRowIntoView(b){
+  const rowIndex=Math.floor(b/4),now=performance.now();if(rowIndex===lastScrollRow&&now-lastScrollAt<500)return;lastScrollRow=rowIndex;lastScrollAt=now;
+  const row=barViews[b].row,rect=row.getBoundingClientRect(),top=$('chrome').getBoundingClientRect().bottom+12,bottom=innerHeight-($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)-14;
+  if(rect.top<top||rect.bottom>bottom){const target=scrollY+rect.top-top;window.scrollTo({top:Math.max(0,target),behavior:reducedMotion.matches?'instant':'smooth'});}
+}
+function drawCursor(b,c,scroll=false){
+  if(b===cursorBar&&c===cursorCell)return;
+  if(b!==cursorBar){if(barViews[cursorBar])barViews[cursorBar].article.classList.remove('current-bar');barViews[b].article.classList.add('current-bar');barViews[b].staff.append(cursor);}
+  cursor.style.transform=`translateX(${c*100}%)`;cursorBar=b;cursorCell=c;if(scroll&&!fretDrag?.active)scrollRowIntoView(b);
+}
+function parkCursor(){if(barViews.length){cursor.classList.add('parked');drawCursor(loopBounds().start,0);}}
+function updateSelectionReadout(){const label=selection?`${selection.b+1}마디 · ${selection.s+1}번줄 · ${selection.c+1}칸`:'프렛 0–24 · x 뮤트';$('selectionReadout').textContent=label;$('keypadPosition').textContent=label;}
+function selectCell(b,s,c,focus=true){
+  if(selection){const old=cellViews[selection.b]?.[selection.s]?.[selection.c];if(old){old.setAttribute('aria-selected','false');old.tabIndex=-1;}}else if(cellViews[0])cellViews[0][0][0].tabIndex=-1;
+  if(!selection||b!==selection.b||s!==selection.s||c!==selection.c)digitEntry=null;
+  selection={b,s,c};const cell=cellViews[b][s][c];cell.tabIndex=0;cell.setAttribute('aria-selected','true');if(focus)cell.focus({preventScroll:true});updateSelectionReadout();
+}
+function moveSelection(direction){
+  if(!selection)return;let{b,s,c}=selection;const subdiv=activeSong().subdiv;
+  if(direction==='left'||direction==='right'){const next=b*subdiv+c+(direction==='right'?1:-1);if(next<0||next>=activeSong().bars.length*subdiv)return;b=Math.floor(next/subdiv);c=next%subdiv;}else{s=Math.max(0,Math.min(5,s+(direction==='down'?1:-1)));}
+  selectCell(b,s,c);lastScrollRow=-1;scrollRowIntoView(b);
+}
+function enterKey(key){
+  if(!selection)return;const{b,s,c}=selection;let value;
+  if(/^[0-9]$/.test(key)){const now=performance.now();const combined=digitEntry&&now-digitEntry.time<=500?digitEntry.digit+key:null;if(combined!==null&&Number(combined)<=24){value=String(Number(combined));digitEntry=null;}else{value=key;digitEntry={digit:key,time:now};if(combined!==null)toast('프렛은 0–24까지 입력할 수 있습니다.');}}
+  else if(key.toLowerCase()==='x'){value='x';digitEntry=null;}else if(key==='Backspace'||key==='Delete'){value='';digitEntry=null;}else return;
+  writeCell(b,s,c,value);save();
+}
+function showKeypad(){$('keypad').hidden=false;$('toggleKeypad').setAttribute('aria-pressed','true');updateMeasurements();if(selection){lastScrollRow=-1;scrollRowIntoView(selection.b);}}
+function hideKeypad(){$('keypad').hidden=true;$('toggleKeypad').setAttribute('aria-pressed','false');updateMeasurements();}
+function updateMeasurements(){document.documentElement.style.setProperty('--sticky-height',$('chrome').getBoundingClientRect().height+'px');document.documentElement.style.setProperty('--keypad-height',($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)+'px');}
+new ResizeObserver(updateMeasurements).observe($('chrome'));new ResizeObserver(updateMeasurements).observe($('keypad'));
+window.addEventListener('resize',()=>{updateMeasurements();resizeMemo();positionOpenPopover();});
+
+// Musical beats and cursor positions are derived exclusively from AudioContext time.
+// Tempo segments preserve every click already scheduled; timers only fill the queue.
+class Metronome{
+  constructor(){this.ctx=null;this.running=false;this.starting=false;this.generation=0;this.interval=0;this.frame=0;this.nodes=new Set();this.segments=[];this.nextBeat=0;this.lastScheduledTime=-Infinity;this.displayBeat=null;}
+  beatAtTime(time){let segment=this.segments[0];for(let i=this.segments.length-1;i>=0;i--){if(time>=this.segments[i].time){segment=this.segments[i];break;}}return segment.beat+(time-segment.time)*segment.bpm/60;}
+  timeAtBeat(beat){let segment=this.segments[0];for(let i=this.segments.length-1;i>=0;i--){if(beat>=this.segments[i].beat-1e-9){segment=this.segments[i];break;}}return segment.time+(beat-segment.beat)*60/segment.bpm;}
+  async start(){
+    if(document.body.classList.contains('auth-locked'))return;
+    if(this.running||this.starting)return;this.starting=true;const generation=++this.generation;$('playButton').textContent='⏹ 정지';$('playButton').classList.add('playing');$('playButton').setAttribute('aria-pressed','true');
+    try{
+      const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw new Error('이 브라우저는 Web Audio를 지원하지 않습니다.');
+      if(!this.ctx||this.ctx.state==='closed')this.ctx=new AudioContextClass();await this.ctx.resume();if(generation!==this.generation)return;
+      if(this.ctx.state!=='running')throw new Error('오디오를 시작하지 못했습니다. 재생 버튼을 다시 눌러주세요.');
+      this.starting=false;this.running=true;const startBeat=$('countIn').checked?-4:0;this.startTime=this.ctx.currentTime+.06;this.segments=[{time:this.startTime,beat:startBeat,bpm:activeSong().bpm}];this.nextBeat=startBeat;this.lastScheduledTime=-Infinity;this.displayBeat=null;lastScrollRow=-1;cursor.classList.remove('parked');
+      this.scheduler();this.interval=setInterval(()=>this.scheduler(),25);this.tick();
+    }catch(error){if(generation===this.generation){this.stop();toast(error.message||'오디오를 시작하지 못했습니다.');}}
+  }
+  scheduleClick(beat,time){
+    const strong=((beat%4)+4)%4===0,osc=this.ctx.createOscillator(),gain=this.ctx.createGain();osc.type='square';osc.frequency.setValueAtTime(strong?1500:900,time);gain.gain.setValueAtTime(strong?.35:.2,time);gain.gain.exponentialRampToValueAtTime(.0001,time+.04);osc.connect(gain);gain.connect(this.ctx.destination);const node={osc,gain};this.nodes.add(node);osc.onended=()=>{osc.disconnect();gain.disconnect();this.nodes.delete(node);};osc.start(time);osc.stop(time+.04);
+  }
+  scheduler(){
+    if(!this.running)return;const now=this.ctx.currentTime,horizon=now+.1;
+    // If the browser suspended JS, skip missed clicks instead of playing a burst.
+    if(this.timeAtBeat(this.nextBeat)<now-.03)this.nextBeat=Math.max(this.nextBeat,Math.ceil(this.beatAtTime(now+.005)-1e-9));
+    while(this.timeAtBeat(this.nextBeat)<horizon){const time=this.timeAtBeat(this.nextBeat);this.scheduleClick(this.nextBeat,time);this.lastScheduledTime=time;this.nextBeat++;}
+    while(this.segments.length>2&&this.segments[1].time<now-1)this.segments.shift();
+  }
+  setBpm(bpm){
+    if(!this.running)return;
+    // Anchor AFTER the last queued click (or at now). No click is cancelled or shifted.
+    const anchor=Math.max(this.ctx.currentTime,this.lastScheduledTime,this.startTime),beat=this.beatAtTime(anchor);
+    this.segments=this.segments.filter(segment=>segment.time<anchor-1e-9);this.segments.push({time:anchor,beat,bpm});this.scheduler();
+  }
+  tick(){
+    if(!this.running)return;const now=this.ctx.currentTime,beat=this.beatAtTime(now),integerBeat=Math.floor(beat+1e-8);
+    if(now>=this.startTime&&integerBeat!==this.displayBeat){this.displayBeat=integerBeat;beatDots.forEach((dot,i)=>dot.classList.toggle('on',i===((integerBeat%4)+4)%4));$('transportStatus').textContent=beat<0?`COUNT ${Math.min(4,integerBeat+5)}/4`:`BEAT ${integerBeat%4+1}/4`;}
+    // One cell lasts 60 / BPM * (4 / subdiv) seconds; no timer counter drives it.
+    if(now>=this.startTime&&beat>=-1e-8){const song=activeSong(),bounds=loopBounds(),cellsPerBeat=song.subdiv/4,length=(bounds.end-bounds.start+1)*song.subdiv;const absoluteCell=Math.max(0,Math.floor(beat*cellsPerBeat+1e-7)),cell=absoluteCell%length;drawCursor(bounds.start+Math.floor(cell/song.subdiv),cell%song.subdiv,true);}
+    this.frame=requestAnimationFrame(()=>this.tick());
+  }
+  stop(){
+    this.generation++;this.running=false;this.starting=false;clearInterval(this.interval);cancelAnimationFrame(this.frame);
+    for(const node of this.nodes){node.gain.gain.cancelScheduledValues(0);node.gain.gain.setValueAtTime(.0001,this.ctx.currentTime);try{node.osc.stop();}catch(error){/* An ended source may already have been stopped. */}node.osc.disconnect();node.gain.disconnect();}this.nodes.clear();
+    $('playButton').textContent='▶ 재생';$('playButton').classList.remove('playing');$('playButton').setAttribute('aria-pressed','false');beatDots.forEach(dot=>dot.classList.remove('on'));$('transportStatus').textContent='READY';parkCursor();
+  }
+  toggle(){if(this.running||this.starting)this.stop();else this.start();}
+}
+const engine=new Metronome();
+function syncBpm(){const bpm=activeSong().bpm;for(const id of ['bpm','bpmSlider','settingsBpm'])if(document.activeElement!==$(id))$(id).value=bpm;$('bpmDown').disabled=bpm===40;$('bpmUp').disabled=bpm===240;}
+function setBpm(value){const bpm=Math.max(40,Math.min(240,Math.round(Number(value))));if(!Number.isFinite(bpm))return;if(activeSong().bpm!==bpm){activeSong().bpm=bpm;engine.setBpm(bpm);save();}syncBpm();}
+for(const id of ['bpm','settingsBpm']){$(id).addEventListener('input',event=>{const n=Number(event.target.value);if(Number.isInteger(n)&&n>=40&&n<=240)setBpm(n);});$(id).addEventListener('blur',event=>{setBpm(event.target.value===''?activeSong().bpm:event.target.value);event.target.value=activeSong().bpm;});}
+$('bpmSlider').addEventListener('input',event=>setBpm(event.target.value));$('bpmDown').addEventListener('click',()=>setBpm(activeSong().bpm-1));$('bpmUp').addEventListener('click',()=>setBpm(activeSong().bpm+1));$('playButton').addEventListener('click',()=>engine.toggle());
+function positionPopover(popover,anchor){const rect=anchor.getBoundingClientRect();popover.style.left=Math.max(12,Math.min(rect.left,innerWidth-popover.offsetWidth-12))+'px';popover.style.top=Math.max(12,Math.min(rect.bottom+8,innerHeight-popover.offsetHeight-12))+'px';}
+function positionOpenPopover(){if(!$('songSettings').hidden)positionPopover($('songSettings'),tabViews.get(state.activeSongId));if(!$('backupMenu').hidden)positionPopover($('backupMenu'),$('moreButton'));if(!$('accountMenu').hidden)positionPopover($('accountMenu'),$('accountButton'));}
+function closePopovers(){$('songSettings').hidden=true;$('backupMenu').hidden=true;$('accountMenu').hidden=true;$('moreButton').setAttribute('aria-expanded','false');$('accountButton').setAttribute('aria-expanded','false');}
+function openSettings(){const opening=$('songSettings').hidden;closePopovers();if(!opening)return;const song=activeSong();$('settingsTitle').value=song.title;$('settingsBpm').value=song.bpm;updateSubdivisionControls();$('songSettings').hidden=false;positionPopover($('songSettings'),tabViews.get(song.id));$('settingsTitle').focus();}
+$('songTabs').addEventListener('click',event=>{const tab=event.target.closest('[data-song-id]');if(!tab)return;if(tab.dataset.songId===state.activeSongId){openSettings();return;}engine.stop();state.activeSongId=tab.dataset.songId;loop=null;loopAnchor=null;choosingLoop=false;renderSong();save();tabViews.get(state.activeSongId).focus({preventScroll:true});});
+$('songTabs').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const buttons=[...tabViews.values()],current=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(current+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;buttons[next].focus();buttons[next].scrollIntoView({block:'nearest',inline:'nearest'});});
+$('settingsTitle').addEventListener('input',event=>{const value=event.target.value;if(!value.trim())return;activeSong().title=value;tabViews.get(state.activeSongId).lastChild.textContent=value;updateMeta();save();});$('settingsTitle').addEventListener('blur',()=>{$('settingsTitle').value=activeSong().title;});
+$('closeSettings').addEventListener('click',()=>{closePopovers();tabViews.get(state.activeSongId).focus();});
+function changeSubdiv(subdiv){
+  const song=activeSong(),previous=song.subdiv;if(![4,8,16].includes(subdiv)||previous===subdiv)return;
+  const shrinking=subdiv<previous,step=shrinking?previous/subdiv:subdiv/previous;
+  if(shrinking&&song.bars.some(bar=>bar.cells.some(row=>row.some((value,i)=>i%step!==0&&value!==''))))if(!confirm(`일부 음이 삭제됩니다. ${subdiv}칸에 맞지 않는 중간 칸의 음을 삭제하고 변경할까요?`))return;
+  engine.stop();hideKeypad();for(const bar of song.bars)bar.cells=bar.cells.map(row=>shrinking?row.filter((value,i)=>i%step===0):row.flatMap(value=>[value,...Array(step-1).fill('')]));
+  song.subdiv=subdiv;renderScore();updateMeta();save();
+}
+for(const count of [4,8,16]){for(const prefix of ['subdiv','quickSubdiv'])$(prefix+count).addEventListener('click',()=>changeSubdiv(count));}
+$('deleteSong').addEventListener('click',()=>{const song=activeSong();if(!confirm(`“${song.title}” 곡을 삭제할까요?${state.songs.length===1?' 마지막 곡을 삭제하면 빈 연습곡이 만들어집니다.':''}`))return;engine.stop();const index=state.songs.findIndex(item=>item.id===song.id);state.songs.splice(index,1);if(!state.songs.length)state.songs.push(makeSong());state.activeSongId=state.songs[Math.min(index,state.songs.length-1)].id;loop=null;choosingLoop=false;loopAnchor=null;renderSong();save();});
+$('newSong').addEventListener('click',()=>{closePopovers();$('newSongTitle').value='';$('newSongDialog').showModal();$('newSongTitle').focus();});$('cancelNewSong').addEventListener('click',()=>$('newSongDialog').close());
+$('newSongForm').addEventListener('submit',event=>{event.preventDefault();const title=$('newSongTitle').value.trim();if(!title)return;engine.stop();const song=makeSong(title);state.songs.push(song);state.activeSongId=song.id;loop=null;choosingLoop=false;loopAnchor=null;$('newSongDialog').close();renderSong();save();tabViews.get(song.id).scrollIntoView({block:'nearest',inline:'nearest'});});
+$('selectLoop').addEventListener('click',()=>{choosingLoop=!choosingLoop;loopAnchor=null;updateLoopUI();});$('clearLoop').addEventListener('click',()=>{engine.stop();loop=null;choosingLoop=false;loopAnchor=null;updateLoopUI();parkCursor();});
+let lastPointerType='mouse';
+const cellAddress=cell=>({b:Number(cell.dataset.bar),s:Number(cell.dataset.string),c:Number(cell.dataset.cell)});
+function setDropTarget(cell){
+  if(!fretDrag||fretDrag.target===cell)return;
+  fretDrag.target?.classList.remove('drop-target');fretDrag.target=cell;
+  if(cell&&cell!==fretDrag.source)cell.classList.add('drop-target');
+}
+function trackFretDrag(){
+  if(!fretDrag?.active)return;
+  const drag=fretDrag;drag.ghost.style.transform=`translate(${Math.max(4,Math.min(innerWidth-48,drag.x+14))}px,${Math.max(4,Math.min(innerHeight-40,drag.y-44))}px)`;
+  const hit=document.elementFromPoint(drag.x,drag.y)?.closest('.cell');setDropTarget(hit&&$('score').contains(hit)?hit:null);
+}
+function scrollFretDrag(time){
+  if(!fretDrag?.active)return;
+  const drag=fretDrag,elapsed=Math.min(32,time-(drag.lastFrame||time));drag.lastFrame=time;
+  const top=$('chrome').getBoundingClientRect().bottom+24,bottom=($('keypad').hidden?innerHeight:$('keypad').getBoundingClientRect().top)-24;
+  if(drag.x>=0&&drag.x<=innerWidth&&drag.y>=0&&drag.y<=innerHeight&&bottom>top){
+    const direction=drag.y<top?-1:drag.y>bottom?1:0;
+    if(direction){window.scrollBy({top:direction*elapsed*.45,behavior:'instant'});trackFretDrag();}
+  }
+  drag.frame=requestAnimationFrame(scrollFretDrag);
+}
+function cancelFretDrag(){
+  if(!fretDrag)return;const drag=fretDrag;fretDrag=null;cancelAnimationFrame(drag.frame);
+  drag.source.classList.remove('drag-source');drag.target?.classList.remove('drop-target');drag.ghost?.remove();document.body.classList.remove('dragging-fret');
+  if(drag.active)suppressDragClickUntil=performance.now()+400;
+  if(drag.source.hasPointerCapture(drag.pointerId))drag.source.releasePointerCapture(drag.pointerId);
+}
+$('score').addEventListener('pointerdown',event=>{
+  lastPointerType=event.pointerType;if(event.button!==0||!event.isPrimary||fretDrag)return;
+  const cell=event.target.closest('.cell.has-value');if(!cell)return;
+  const from=cellAddress(cell);selectCell(from.b,from.s,from.c);digitEntry=null;
+  fretDrag={source:cell,from,songId:state.activeSongId,value:activeSong().bars[from.b].cells[from.s][from.c],pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,active:false,target:null,ghost:null,frame:0};
+  cell.setPointerCapture(event.pointerId);event.preventDefault();
+});
+$('score').addEventListener('pointermove',event=>{
+  if(!fretDrag||event.pointerId!==fretDrag.pointerId)return;
+  const drag=fretDrag;drag.x=event.clientX;drag.y=event.clientY;
+  if(!drag.active&&Math.hypot(drag.x-drag.startX,drag.y-drag.startY)>=6){drag.active=true;drag.source.classList.add('drag-source');document.body.classList.add('dragging-fret');drag.ghost=document.createElement('div');drag.ghost.className='fret-drag-ghost';drag.ghost.textContent=drag.value;drag.ghost.setAttribute('aria-hidden','true');document.body.append(drag.ghost);drag.frame=requestAnimationFrame(scrollFretDrag);}
+  if(drag.active){event.preventDefault();trackFretDrag();}
+});
+$('score').addEventListener('pointerup',event=>{
+  if(!fretDrag||event.pointerId!==fretDrag.pointerId)return;
+  fretDrag.x=event.clientX;fretDrag.y=event.clientY;trackFretDrag();const drag=fretDrag,target=drag.target;
+  cancelFretDrag();if(!drag.active||!target||target===drag.source||drag.songId!==state.activeSongId)return;
+  const from=drag.from,to=cellAddress(target),song=activeSong(),previous=song.bars[to.b].cells[to.s][to.c];
+  // Swap occupied cells so a move can never silently discard a fret.
+  writeCell(from.b,from.s,from.c,previous);writeCell(to.b,to.s,to.c,drag.value);digitEntry=null;selectCell(to.b,to.s,to.c);save();
+  toast(previous?`${to.b+1}마디 ${to.s+1}번줄 ${to.c+1}칸과 자리를 바꿨습니다.`:`${to.b+1}마디 ${to.s+1}번줄 ${to.c+1}칸으로 옮겼습니다.`);
+});
+for(const eventName of ['pointercancel','lostpointercapture'])$('score').addEventListener(eventName,event=>{if(fretDrag?.pointerId===event.pointerId)cancelFretDrag();});
+$('score').addEventListener('contextmenu',event=>{if(event.target.closest('.cell.has-value'))event.preventDefault();});
+window.addEventListener('blur',cancelFretDrag);
+$('score').addEventListener('click',event=>{
+  if(performance.now()<suppressDragClickUntil){event.preventDefault();return;}
+  const cell=event.target.closest('.cell');if(cell){selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell));if(lastPointerType==='touch'||lastPointerType==='pen'||matchMedia('(pointer: coarse)').matches)showKeypad();return;}
+  const number=event.target.closest('.bar-number');if(number&&choosingLoop){const b=Number(number.dataset.bar);if(loopAnchor===null)loopAnchor=b;else{engine.stop();loop={start:Math.min(loopAnchor,b),end:Math.max(loopAnchor,b)};choosingLoop=false;loopAnchor=null;parkCursor();}updateLoopUI();return;}
+  const remove=event.target.closest('.bar-delete');if(remove){const song=activeSong(),b=Number(remove.dataset.bar);if(song.bars.length===1)return;engine.stop();song.bars.splice(b,1);if(loop){if(b<loop.start){loop.start--;loop.end--;}else if(b<=loop.end){loop.end--;if(loop.end<loop.start)loop=null;}}loopAnchor=null;choosingLoop=false;hideKeypad();renderScore();updateMeta();save();}
+});
+$('score').addEventListener('focusin',event=>{const cell=event.target.closest('.cell');if(cell)selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell),false);if(event.target.matches('.chord'))hideKeypad();});
+$('score').addEventListener('input',event=>{if(event.target.matches('.chord')){activeSong().bars[Number(event.target.dataset.bar)].chord=event.target.value;save();}});
+$('addBar').addEventListener('click',()=>{engine.stop();hideKeypad();const song=activeSong();song.bars.push(makeBar(song.subdiv));renderScore();updateMeta();save();const input=barViews.at(-1).article.querySelector('.chord');input.focus({preventScroll:true});lastScrollRow=-1;scrollRowIntoView(song.bars.length-1);});
+$('memo').addEventListener('input',()=>{activeSong().memo=$('memo').value;resizeMemo();save();});$('memo').addEventListener('focus',hideKeypad);
+$('clearScore').addEventListener('click',clearScore);$('undoClearScore').addEventListener('click',undoClearScore);
+$('toggleKeypad').addEventListener('click',()=>{if(!$('keypad').hidden){hideKeypad();return;}if(!selection)selectCell(0,0,0);showKeypad();});
+document.addEventListener('keydown',event=>{
+  if(document.body.classList.contains('auth-locked'))return;
+  if(fretDrag){if(event.key==='Escape'){event.preventDefault();cancelFretDrag();}else event.preventDefault();return;}
+  const target=event.target,typing=target instanceof Element&&!!target.closest('input,textarea,select,[contenteditable="true"]');
+  if(event.key==='Escape'){if(choosingLoop){choosingLoop=false;loopAnchor=null;updateLoopUI();}hideKeypad();closePopovers();return;}
+  if(event.key===' '&&!typing&&!document.querySelector('dialog[open]')){event.preventDefault();if(!event.repeat)engine.toggle();return;}
+  if(typing||event.ctrlKey||event.metaKey||event.altKey||!target.closest('.cell'))return;
+  const directions={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
+  if(directions[event.key]){event.preventDefault();moveSelection(directions[event.key]);}
+  else if(event.key==='Tab'){const index=selection.b*activeSong().subdiv+selection.c,edge=event.shiftKey?index===0:index===activeSong().bars.length*activeSong().subdiv-1;if(!edge){event.preventDefault();moveSelection(event.shiftKey?'left':'right');}}
+  else if(/^[0-9xX]$/.test(event.key)||['Backspace','Delete'].includes(event.key)){event.preventDefault();if(!event.repeat)enterKey(event.key);}
+});
+$('keypad').addEventListener('pointerdown',event=>{if(event.target.closest('button'))event.preventDefault();});$('keypad').addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.dataset.key)enterKey(button.dataset.key);if(button.dataset.move)moveSelection(button.dataset.move);});$('closeKeypad').addEventListener('click',hideKeypad);
+document.addEventListener('pointerdown',event=>{if(!event.target.closest('#songSettings,#songTabs,#backupMenu,#moreButton,#accountMenu,#accountButton'))closePopovers();});
+$('moreButton').addEventListener('click',()=>{const opening=$('backupMenu').hidden;closePopovers();if(opening){$('backupMenu').hidden=false;$('moreButton').setAttribute('aria-expanded','true');positionPopover($('backupMenu'),$('moreButton'));}});
+$('exportJson').addEventListener('click',()=>{flushSave();const date=new Date(),stamp=String(date.getFullYear())+String(date.getMonth()+1).padStart(2,'0')+String(date.getDate()).padStart(2,'0');const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=`guitar-practice-${stamp}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);closePopovers();toast('전체 연습곡을 JSON으로 내보냈습니다.');});
+let pendingImport=null;
+$('importJson').addEventListener('click',()=>{closePopovers();$('importFile').value='';$('importFile').click();});
+$('importFile').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>20*1024*1024)throw new Error('20MB 이하의 JSON 파일을 선택해 주세요.');const imported=validateState(JSON.parse(await file.text()));pendingImport=imported;$('importSummary').textContent=`${file.name} · ${imported.songs.length}곡 · 총 ${imported.songs.reduce((n,song)=>n+song.bars.length,0)}마디`;$('importDialog').showModal();}catch(error){pendingImport=null;toast('가져오기 실패: '+error.message);}});
+function applyImport(merge){if(!pendingImport)return;engine.stop();if(merge){const additions=pendingImport.songs.map(song=>({...song,id:crypto.randomUUID()}));state.songs.push(...additions);state.activeSongId=additions[0].id;}else state=pendingImport;pendingImport=null;loop=null;choosingLoop=false;loopAnchor=null;$('importDialog').close();renderSong();save();toast(merge?'연습곡을 추가했습니다.':'백업 데이터로 교체했습니다.');}
+$('overwriteImport').addEventListener('click',()=>applyImport(false));$('mergeImport').addEventListener('click',()=>applyImport(true));$('cancelImport').addEventListener('click',()=>$('importDialog').close());$('importDialog').addEventListener('close',()=>{pendingImport=null;});
+// Public web client, already configured for https://sigongai20001-maker.github.io.
+// This is a client ID, not a secret. No client secret or refresh token is used here.
+const GOOGLE_CLIENT_ID='663209950196-ok6tpctvo0udfj32tt4s36sa3umq8o4h.apps.googleusercontent.com';
+const ONLINE_APP_URL='https://sigongai20001-maker.github.io/prompt-db/guitar-practice.html';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const DRIVE_API='https://www.googleapis.com/drive/v3';
+const DRIVE_UPLOAD='https://www.googleapis.com/upload/drive/v3';
+const canonical=data=>JSON.stringify(validateState(data));
+class DriveSync{
+  constructor(){
+    this.hosted=location.protocol!=='file:';this.account=null;this.token='';this.expiresAt=0;this.epoch=0;
+    this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.revision=0;this.busy=false;this.connecting=false;
+    this.error='';this.conflict=null;this.flight=null;this.timer=0;this.expiryTimer=0;this.requests=new Set();this.lastSaved='';this.client=null;this.loadingLibrary=false;this.cacheError=false;this.legacyCount=0;
+    try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){const legacy=validateState(JSON.parse(raw));if(legacy.songs.some(song=>song.title!=='연습곡 1'||song.memo||song.bars.some(bar=>bar.chord||bar.cells.some(row=>row.some(Boolean)))))this.legacyCount=legacy.songs.length;}}catch(error){}
+  }
+  lock(locked){document.body.classList.toggle('auth-locked',locked);$('authGate').hidden=!locked;$('chrome').inert=locked;document.querySelector('.workspace').inert=locked;updateMeasurements();}
+  boot(){
+    $('openOnlineApp').href=ONLINE_APP_URL;
+    if(this.hosted){this.lock(true);this.loadLibrary();}else{$('authGate').hidden=true;this.updateStatus();}
+  }
+  loadLibrary(){
+    if(this.loadingLibrary)return;if(window.google?.accounts?.oauth2){this.initClient();return;}
+    this.loadingLibrary=true;$('googleLogin').disabled=true;$('authMessage').textContent='Google 로그인을 준비하고 있습니다.';
+    const previous=$('googleIdentityScript');if(previous)previous.remove();
+    const script=document.createElement('script');script.id='googleIdentityScript';script.src='https://accounts.google.com/gsi/client';script.async=true;script.referrerPolicy='strict-origin-when-cross-origin';
+    const timeout=setTimeout(()=>failed(),15000);
+    const failed=()=>{clearTimeout(timeout);this.loadingLibrary=false;$('googleLogin').disabled=false;$('authMessage').textContent='Google 로그인에 연결하지 못했습니다. 인터넷 연결을 확인하고 버튼을 다시 눌러주세요.';};
+    script.onload=()=>{clearTimeout(timeout);this.loadingLibrary=false;if(window.google?.accounts?.oauth2)this.initClient();else failed();};script.onerror=failed;document.head.append(script);
+  }
+  initClient(){
+    this.client=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:`openid email profile ${DRIVE_SCOPE}`,include_granted_scopes:false,callback:response=>this.receiveToken(response),error_callback:error=>{this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent=error.type==='popup_closed'?'로그인을 취소했습니다. 다시 시도할 수 있습니다.':'로그인 팝업을 열지 못했습니다. Chrome에서 이 사이트의 팝업을 허용해 주세요.';this.updateStatus();}});
+    $('googleLogin').disabled=false;$('authMessage').textContent='Google 계정을 선택하고 Drive 저장을 허용해 주세요.';
+  }
+  signIn(){
+    if(!this.hosted){$('onlineDialog').showModal();return;}
+    if(!this.client){this.loadLibrary();return;}if(this.connecting)return;
+    engine.stop();flushSave();this.connecting=true;$('googleLogin').disabled=true;$('authMessage').textContent='Google 계정에 연결하는 중입니다…';
+    try{this.client.requestAccessToken({prompt:this.account?'':'select_account',...(this.account?{hint:this.account.email}:{})});}
+    catch(error){this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent='로그인 창을 열지 못했습니다. 다시 시도해 주세요.';}
+  }
+  async receiveToken(response){
+    if(response.error||!response.access_token){this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent='로그인을 완료하지 못했습니다. Drive 저장 권한을 허용한 뒤 다시 시도해 주세요.';return;}
+    if(!google.accounts.oauth2.hasGrantedAllScopes(response,DRIVE_SCOPE)){this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent='연습곡을 저장하려면 Google Drive 파일 저장 권한이 필요합니다.';return;}
+    flushSave();this.stopRequests();const epoch=++this.epoch;this.token=response.access_token;this.expiresAt=Date.now()+Math.max(1,Number(response.expires_in)||3600)*1000;
+    this.account=null;this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.conflict=null;this.error='';this.flight=null;this.busy=false;this.lock(true);closePopovers();hideKeypad();
+    let hadCache=false;
+    try{
+      const profile=await this.request('https://www.googleapis.com/oauth2/v3/userinfo',{},epoch);
+      if(typeof profile.sub!=='string'||!profile.sub||typeof profile.email!=='string')throw new Error('Google 계정 정보를 확인하지 못했습니다.');
+      const cached=this.readCache(profile.sub);hadCache=!!cached;this.account={id:profile.sub,email:profile.email,name:typeof profile.name==='string'?profile.name:profile.email};
+      state=cached?cached.state:makeState();this.baseRaw=cached?.baseRaw??null;this.pending=cached?.pending??false;this.lastSaved=cached?.lastSaved??'';this.revision=0;
+      loop=null;choosingLoop=false;loopAnchor=null;renderSong();this.scheduleExpiry();
+      const okay=await this.sync();if(epoch!==this.epoch)return;
+      if(okay||hadCache||this.conflict){this.lock(false);resizeMemo();if(this.conflict)this.showConflict();}
+      else $('authMessage').textContent=this.error||'Drive에 연결하지 못했습니다. 다시 로그인해 주세요.';
+    }catch(error){if(epoch!==this.epoch)return;this.error=this.describe(error);$('authMessage').textContent=this.error;if(hadCache){this.lock(false);resizeMemo();}}
+    finally{if(epoch===this.epoch){this.connecting=false;$('googleLogin').disabled=false;this.updateStatus();}}
+  }
+  cacheKey(id=this.account?.id){return `${STORAGE_KEY}:google:${id}`;}
+  readCache(id){
+    let raw;try{raw=localStorage.getItem(this.cacheKey(id));}catch(error){this.cacheError=true;return null;}if(!raw)return null;const data=JSON.parse(raw);
+    if(data.accountId!==id||data.format!==1)throw new Error('이 계정의 기기 저장본 형식이 올바르지 않습니다.');
+    return{state:validateState(data.state),baseRaw:data.baseRaw===null?null:canonical(JSON.parse(data.baseRaw)),pending:!!data.pending,lastSaved:typeof data.lastSaved==='string'?data.lastSaved:''};
+  }
+  storeCache(){
+    if(!this.account)return;localStorage.setItem(this.cacheKey(),JSON.stringify({format:1,accountId:this.account.id,state,baseRaw:this.baseRaw,pending:this.pending,lastSaved:this.lastSaved}));this.cacheError=false;
+  }
+  cacheSafely(){try{this.storeCache();}catch(error){this.cacheError=true;this.updateStatus();}}
+  onEdit(){this.pending=true;this.revision++;this.updateStatus();if(!this.conflict)this.scheduleSync();}
+  scheduleSync(delay=800){clearTimeout(this.timer);this.timer=setTimeout(()=>this.sync(),delay);}
+  validToken(){return !!this.token&&Date.now()<this.expiresAt-15000;}
+  scheduleExpiry(){clearTimeout(this.expiryTimer);this.expiryTimer=setTimeout(()=>{this.token='';this.updateStatus();},Math.max(1,this.expiresAt-Date.now()-15000));}
+  stopRequests(){clearTimeout(this.timer);clearTimeout(this.expiryTimer);for(const controller of this.requests)controller.abort();this.requests.clear();}
+  assertEpoch(epoch){if(epoch!==this.epoch)throw Object.assign(new Error('계정이 변경되었습니다.'),{stale:true});}
+  async request(url,options={},epoch=this.epoch,raw=false){
+    if(epoch!==this.epoch)throw Object.assign(new Error('계정이 변경되었습니다.'),{stale:true});
+    if(!this.validToken())throw Object.assign(new Error('Google 로그인이 만료되었습니다. 다시 연결하면 저장을 계속합니다.'),{status:401});
+    const controller=new AbortController();this.requests.add(controller);const timeout=setTimeout(()=>controller.abort(),20000);const headers=new Headers(options.headers||{});headers.set('Authorization',`Bearer ${this.token}`);
+    try{
+      const response=await fetch(url,{...options,headers,signal:controller.signal,cache:'no-store'});
+      if(epoch!==this.epoch)throw Object.assign(new Error('계정이 변경되었습니다.'),{stale:true});
+      if(!response.ok){let details='';try{details=(await response.json()).error?.message||'';}catch(error){}throw Object.assign(new Error(details||`Drive 요청 실패 (${response.status})`),{status:response.status});}
+      const data=await response.json();this.assertEpoch(epoch);return raw?{data,headers:response.headers}:data;
+    }finally{clearTimeout(timeout);this.requests.delete(controller);}
+  }
+  describe(error){
+    if(error.status===401){this.token='';return 'Google 로그인이 만료되었습니다. 다시 연결하면 기기에 남은 변경사항을 저장합니다.';}
+    if(error.status===403)return 'Drive 저장 권한 또는 Google 앱 설정을 확인해 주세요. '+error.message.slice(0,160);
+    if(error.status===429)return 'Drive 요청이 잠시 많아졌습니다. 잠시 후 지금 동기화를 눌러주세요.';
+    if(error.name==='AbortError'||error instanceof TypeError)return '인터넷 또는 Drive 연결이 불안정합니다. 변경사항은 이 기기에 보관하고 연결 후 다시 저장합니다.';
+    return error.message||'Drive 연결 중 오류가 발생했습니다.';
+  }
+  async findFiles(kind,epoch=this.epoch){
+    const mime=kind==='folder'?'application/vnd.google-apps.folder':'application/json';
+    const query=`trashed = false and 'me' in owners and mimeType = '${mime}' and appProperties has { key='guitarPractice' and value='${kind}-v1' }`;
+    const params=new URLSearchParams({q:query,spaces:'drive',fields:'files(id,name,parents,version),nextPageToken',pageSize:'100',orderBy:'createdTime'});
+    const data=await this.request(`${DRIVE_API}/files?${params}`,{},epoch);if(!Array.isArray(data.files))throw new Error('Drive 파일 목록을 읽지 못했습니다.');return data.files;
+  }
+  async findFile(epoch=this.epoch){const files=await this.findFiles('state',epoch);this.assertEpoch(epoch);if(files.length>1)throw new Error('Guitar Practice 저장 파일이 여러 개입니다. Drive에서 JSON 파일을 백업하고 하나만 남긴 뒤 다시 연결해 주세요.');if(files[0]){this.fileId=files[0].id;this.folderId=files[0].parents?.[0]||'';}return files[0]||null;}
+  async readRemote(epoch=this.epoch){
+    const id=this.fileId,params=new URLSearchParams({fields:'id,version,parents,ownedByMe,appProperties'}),url=`${DRIVE_API}/files/${encodeURIComponent(id)}?${params}`;
+    for(let attempt=0;attempt<3;attempt++){
+      const before=await this.request(url,{},epoch,true),metadata=before.data;
+      if(!metadata.ownedByMe||metadata.appProperties?.guitarPractice!=='state-v1')throw new Error('현재 계정의 기타 연습 저장 파일이 아닙니다.');
+      const content=await this.request(`${DRIVE_API}/files/${encodeURIComponent(id)}?alt=media`,{},epoch,true);const data=validateState(content.data);
+      const after=await this.request(url,{},epoch,true),latest=after.data;this.assertEpoch(epoch);
+      if(metadata.version===latest.version){this.folderId=latest.parents?.[0]||this.folderId;return{data,raw:canonical(data),version:latest.version,etag:after.headers.get('etag')||content.headers.get('etag')};}
+    }
+    throw new Error('다른 기기에서 저장 중입니다. 잠시 후 다시 동기화해 주세요.');
+  }
+  async createFile(snapshot,epoch=this.epoch){
+    if(!this.folderId){const folders=await this.findFiles('folder',epoch);this.assertEpoch(epoch);if(folders[0])this.folderId=folders[0].id;else{const folder=await this.request(`${DRIVE_API}/files?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Guitar Practice',mimeType:'application/vnd.google-apps.folder',appProperties:{guitarPractice:'folder-v1'}})},epoch);this.assertEpoch(epoch);this.folderId=folder.id;}}
+    const metadata={name:'guitar-practice-v1.json',mimeType:'application/json',parents:[this.folderId],appProperties:{guitarPractice:'state-v1'}};
+    const boundary='guitar-'+crypto.randomUUID(),body=[`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',JSON.stringify(metadata),`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',snapshot,`--${boundary}--`,''].join('\r\n');
+    const file=await this.request(`${DRIVE_UPLOAD}/files?uploadType=multipart&fields=id`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body},epoch);this.assertEpoch(epoch);if(!file.id)throw new Error('Drive 저장 파일을 만들지 못했습니다.');this.fileId=file.id;
+  }
+  replaceState(data){engine.stop();state=validateState(data);loop=null;choosingLoop=false;loopAnchor=null;renderSong();}
+  async performSync(epoch){
+    if(!this.fileId)await this.findFile(epoch);this.assertEpoch(epoch);
+    if(!this.fileId){const snapshot=canonical(state);await this.createFile(snapshot,epoch);if(epoch!==this.epoch)return false;this.finishSave(snapshot);return true;}
+    const remote=await this.readRemote(epoch);if(epoch!==this.epoch)return false;const local=canonical(state);
+    if(local===remote.raw){this.finishSave(remote.raw);return true;}
+    if(!this.pending){this.replaceState(remote.data);this.finishSave(remote.raw);return true;}
+    if(this.baseRaw!==remote.raw){this.conflict=remote;this.cacheSafely();return false;}
+    // Check the latest version before writing. ETag also guards the final write when exposed by Drive.
+    const check=await this.request(`${DRIVE_API}/files/${encodeURIComponent(this.fileId)}?fields=version`,{},epoch);this.assertEpoch(epoch);
+    if(check.version!==remote.version){this.conflict=await this.readRemote(epoch);return false;}
+    const snapshot=canonical(state),headers={'Content-Type':'application/json; charset=UTF-8'};if(remote.etag)headers['If-Match']=remote.etag;
+    try{await this.request(`${DRIVE_UPLOAD}/files/${encodeURIComponent(this.fileId)}?uploadType=media&fields=id,version`,{method:'PATCH',headers,body:snapshot},epoch);}
+    catch(error){if(error.status===412){this.conflict=await this.readRemote(epoch);return false;}throw error;}
+    if(epoch!==this.epoch)return false;this.finishSave(snapshot);return true;
+  }
+  finishSave(snapshot){this.baseRaw=snapshot;this.pending=canonical(state)!==snapshot;this.lastSaved=new Date().toISOString();this.error='';this.cacheSafely();}
+  async sync(manual=false){
+    if(!this.account)return false;if(this.conflict){if(manual)this.showConflict();this.updateStatus();return false;}
+    if(!this.validToken()){this.updateStatus();return false;}if(this.flight)return this.flight;
+    const epoch=this.epoch;this.busy=true;this.error='';this.updateStatus();
+    this.flight=(async()=>{
+      try{const operation=()=>{if(epoch!==this.epoch)return false;return this.performSync(epoch);};return navigator.locks?await navigator.locks.request('guitar-practice-drive:'+this.account.id,operation):await operation();}
+      catch(error){if(epoch!==this.epoch||error.stale)return false;this.error=this.describe(error);this.cacheSafely();return false;}
+      finally{if(epoch===this.epoch){this.busy=false;this.flight=null;this.updateStatus();if(this.conflict&&!document.body.classList.contains('auth-locked'))this.showConflict();else if(this.pending&&!this.error&&this.validToken())this.scheduleSync();}}
+    })();return this.flight;
+  }
+  showConflict(){if(!this.conflict)return;engine.stop();$('cloudConflictDetail').textContent=`이 기기 ${state.songs.length}곡 · Drive ${this.conflict.data.songs.length}곡. 두 버전을 보관하면 내용이 다른 같은 곡은 “이 기기 사본”으로 추가됩니다.`;if(!$('cloudConflictDialog').open)$('cloudConflictDialog').showModal();}
+  resolveConflict(keepBoth){
+    if(!this.conflict)return;const remote=this.conflict,local=validateState(state);let next=validateState(remote.data);
+    if(keepBoth){const byId=new Map(next.songs.map(song=>[song.id,song]));let selected=next.activeSongId;for(const song of local.songs){const other=byId.get(song.id);if(!other){next.songs.push(song);if(song.id===local.activeSongId)selected=song.id;}else if(JSON.stringify(song)!==JSON.stringify(other)){const copy={...song,id:crypto.randomUUID(),title:song.title+' (이 기기 사본)'};next.songs.push(copy);if(song.id===local.activeSongId)selected=copy.id;}else if(song.id===local.activeSongId)selected=song.id;}next.activeSongId=selected;}
+    else $('exportJson').click();
+    this.conflict=null;$('cloudConflictDialog').close();this.replaceState(next);this.baseRaw=remote.raw;this.pending=keepBoth;this.cacheSafely();this.updateStatus();if(keepBoth)this.scheduleSync(0);
+  }
+  async signOut(){
+    if(this.connecting)return;engine.stop();flushSave();if(this.pending&&this.validToken()&&!this.conflict)await this.sync();this.cacheSafely();
+    if(this.pending&&this.cacheError){toast('변경사항을 보관하지 못했습니다. JSON으로 내보낸 뒤 로그아웃해 주세요.');return;}
+    this.epoch++;this.stopRequests();this.token='';this.expiresAt=0;this.account=null;this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.error='';this.conflict=null;this.busy=false;this.flight=null;dirty=false;clearTimeout(saveTimer);
+    closePopovers();hideKeypad();for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();state=makeState();loop=null;choosingLoop=false;loopAnchor=null;renderSong();this.lock(true);this.updateStatus();$('authMessage').textContent='로그아웃했습니다. 다시 로그인하면 내 연습곡을 불러옵니다.';
+  }
+  updateStatus(){
+    const connected=!!this.account,expired=connected&&!this.validToken();
+    let message=!connected?'이 기기에 저장됨':this.conflict?'다른 기기 변경사항 확인 필요':this.error?'Drive 연결 확인 · 기기 저장본 보관':expired?(this.pending?'기기 저장됨 · Google 재연결 필요':'Google 재연결 필요'):this.busy?'Drive 동기화 중…':this.pending?'기기 저장됨 · Drive 저장 대기':'Google Drive에 저장됨';
+    if(this.cacheError)message=this.pending?'기기 저장 실패 · 창을 닫지 마세요':'Drive 저장됨 · 기기 저장 공간 확인';
+    if(connected){$('saveStatus').textContent=message;$('saveStatus').classList.toggle('error',!!this.error||expired||this.cacheError||!!this.conflict);}
+    $('accountStripText').textContent=connected?message:'이 기기에 저장 중 · Google Drive로 이어서 연습하세요';$('accountButton').textContent=connected?this.account.email:'Google Drive 연결';$('accountEmail').textContent=this.account?.email||'';
+    $('accountIndicator').className='account-indicator'+(connected?(this.pending||expired||this.error||this.conflict?' pending':' connected'):'');
+    $('driveDetail').textContent=this.error||(this.conflict?'다른 기기에서 수정한 내용과 비교가 필요합니다.':expired?'다시 연결하면 이 기기의 미저장 변경사항도 동기화됩니다.':`${message}\n저장 위치: 내 드라이브 / Guitar Practice`);
+    $('reconnectGoogle').hidden=!connected||(!expired&&!this.error);$('syncDrive').disabled=!connected||expired||this.busy;$('syncDrive').textContent=this.conflict?'두 버전 비교하기':this.busy?'동기화 중…':'지금 동기화';
+    $('openDriveFolder').hidden=!this.folderId;if(this.folderId)$('openDriveFolder').href='https://drive.google.com/drive/folders/'+encodeURIComponent(this.folderId);
+    $('migrateLocal').hidden=!connected||!this.legacyCount;if(this.legacyCount)$('migrateLocal').textContent=`이 기기의 기존 ${this.legacyCount}곡 추가`;
+  }
+  migrate(){try{const legacy=validateState(JSON.parse(localStorage.getItem(STORAGE_KEY)));const additions=legacy.songs.map(song=>({...song,id:crypto.randomUUID()}));engine.stop();state.songs.push(...additions);state.activeSongId=additions[0].id;loop=null;choosingLoop=false;loopAnchor=null;renderSong();save();toast('기기의 기존 곡을 내 Drive 연습곡에 추가했습니다.');}catch(error){toast('기존 곡을 가져오지 못했습니다. JSON 백업을 이용해 주세요.');}}
+}
+cloud=new DriveSync();
+$('googleLogin').addEventListener('click',()=>cloud.signIn());$('reconnectGoogle').addEventListener('click',()=>{closePopovers();cloud.signIn();});
+$('accountButton').addEventListener('click',()=>{if(!cloud.account){cloud.signIn();return;}const opening=$('accountMenu').hidden;closePopovers();if(opening){cloud.updateStatus();$('accountMenu').hidden=false;$('accountButton').setAttribute('aria-expanded','true');positionPopover($('accountMenu'),$('accountButton'));}});
+$('syncDrive').addEventListener('click',()=>cloud.sync(true));$('googleLogout').addEventListener('click',()=>cloud.signOut());$('migrateLocal').addEventListener('click',()=>cloud.migrate());
+$('keepBothCloud').addEventListener('click',()=>cloud.resolveConflict(true));$('useDriveVersion').textContent='현재 곡 백업 후 Drive 내용 사용';$('useDriveVersion').addEventListener('click',()=>cloud.resolveConflict(false));$('cancelCloudConflict').addEventListener('click',()=>$('cloudConflictDialog').close());
+$('closeOnlineDialog').addEventListener('click',()=>$('onlineDialog').close());$('exportBeforeOnline').addEventListener('click',()=>$('exportJson').click());
+window.addEventListener('online',()=>{if(cloud.account&&cloud.validToken())cloud.sync();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cloud.account){cloud.updateStatus();if(cloud.validToken()&&!engine.running)cloud.sync();}});
+window.addEventListener('beforeunload',event=>{if(cloud.account&&cloud.pending){cloud.cacheSafely();event.preventDefault();event.returnValue='';}});
+renderSong();cloud.boot();updateMeasurements();if(isFresh&&!cloud.hosted)save();if(initialNotice){toast(initialNotice);$('saveStatus').textContent='기존 저장 데이터 확인 필요';$('saveStatus').classList.add('error');}
+</script>
+</body>
+</html>
