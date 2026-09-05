@@ -97,7 +97,8 @@
 <script>
 'use strict';
 // One HTML file. Only Google's official sign-in client is loaded in the hosted app.
-// Access tokens remain in memory. User strings enter the DOM as text.
+// Short-lived access tokens are kept only in this tab's sessionStorage, never localStorage.
+// Account-scoped drafts and the last selected account survive reopening. User strings enter the DOM as text.
 const STORAGE_KEY='guitar-practice-v1';
 const $=id=>document.getElementById(id);
 const stringNames=['e','B','G','D','A','E'];
@@ -568,10 +569,12 @@ const ONLINE_APP_URL='https://sigongai20001-maker.github.io/prompt-db/guitar-pra
 const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const DRIVE_API='https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD='https://www.googleapis.com/upload/drive/v3';
+const GOOGLE_ACCOUNT_KEY=`${STORAGE_KEY}:last-google-account`;
+const GOOGLE_SESSION_KEY=`${STORAGE_KEY}:google-session`;
 const canonical=data=>JSON.stringify(validateState(data));
 class DriveSync{
   constructor(){
-    this.hosted=location.protocol!=='file:';this.account=null;this.token='';this.expiresAt=0;this.epoch=0;
+    this.hosted=location.protocol!=='file:';this.account=null;this.token='';this.expiresAt=0;this.epoch=0;this.restoring=false;this.needsVerification=false;this.sessionError=false;
     this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.revision=0;this.busy=false;this.connecting=false;
     this.error='';this.conflict=null;this.flight=null;this.timer=0;this.expiryTimer=0;this.requests=new Set();this.lastSaved='';this.client=null;this.loadingLibrary=false;this.cacheError=false;this.legacyCount=0;
     try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){const legacy=validateState(JSON.parse(raw));if(legacy.songs.some(song=>song.title!=='연습곡 1'||song.memo||song.bars.some(bar=>bar.chord||bar.cells.some(row=>row.some(Boolean)))))this.legacyCount=legacy.songs.length;}}catch(error){}
@@ -579,7 +582,35 @@ class DriveSync{
   lock(locked){document.body.classList.toggle('auth-locked',locked);$('authGate').hidden=!locked;$('chrome').inert=locked;document.querySelector('.workspace').inert=locked;updateMeasurements();}
   boot(){
     $('openOnlineApp').href=ONLINE_APP_URL;
-    if(this.hosted){this.lock(true);this.loadLibrary();}else{$('authGate').hidden=true;this.updateStatus();}
+    if(this.hosted){const restored=this.restoreSession();this.lock(!restored);this.loadLibrary();if(restored){resizeMemo();this.updateStatus();if(this.validToken())this.resumeSession();}}else{$('authGate').hidden=true;this.updateStatus();}
+  }
+  rememberSession(){
+    if(!this.hosted||!this.account)return;
+    try{localStorage.setItem(GOOGLE_ACCOUNT_KEY,JSON.stringify({format:1,account:this.account}));this.sessionError=false;}catch(error){this.sessionError=true;}
+    try{if(this.validToken())sessionStorage.setItem(GOOGLE_SESSION_KEY,JSON.stringify({format:1,accountId:this.account.id,token:this.token,expiresAt:this.expiresAt}));else sessionStorage.removeItem(GOOGLE_SESSION_KEY);}catch(error){this.sessionError=true;}
+  }
+  clearSessionToken(){this.token='';this.expiresAt=0;clearTimeout(this.expiryTimer);try{sessionStorage.removeItem(GOOGLE_SESSION_KEY);}catch(error){this.sessionError=true;}}
+  restoreSession(){
+    try{
+      const saved=JSON.parse(localStorage.getItem(GOOGLE_ACCOUNT_KEY)||'null'),account=saved?.account;
+      if(saved?.format!==1||!account||typeof account.id!=='string'||!account.id||typeof account.email!=='string'||!account.email)return false;
+      const cached=this.readCache(account.id);if(!cached)return false;
+      this.account={id:account.id,email:account.email,name:typeof account.name==='string'?account.name:account.email};
+      state=cached.state;this.baseRaw=cached.baseRaw;this.pending=cached.pending;this.lastSaved=cached.lastSaved;renderSong();
+    }catch(error){this.error='이 기기의 로그인 정보를 복원하지 못했습니다. 다시 연결해 주세요.';return false;}
+    // Missing, expired or corrupt authorization must never hide a valid local draft.
+    try{const session=JSON.parse(sessionStorage.getItem(GOOGLE_SESSION_KEY)||'null');if(session?.format===1&&session.accountId===this.account.id&&typeof session.token==='string'&&session.token&&Number.isFinite(session.expiresAt)&&session.expiresAt>Date.now()+15000){this.token=session.token;this.expiresAt=session.expiresAt;this.needsVerification=true;this.scheduleExpiry();}else this.clearSessionToken();}catch(error){this.clearSessionToken();}
+    return true;
+  }
+  async resumeSession(){
+    if(this.restoring||!this.account||!this.validToken())return false;
+    const epoch=this.epoch,accountId=this.account.id;this.restoring=true;this.updateStatus();
+    try{
+      const profile=await this.request('https://www.googleapis.com/oauth2/v3/userinfo',{},epoch);this.assertEpoch(epoch);
+      if(profile.sub!==accountId)throw Object.assign(new Error('저장된 계정과 인증 정보가 다릅니다. 다시 연결해 주세요.'),{status:401});
+      this.restoring=false;this.needsVerification=false;return await this.sync();
+    }catch(error){if(epoch!==this.epoch||error.stale)return false;this.error=this.describe(error);this.cacheSafely();return false;}
+    finally{if(epoch===this.epoch){this.restoring=false;this.updateStatus();}}
   }
   loadLibrary(){
     if(this.loadingLibrary)return;if(window.google?.accounts?.oauth2){this.initClient();return;}
@@ -604,7 +635,7 @@ class DriveSync{
   async receiveToken(response){
     if(response.error||!response.access_token){this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent='로그인을 완료하지 못했습니다. Drive 저장 권한을 허용한 뒤 다시 시도해 주세요.';return;}
     if(!google.accounts.oauth2.hasGrantedAllScopes(response,DRIVE_SCOPE)){this.connecting=false;$('googleLogin').disabled=false;$('authMessage').textContent='연습곡을 저장하려면 Google Drive 파일 저장 권한이 필요합니다.';return;}
-    flushSave();this.stopRequests();const epoch=++this.epoch;this.token=response.access_token;this.expiresAt=Date.now()+Math.max(1,Number(response.expires_in)||3600)*1000;
+    flushSave();this.stopRequests();this.clearSessionToken();const epoch=++this.epoch;this.restoring=false;this.needsVerification=false;this.token=response.access_token;this.expiresAt=Date.now()+Math.max(1,Number(response.expires_in)||3600)*1000;
     this.account=null;this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.conflict=null;this.error='';this.flight=null;this.busy=false;this.lock(true);closePopovers();hideKeypad();
     let hadCache=false;
     try{
@@ -612,7 +643,7 @@ class DriveSync{
       if(typeof profile.sub!=='string'||!profile.sub||typeof profile.email!=='string')throw new Error('Google 계정 정보를 확인하지 못했습니다.');
       const cached=this.readCache(profile.sub);hadCache=!!cached;this.account={id:profile.sub,email:profile.email,name:typeof profile.name==='string'?profile.name:profile.email};
       state=cached?cached.state:makeState();this.baseRaw=cached?.baseRaw??null;this.pending=cached?.pending??false;this.lastSaved=cached?.lastSaved??'';this.revision=0;
-      loop=null;choosingLoop=false;loopAnchor=null;renderSong();this.scheduleExpiry();
+      loop=null;choosingLoop=false;loopAnchor=null;renderSong();this.scheduleExpiry();this.cacheSafely();this.rememberSession();
       const okay=await this.sync();if(epoch!==this.epoch)return;
       if(okay||hadCache||this.conflict){this.lock(false);resizeMemo();if(this.conflict)this.showConflict();}
       else $('authMessage').textContent=this.error||'Drive에 연결하지 못했습니다. 다시 로그인해 주세요.';
@@ -626,13 +657,13 @@ class DriveSync{
     return{state:validateState(data.state),baseRaw:data.baseRaw===null?null:canonical(JSON.parse(data.baseRaw)),pending:!!data.pending,lastSaved:typeof data.lastSaved==='string'?data.lastSaved:''};
   }
   storeCache(){
-    if(!this.account)return;localStorage.setItem(this.cacheKey(),JSON.stringify({format:1,accountId:this.account.id,state,baseRaw:this.baseRaw,pending:this.pending,lastSaved:this.lastSaved}));this.cacheError=false;
+    if(!this.account)return;localStorage.setItem(this.cacheKey(),JSON.stringify({format:1,accountId:this.account.id,state,baseRaw:this.baseRaw,pending:this.pending,lastSaved:this.lastSaved}));this.cacheError=false;this.rememberSession();
   }
   cacheSafely(){try{this.storeCache();}catch(error){this.cacheError=true;this.updateStatus();}}
   onEdit(){this.pending=true;this.revision++;this.updateStatus();if(!this.conflict)this.scheduleSync();}
   scheduleSync(delay=800){clearTimeout(this.timer);this.timer=setTimeout(()=>this.sync(),delay);}
   validToken(){return !!this.token&&Date.now()<this.expiresAt-15000;}
-  scheduleExpiry(){clearTimeout(this.expiryTimer);this.expiryTimer=setTimeout(()=>{this.token='';this.updateStatus();},Math.max(1,this.expiresAt-Date.now()-15000));}
+  scheduleExpiry(){clearTimeout(this.expiryTimer);this.expiryTimer=setTimeout(()=>{this.clearSessionToken();this.updateStatus();},Math.max(1,this.expiresAt-Date.now()-15000));}
   stopRequests(){clearTimeout(this.timer);clearTimeout(this.expiryTimer);for(const controller of this.requests)controller.abort();this.requests.clear();}
   assertEpoch(epoch){if(epoch!==this.epoch)throw Object.assign(new Error('계정이 변경되었습니다.'),{stale:true});}
   async request(url,options={},epoch=this.epoch,raw=false){
@@ -647,7 +678,7 @@ class DriveSync{
     }finally{clearTimeout(timeout);this.requests.delete(controller);}
   }
   describe(error){
-    if(error.status===401){this.token='';return 'Google 로그인이 만료되었습니다. 다시 연결하면 기기에 남은 변경사항을 저장합니다.';}
+    if(error.status===401){this.clearSessionToken();return 'Drive 인증이 만료되었습니다. 로그인과 악보는 유지됩니다. 다시 연결하면 기기에 남은 변경사항을 저장합니다.';}
     if(error.status===403)return 'Drive 저장 권한 또는 Google 앱 설정을 확인해 주세요. '+error.message.slice(0,160);
     if(error.status===429)return 'Drive 요청이 잠시 많아졌습니다. 잠시 후 지금 동기화를 눌러주세요.';
     if(error.name==='AbortError'||error instanceof TypeError)return '인터넷 또는 Drive 연결이 불안정합니다. 변경사항은 이 기기에 보관하고 연결 후 다시 저장합니다.';
@@ -695,8 +726,8 @@ class DriveSync{
   }
   finishSave(snapshot){this.baseRaw=snapshot;this.pending=canonical(state)!==snapshot;this.lastSaved=new Date().toISOString();this.error='';this.cacheSafely();}
   async sync(manual=false){
-    if(!this.account)return false;if(this.conflict){if(manual)this.showConflict();this.updateStatus();return false;}
-    if(!this.validToken()){this.updateStatus();return false;}if(this.flight)return this.flight;
+    if(!this.account||this.restoring)return false;if(this.conflict){if(manual)this.showConflict();this.updateStatus();return false;}
+    if(!this.validToken()){this.updateStatus();return false;}if(this.needsVerification)return this.resumeSession();if(this.flight)return this.flight;
     const epoch=this.epoch;this.busy=true;this.error='';this.updateStatus();
     this.flight=(async()=>{
       try{const operation=()=>{if(epoch!==this.epoch)return false;return this.performSync(epoch);};return navigator.locks?await navigator.locks.request('guitar-practice-drive:'+this.account.id,operation):await operation();}
@@ -714,18 +745,18 @@ class DriveSync{
   async signOut(){
     if(this.connecting)return;engine.stop();flushSave();if(this.pending&&this.validToken()&&!this.conflict)await this.sync();this.cacheSafely();
     if(this.pending&&this.cacheError){toast('변경사항을 보관하지 못했습니다. JSON으로 내보낸 뒤 로그아웃해 주세요.');return;}
-    this.epoch++;this.stopRequests();this.token='';this.expiresAt=0;this.account=null;this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.error='';this.conflict=null;this.busy=false;this.flight=null;dirty=false;clearTimeout(saveTimer);
+    this.epoch++;this.stopRequests();this.clearSessionToken();this.restoring=false;try{localStorage.removeItem(GOOGLE_ACCOUNT_KEY);}catch(error){this.sessionError=true;}this.account=null;this.fileId='';this.folderId='';this.baseRaw=null;this.pending=false;this.error='';this.conflict=null;this.busy=false;this.flight=null;dirty=false;clearTimeout(saveTimer);
     closePopovers();hideKeypad();for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();state=makeState();loop=null;choosingLoop=false;loopAnchor=null;renderSong();this.lock(true);this.updateStatus();$('authMessage').textContent='로그아웃했습니다. 다시 로그인하면 내 연습곡을 불러옵니다.';
   }
   updateStatus(){
     const connected=!!this.account,expired=connected&&!this.validToken();
-    let message=!connected?'이 기기에 저장됨':this.conflict?'다른 기기 변경사항 확인 필요':this.error?'Drive 연결 확인 · 기기 저장본 보관':expired?(this.pending?'기기 저장됨 · Google 재연결 필요':'Google 재연결 필요'):this.busy?'Drive 동기화 중…':this.pending?'기기 저장됨 · Drive 저장 대기':'Google Drive에 저장됨';
+    let message=!connected?'이 기기에 저장됨':this.conflict?'다른 기기 변경사항 확인 필요':this.restoring?'로그인 복원 중 · 기기 저장본 표시':this.error?'Drive 연결 확인 · 기기 저장본 보관':expired?(this.pending?'기기 저장됨 · Drive 재연결 필요':'로그인 유지 · Drive 재연결 필요'):this.busy?'Drive 동기화 중…':this.pending?'기기 저장됨 · Drive 저장 대기':'Google Drive에 저장됨';
     if(this.cacheError)message=this.pending?'기기 저장 실패 · 창을 닫지 마세요':'Drive 저장됨 · 기기 저장 공간 확인';
     if(connected){$('saveStatus').textContent=message;$('saveStatus').classList.toggle('error',!!this.error||expired||this.cacheError||!!this.conflict);}
     $('accountStripText').textContent=connected?message:'이 기기에 저장 중 · Google Drive로 이어서 연습하세요';$('accountButton').textContent=connected?this.account.email:'Google Drive 연결';$('accountEmail').textContent=this.account?.email||'';
     $('accountIndicator').className='account-indicator'+(connected?(this.pending||expired||this.error||this.conflict?' pending':' connected'):'');
-    $('driveDetail').textContent=this.error||(this.conflict?'다른 기기에서 수정한 내용과 비교가 필요합니다.':expired?'다시 연결하면 이 기기의 미저장 변경사항도 동기화됩니다.':`${message}\n저장 위치: 내 드라이브 / Guitar Practice`);
-    $('reconnectGoogle').hidden=!connected||(!expired&&!this.error);$('syncDrive').disabled=!connected||expired||this.busy;$('syncDrive').textContent=this.conflict?'두 버전 비교하기':this.busy?'동기화 중…':'지금 동기화';
+    $('driveDetail').textContent=this.error||(this.conflict?'다른 기기에서 수정한 내용과 비교가 필요합니다.':expired?'로그인과 악보는 유지됩니다. Google을 다시 연결하면 이 기기의 미저장 변경사항도 동기화됩니다.':`${message}\n저장 위치: 내 드라이브 / Guitar Practice`);if(this.sessionError)$('driveDetail').textContent+='\n브라우저 저장 설정 때문에 새로고침 시 다시 연결해야 할 수 있습니다.';
+    $('reconnectGoogle').hidden=!connected||(!expired&&!this.error);$('syncDrive').disabled=!connected||expired||this.busy||this.restoring;$('syncDrive').textContent=this.conflict?'두 버전 비교하기':this.busy?'동기화 중…':'지금 동기화';
     $('openDriveFolder').hidden=!this.folderId;if(this.folderId)$('openDriveFolder').href='https://drive.google.com/drive/folders/'+encodeURIComponent(this.folderId);
     $('migrateLocal').hidden=!connected||!this.legacyCount;if(this.legacyCount)$('migrateLocal').textContent=`이 기기의 기존 ${this.legacyCount}곡 추가`;
   }
