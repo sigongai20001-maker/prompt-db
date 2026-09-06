@@ -37,6 +37,50 @@
 .score-columns:has(>.score-column[hidden]){grid-template-columns:minmax(0,1fr)}
 @media(max-width:600px){.control-primary .tempo label{display:none}.time-signature{display:inline;padding:0;font-size:10px}}
 body.performing .lesson-entry,body.performing .json-storage-help,body.performing .score-editor-tools,body.performing .drag-help,body.performing .score-hint,body.performing .song-actions,body.performing .intro .eyebrow{display:none}body.performing .workspace{padding-top:12px}body.performing .intro{margin-bottom:10px}body.performing .intro h1{font-size:23px}body.performing .score-toolbar{padding:6px 10px}body.performing .score-order-hint{margin-top:5px}
+/* Compact editing and a complete, automatically fitted song overview. */
+:root{--staff-gap:18px;--bar-head:43px}
+.bar-tools{height:18px;margin:0}.bar-number,.bar-delete{min-height:18px;height:18px}.chord{height:23px}.score-row{margin-bottom:7px}.section-row{min-height:20px}.row-text-edit{min-height:20px}.lyrics-row{margin-top:2px}.lyric-segment{padding:3px 5px;line-height:1.45}.cell .tech-mark{bottom:calc(50% + 3px);line-height:6px;font-size:6px}
+.score-view-controls{display:flex;align-items:center;gap:6px}.score-view-controls button{min-height:44px;padding:5px 9px;font-size:11px}.fit-scale{font:10px var(--mono);color:var(--muted)}.score-viewport{min-width:0}
+body.score-fit .workspace{max-width:none;padding:6px 12px 0}body.score-fit .intro{margin:0 0 5px;min-height:26px}body.score-fit .intro h1{font-size:17px;margin:0;letter-spacing:-.4px}body.score-fit .song-meta{font-size:10px}
+body.score-fit .lesson-entry,body.score-fit .json-storage-help,body.score-fit .intro .eyebrow,body.score-fit .intro-right,body.score-fit .song-actions,body.score-fit .score-editor-tools,body.score-fit .drag-help,body.score-fit .score-hint,body.score-fit .score-footer,body.score-fit .keyboard-help,body.score-fit .memo-section,body.score-fit .page-footer,body.score-fit .score-order-hint{display:none}
+body.score-fit .score-toolbar{padding:3px 9px;gap:7px}body.score-fit .score-layout{margin-left:auto}body.score-fit .score-viewport{overflow:hidden;position:relative}body.score-fit .score{transform-origin:top left;padding:3px 5px 0;--staff-gap:10px;--bar-head:25px}body.score-fit .score-columns{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}body.score-fit .score-column+.score-column{border-left:1px solid var(--line);padding-left:12px}body.score-fit .column-order{display:flex;margin-bottom:3px;padding:1px 0;font-size:11px}body.score-fit .bar-header{padding:0 2px}body.score-fit .bar-tools{height:12px}body.score-fit .bar-number{height:12px;min-height:12px;font-size:10px}body.score-fit .bar-delete{display:none}body.score-fit .chord{height:13px;padding:0;font-size:12px}body.score-fit .score-row{margin-bottom:3px}body.score-fit .bar{padding-bottom:1px}body.score-fit .section-row{min-height:13px;margin-bottom:0}body.score-fit .section-row h3{font-size:11px}body.score-fit .row-text-edit{min-height:13px;padding:0 3px;font-size:9px}body.score-fit .lyric-segment{font-size:11px;line-height:1.15;padding:1px 3px}body.score-fit .lyrics-row{margin-top:1px}body.score-fit .cell .tech-mark{font-size:4px;line-height:4px;bottom:calc(50% + 2px)}body.score-fit .score.one-column .score-columns{grid-template-columns:minmax(0,1fr)}
+body.score-fit .tabs-shell{padding-top:3px;padding-bottom:1px}body.score-fit .control-bar{padding-top:2px;padding-bottom:3px}body.score-fit .account-strip{padding-top:2px;padding-bottom:2px}body.score-fit .song-meta{display:none}body.score-fit .lyric-segment{min-height:0;max-height:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;text-align:left}body.score-fit .cell{font-size:9px}body.score-fit .subdiv-16 .cell{font-size:8px}
+@media(max-width:600px){:root{--staff-gap:18px;--bar-head:41px}.score-view-controls{gap:3px}.score-view-controls button{font-size:10px;padding:4px 6px}.fit-scale{font-size:9px}body.score-fit .workspace{padding:4px 5px 0}body.score-fit .intro h1{font-size:14px}body.score-fit .intro{min-height:25px}body.score-fit .score-label span,body.score-fit .score-layout label{display:none}body.score-fit .score-layout select{max-width:88px}body.score-fit .score-toolbar{gap:4px;padding:2px 5px}.score-toolbar{gap:5px}}
+/* Remove unused space in the overview; the complete six-string editor is unchanged. */
+body.score-fit .score{--staff-gap:7px;--bar-head:12px;padding-top:2px}
+body.score-fit .bar-header{display:flex;align-items:center;gap:3px;padding:0 2px}
+body.score-fit .bar-tools{display:contents}
+body.score-fit .bar-number{flex:0 0 auto;min-width:0;height:12px;min-height:12px;padding:0 2px;font-size:9px;line-height:12px}
+body.score-fit .chord{flex:1;min-width:0;height:12px;font-size:11px;line-height:12px}
+body.score-fit .score-row{margin-bottom:2px;column-gap:4px}
+body.score-fit .column-order{margin-bottom:2px;padding:0;font-size:10px}
+body.score-fit .section-row:not(.has-section){display:none}
+body.score-fit .section-row{min-height:12px}
+body.score-fit .section-row h3{font-size:10px;line-height:12px}
+body.score-fit .row-text-edit{min-height:12px;line-height:12px;font-size:8px}
+body.score-fit .lyric-segment{display:block;max-height:15px;height:15px;line-height:13px;padding:0 2px;font-size:11px;white-space:nowrap;text-overflow:ellipsis}
+body.score-fit .cell,body.score-fit .subdiv-16 .cell{font-size:7px}
+body.score-fit .fret{line-height:1;letter-spacing:0}
+body.score-fit .cell .tech-mark{left:auto;right:0;bottom:0;width:auto;max-width:48%;font-size:5px;line-height:6px}
+body.score-fit .score.fold-empty .foldable-string{display:none}
+body.score-fit .score.fold-empty .string-labels{grid-template-rows:repeat(var(--shown-strings,6),var(--staff-gap))}
+body:not(.score-fit) #foldStrings{display:none}
+#foldStrings{font-size:10px}
+.lyrics-focus{display:none}
+body.score-fit .lyrics-row{display:none}
+body.score-fit .lyrics-focus{display:flex;align-items:center;gap:10px;width:100%;height:48px;min-height:48px;padding:4px 10px;border:0;border-top:1px solid var(--line);border-radius:0;background:#252c37;text-align:left}
+.lyrics-focus-range{flex:0 0 76px;color:var(--amber);font:10px/1.4 var(--mono)}
+.lyrics-focus-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;font-size:12px;line-height:18px;color:#e2d8c5}
+.lyrics-focus-empty{color:var(--muted)}
+.score-line{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;align-items:start;margin-bottom:7px;position:relative}
+.score-line::after{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px solid #536071;pointer-events:none}
+.score-line>.score-row{min-width:0;margin-bottom:0}
+.score-line .section-row h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.score-layout-label{color:var(--muted);font-size:11px;white-space:nowrap}
+body.score-fit .score-line{column-gap:18px;margin-bottom:3px}
+body.score-fit .score-line>.score-row{margin-bottom:0}
+body.score-fit .score-line.has-section .section-row:not(.has-section){display:flex}
+@media(max-width:600px){.score-line,body.score-fit .score-line{column-gap:10px}.score-layout-label{font-size:9px}}
 </style>
 </head>
 <body>
@@ -73,10 +117,10 @@ body.performing .lesson-entry,body.performing .json-storage-help,body.performing
   <section class="lesson-entry" aria-label="수업 캡처에서 악보로"><div class="lesson-entry-text"><strong>수업 캡처 → JSON → 내 악보</strong><p>JSON 파일을 이 화면에 끌어놓으세요. 코드·가사·주법을 함께 불러옵니다.</p></div><button id="chooseLessonFile">JSON 파일 열기</button><button class="primary" id="openLessonJson">수업 JSON 입력</button></section>
   <details class="json-storage-help"><summary>JSON은 어디에 저장되나요?</summary><p>Google 로그인: 내 드라이브 → Guitar Practice → guitar-practice-v1.json에 모든 곡이 자동 저장됩니다.<br>로컬 HTML 사용: 이 브라우저 저장소에 보관됩니다.<br>JSON 내보내기·내려받기: 브라우저에서 지정한 다운로드 폴더에 파일로 저장됩니다.<br>Drive 저장 폴더는 상단 계정 버튼 → ‘Drive 저장 폴더 열기’에서 확인할 수 있습니다.</p></details>
   <section class="score-section" aria-label="TAB 악보">
-    <div class="score-toolbar"><div class="score-label">TAB <span id="divisionLabel">1/8 NOTE</span></div><div class="score-layout"><label for="scoreLayout">악보 배치</label><select id="scoreLayout"><option value="two">2단 · 왼쪽부터</option><option value="one">1단</option></select></div><div class="score-hint" id="scoreHint" role="status">셀을 선택하고 프렛 번호를 입력하세요</div></div>
+    <div class="score-toolbar"><div class="score-label">TAB <span id="divisionLabel">1/8 NOTE</span></div><div class="score-layout"><span class="score-layout-label">8마디 · 4 + 4 →</span></div><div class="score-view-controls"><span id="fitScale" class="fit-scale"></span><button id="foldStrings" aria-pressed="true" title="한 줄의 8마디에서 프렛·뮤트·주법이 전혀 없는 줄만 접습니다. 편집할 때는 6줄 모두 표시됩니다.">빈 줄 접기</button><button id="fitScore" aria-pressed="true" title="전체 보기에서는 현재 구간의 가사를 하단에 표시합니다. 확대·편집에서 6줄과 가사 전체를 확인하세요.">확대·편집</button></div><div class="score-hint" id="scoreHint" role="status">셀을 선택하고 프렛 번호를 입력하세요</div></div>
     <div class="score-editor-tools"><div class="subdivision-picker"><span>마디당 칸</span><div class="subdivision-buttons" role="group" aria-label="마디당 4·8·16칸"><button id="quickSubdiv4" aria-pressed="false" aria-label="4칸 · 4분음표">4</button><button id="quickSubdiv8" aria-pressed="true" aria-label="8칸 · 8분음표">8</button><button id="quickSubdiv16" aria-pressed="false" aria-label="16칸 · 16분음표">16</button></div></div><button class="editor-tool" id="toggleKeypad" aria-controls="keypad" aria-pressed="false">숫자패드</button><button class="editor-tool undo-clear-button" id="undoClearScore" hidden>지우기 취소</button><button class="editor-tool clear-score-button" id="clearScore">전체 지우기</button></div>
     <p class="drag-help">프렛과 주법을 함께 드래그해 이동 · 음이 있는 칸에 놓으면 서로 자리 바꿈 <button class="editor-tool" id="editTechnique" aria-controls="techniquePanel" aria-expanded="false">선택한 칸 주법</button></p>
-    <p class="score-order-hint" id="scoreOrderHint">왼쪽 단 위→아래 · 다음 오른쪽 단 위→아래</p><div class="score" id="score"></div>
+    <p class="score-order-hint" id="scoreOrderHint">한 줄 8마디 · 4마디씩 구분 · 왼쪽 → 오른쪽 → 다음 줄</p><div class="score-viewport" id="scoreViewport"><div class="score" id="score"></div></div><button class="lyrics-focus" id="lyricsFocus" aria-label="현재 구간 가사 전체 보기"><span class="lyrics-focus-range" id="lyricsFocusRange">1–4마디 가사</span><span class="lyrics-focus-text" id="lyricsFocusText">마디 번호를 누르면 그 구간의 가사를 보여줍니다.</span></button>
     <div class="score-footer"><button class="add-bar" id="addBar">+ 마디 추가</button><span class="selection-readout" id="selectionReadout">프렛 0–24 · x 뮤트</span></div>
   </section>
   <div class="keyboard-help"><span class="desktop-hint"><kbd>← ↑ ↓ →</kbd> 이동 &nbsp; <kbd>0–9</kbd> 프렛 &nbsp; <kbd>x</kbd> 뮤트 &nbsp; <kbd>⌫</kbd> 삭제</span><span class="touch-hint">셀을 탭하면 숫자 키패드가 열립니다</span><span><span class="desktop-hint"><kbd>Space</kbd> 재생 / 정지 · </span>소리는 메트로놈만</span></div>
@@ -182,7 +226,60 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)flushSave()
 let loop=null,choosingLoop=false,loopAnchor=null,selection=null,digitEntry=null;
 let clearUndo=null,fretDrag=null,suppressDragClickUntil=0;
 let barViews=[],cellViews=[],tabViews=new Map(),cursorBar=-1,cursorCell=-1,lastScrollRow=-1,lastScrollAt=0;
-let scoreLayout='two';try{if(localStorage.getItem(`${STORAGE_KEY}:score-layout`)==='one')scoreLayout='one';}catch(error){}
+let fitScore=true,fitFrame=0;try{fitScore=localStorage.getItem(`${STORAGE_KEY}:fit-score`)!=='off';}catch(error){}
+let foldEmptyStrings=true;try{foldEmptyStrings=localStorage.getItem(`${STORAGE_KEY}:fold-empty-strings`)!=='off';}catch(error){}
+let lyricsFocusStart=0;
+function updateLyricsFocus(b){
+  const song=activeSong();lyricsFocusStart=Math.floor(b/4)*4;const bars=song.bars.slice(lyricsFocusStart,lyricsFocusStart+4),text=bars.map(bar=>bar.lyrics||'').filter(Boolean).join('\n');
+  $('lyricsFocusRange').textContent=`${lyricsFocusStart+1}–${lyricsFocusStart+bars.length}마디 가사`;
+  $('lyricsFocusText').textContent=text||'이 구간의 가사가 없습니다 · 눌러서 입력';$('lyricsFocusText').classList.toggle('lyrics-focus-empty',!text);
+  $('lyricsFocus').title=text||'마디 번호를 누르면 그 구간의 가사를 보여줍니다.';
+  $('lyricsFocus').setAttribute('aria-label',`${lyricsFocusStart+1}–${lyricsFocusStart+bars.length}마디 가사 전체 보기`);
+}
+$('lyricsFocus').addEventListener('click',()=>openRowText(lyricsFocusStart));
+function visibleStringMask(bars){
+  const used=Array.from({length:6},(_,s)=>bars.some(bar=>bar.cells[s].some(Boolean)||bar.techniques?.[s]?.some(ids=>ids.length)));
+  return used.some(Boolean)?used:Array(6).fill(true);
+}
+function refreshFoldedStrings(){
+  const song=activeSong(),score=$('score');
+  score.classList.toggle('fold-empty',foldEmptyStrings);$('foldStrings').setAttribute('aria-pressed',String(foldEmptyStrings));
+  // Both four-bar groups share a mask so all eight bars keep the same string positions.
+  for(let start=0;start<song.bars.length;start+=8){
+    const bars=song.bars.slice(start,start+8);if(!barViews[start])continue;
+    const used=visibleStringMask(bars); // An empty score still shows all six strings.
+    for(let group=start;group<start+bars.length;group+=4){
+      const row=barViews[group].row;row.style.setProperty('--shown-strings',used.filter(Boolean).length);
+      for(let s=0;s<6;s++)row.querySelector('.string-labels').children[s].classList.toggle('foldable-string',!used[s]);
+    }
+    for(let s=0;s<6;s++){
+      for(let b=start;b<start+bars.length;b++)cellViews[b][s][0].parentElement.classList.toggle('foldable-string',!used[s]);
+    }
+  }
+  // Keep the keyboard entry point on a visible string without changing any song data.
+  for(const cell of score.querySelectorAll('.cell[tabindex="0"]'))cell.tabIndex=-1;
+  let entry=selection?cellViews[selection.b]?.[selection.s]?.[selection.c]:null;
+  if(!entry||(fitScore&&foldEmptyStrings&&entry.parentElement.classList.contains('foldable-string')))entry=score.querySelector(fitScore&&foldEmptyStrings?'.string-row:not(.foldable-string) .cell':'.cell');
+  if(entry)entry.tabIndex=0;
+}
+$('foldStrings').addEventListener('click',()=>{foldEmptyStrings=!foldEmptyStrings;try{localStorage.setItem(`${STORAGE_KEY}:fold-empty-strings`,foldEmptyStrings?'on':'off');}catch(error){}refreshFoldedStrings();queueScoreFit();});
+function queueScoreFit(){cancelAnimationFrame(fitFrame);fitFrame=requestAnimationFrame(fitEntireScore);}
+function fitEntireScore(){
+  fitFrame=0;const viewport=$('scoreViewport'),score=$('score');
+  document.body.classList.toggle('score-fit',fitScore);$('fitScore').setAttribute('aria-pressed',String(fitScore));$('fitScore').textContent=fitScore?'확대·편집':'한 화면';
+  if(!fitScore){score.style.removeProperty('width');score.style.removeProperty('transform');score.style.removeProperty('margin-left');viewport.style.removeProperty('height');$('fitScale').textContent='';return;}
+  if(!viewport.clientWidth||!barViews.length)return;
+  const width=viewport.clientWidth,height=Math.max(40,(window.visualViewport?.height||innerHeight)-viewport.getBoundingClientRect().top-$('lyricsFocus').getBoundingClientRect().height-6);
+  let scale=1;score.style.transform='none';score.style.marginLeft='0';
+  // Reflow the lyrics at the fitted width, then bound both axes. Audio timing is untouched.
+  for(let i=0;i<4;i++){score.style.width=`${width/scale}px`;const next=Math.min(1,height/Math.max(1,score.scrollHeight));if(Math.abs(next-scale)<.001){scale=next;break;}scale=next;}
+  score.style.width=`${width/scale}px`;scale=Math.min(scale,height/Math.max(1,score.scrollHeight));
+  const naturalWidth=score.offsetWidth;scale=Math.min(scale,width/naturalWidth);score.style.transform=`scale(${scale})`;score.style.marginLeft=`${Math.max(0,(width-naturalWidth*scale)/2)}px`;viewport.style.height=`${height}px`;$('fitScale').textContent=`전체 ${Math.round(scale*100)}%`;
+}
+function setScoreFit(value){fitScore=value;try{localStorage.setItem(`${STORAGE_KEY}:fit-score`,value?'on':'off');}catch(error){}refreshFoldedStrings();fitEntireScore();lastScrollRow=-1;if(value){hideKeypad();window.scrollTo({top:0,behavior:'instant'});queueScoreFit();}else if(cursorBar>=0)requestAnimationFrame(()=>scrollRowIntoView(selection?.b??cursorBar));}
+$('fitScore').addEventListener('click',()=>setScoreFit(!fitScore));
+new ResizeObserver(queueScoreFit).observe($('score'));
+window.visualViewport?.addEventListener('resize',queueScoreFit);
 const cursor=document.createElement('div');cursor.className='play-cursor parked';cursor.setAttribute('aria-hidden','true');
 const beatDots=Array.from(document.querySelectorAll('.beat-dot'));
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
@@ -199,11 +296,10 @@ function renderScore(){
   cancelFretDrag();closeTechnique();discardClearUndo();
   const song=activeSong(),frag=document.createDocumentFragment();barViews=[];cellViews=[];cursorBar=-1;cursorCell=-1;lastScrollRow=-1;selection=null;digitEntry=null;
   $('score').classList.toggle('subdiv-16',song.subdiv===16);$('score').style.setProperty('--subdiv',song.subdiv);
-  const columns=document.createElement('div');columns.className='score-columns';const columnViews=[0,1].map(()=>{const column=document.createElement('section');column.className='score-column';columns.append(column);return column;});const split=Math.ceil(Math.ceil(song.bars.length/4)/2)*4;frag.append(columns);
-  columnViews.forEach((column,i)=>{const start=i?split:0,end=Math.min(song.bars.length,i?song.bars.length:split);if(start>=end){column.hidden=true;return;}const order=document.createElement('div');order.className='column-order';order.textContent=i?'02 오른쪽 ↓':'01 왼쪽 ↓';const range=document.createElement('span');range.textContent=`${start+1}–${end}마디`;order.append(range);column.append(order);column.setAttribute('aria-label',`${i?'오른쪽':'왼쪽'} 악보 ${start+1}–${end}마디`);});
-  let row;
+  let row,scoreLine;
   song.bars.forEach((bar,b)=>{
-    if(b%4===0){row=document.createElement('div');row.className='score-row';const names=document.createElement('div');names.className='string-labels';names.setAttribute('aria-hidden','true');for(const name of stringNames){const label=document.createElement('span');label.textContent=name;names.append(label);}row.append(names);columnViews[b<split?0:1].append(row);}
+    if(b%8===0){scoreLine=document.createElement('section');scoreLine.className='score-line';scoreLine.setAttribute('aria-label',`${b+1}–${Math.min(b+8,song.bars.length)}마디`);frag.append(scoreLine);}
+    if(b%4===0){row=document.createElement('div');row.className='score-row';const names=document.createElement('div');names.className='string-labels';names.setAttribute('aria-hidden','true');for(const name of stringNames){const label=document.createElement('span');label.textContent=name;names.append(label);}row.append(names);scoreLine.append(row);}
     const article=document.createElement('article');article.className='bar';article.dataset.bar=b;article.setAttribute('aria-label',`${b+1}마디`);
     const header=document.createElement('div');header.className='bar-header';const tools=document.createElement('div');tools.className='bar-tools';
     const number=document.createElement('button');number.className='bar-number';number.textContent=circled(b+1);number.dataset.bar=b;number.title=`${b+1}마디부터 연주 · 구간지정 중에는 시작 또는 끝 선택`;number.setAttribute('aria-label',`${b+1}마디 번호`);
@@ -212,18 +308,17 @@ function renderScore(){
     const staff=document.createElement('div');staff.className='staff';staff.setAttribute('role','grid');staff.setAttribute('aria-label',`${b+1}마디 TAB`);staff.setAttribute('aria-rowcount','6');staff.setAttribute('aria-colcount',String(song.subdiv));
     const cells=[];
     for(let s=0;s<6;s++){const line=document.createElement('div');line.className='string-row';line.setAttribute('role','row');const stringCells=[];for(let c=0;c<song.subdiv;c++){const cell=document.createElement('button');cell.className='cell'+(c>0&&c%(song.subdiv/4)===0?' beat-edge':'');cell.setAttribute('role','gridcell');cell.setAttribute('aria-selected','false');cell.dataset.bar=b;cell.dataset.string=s;cell.dataset.cell=c;cell.tabIndex=b===0&&s===0&&c===0?0:-1;const fret=document.createElement('span');fret.className='fret';fret.textContent=bar.cells[s][c];cell.append(fret);updateCellLabel(cell,b,s,c,bar.cells[s][c]);line.append(cell);stringCells.push(cell);}cells.push(stringCells);staff.append(line);}
-    article.append(header,staff);row.append(article);barViews.push({article,staff,row});cellViews.push(cells);
+    article.append(header,staff);row.append(article);barViews.push({article,staff,row,scoreLine});cellViews.push(cells);
   });
-  $('score').replaceChildren(frag);for(let b=0;b<song.bars.length;b+=4)renderRowText(b);applyScoreLayout();updateLoopUI();parkCursor();updateSelectionReadout();
+  $('score').replaceChildren(frag);for(let b=0;b<song.bars.length;b+=4)renderRowText(b);refreshFoldedStrings();queueScoreFit();updateLoopUI();parkCursor();updateSelectionReadout();
 }
-function applyScoreLayout(){const single=scoreLayout==='one'||matchMedia('(max-width:900px)').matches;$('score').classList.toggle('one-column',scoreLayout==='one');$('scoreLayout').value=scoreLayout;$('scoreOrderHint').textContent=single?'위→아래 순서 · 한 줄 4마디 · 마디 번호를 누르면 그 마디로 이동':'왼쪽 단 위→아래 · 다음 오른쪽 단 위→아래 · 마디 번호로 이동';}
-$('scoreLayout').addEventListener('change',event=>{scoreLayout=event.target.value==='one'?'one':'two';try{localStorage.setItem(`${STORAGE_KEY}:score-layout`,scoreLayout);}catch(error){}applyScoreLayout();lastScrollRow=-1;if(cursorBar>=0)scrollRowIntoView(cursorBar);});
 function renderRowText(start){
   const row=barViews[start]?.row;if(!row)return;const bars=activeSong().bars.slice(start,start+4);
   let heading=row.querySelector('.section-row');if(!heading){heading=document.createElement('div');heading.className='section-row';row.prepend(heading);}const title=document.createElement('h3');title.textContent=bars.map((bar,i)=>bar.section?`${bar.section}${i?' · '+(start+i+1)+'마디':''}`:'').filter(Boolean).join(' / ');
-  const edit=document.createElement('button');edit.className='row-text-edit';edit.dataset.editRow=start;edit.textContent='구간·가사 ✎';edit.setAttribute('aria-label',`${start+1}–${start+bars.length}마디 구간과 가사 편집`);heading.replaceChildren(title,edit);
+  const edit=document.createElement('button');edit.className='row-text-edit';edit.dataset.editRow=start;edit.textContent='구간·가사 ✎';edit.setAttribute('aria-label',`${start+1}–${start+bars.length}마디 구간과 가사 편집`);heading.replaceChildren(title,edit);heading.classList.toggle('has-section',Boolean(title.textContent));
+  barViews[start].scoreLine.classList.toggle('has-section',!!barViews[start].scoreLine.querySelector('.section-row.has-section'));
   let lyrics=row.querySelector('.lyrics-row');if(!lyrics){lyrics=document.createElement('div');lyrics.className='lyrics-row';row.append(lyrics);}const fragment=document.createDocumentFragment();
-  for(let i=0;i<bars.length;i++){if(!bars[i].lyrics)continue;let end=i+1;while(end<bars.length&&!bars[end].lyrics)end++;const segment=document.createElement('button');segment.className='lyric-segment';segment.dataset.editRow=start;segment.dataset.lyricBar=start+i;segment.style.gridColumn=`${i+1} / span ${end-i}`;segment.textContent=bars[i].lyrics;segment.setAttribute('aria-label',`${start+i+1}마디 가사: ${bars[i].lyrics}`);fragment.append(segment);}lyrics.replaceChildren(fragment);lyrics.hidden=!lyrics.children.length;
+  for(let i=0;i<bars.length;i++){if(!bars[i].lyrics)continue;let end=i+1;while(end<bars.length&&!bars[end].lyrics)end++;const segment=document.createElement('button');segment.className='lyric-segment';segment.dataset.editRow=start;segment.dataset.lyricBar=start+i;segment.style.gridColumn=`${i+1} / span ${end-i}`;segment.textContent=bars[i].lyrics;segment.title=bars[i].lyrics;segment.setAttribute('aria-label',`${start+i+1}마디 가사: ${bars[i].lyrics}`);fragment.append(segment);}lyrics.replaceChildren(fragment);lyrics.hidden=!lyrics.children.length;if(cursorBar>=start&&cursorBar<start+4)updateLyricsFocus(cursorBar);
 }
 let rowTextTarget=null;
 function openRowText(start,focusBar=start){
@@ -279,19 +374,21 @@ function updateLoopUI(){
   barViews.forEach(({article},i)=>{article.classList.toggle('in-loop',!!loop&&i>=loop.start&&i<=loop.end);article.classList.toggle('loop-anchor',choosingLoop&&i===loopAnchor);});
 }
 function scrollRowIntoView(b){
-  const rowIndex=Math.floor(b/4),now=performance.now();if(rowIndex===lastScrollRow&&now-lastScrollAt<500)return;lastScrollRow=rowIndex;lastScrollAt=now;
-  const row=barViews[b].row,rect=row.getBoundingClientRect(),top=$('chrome').getBoundingClientRect().bottom+12,bottom=innerHeight-($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)-14;
+  if(fitScore)return;
+  const rowIndex=Math.floor(b/8),now=performance.now();if(rowIndex===lastScrollRow&&now-lastScrollAt<500)return;lastScrollRow=rowIndex;lastScrollAt=now;
+  const row=barViews[b].scoreLine,rect=row.getBoundingClientRect(),top=$('chrome').getBoundingClientRect().bottom+12,bottom=innerHeight-($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)-14;
   if(rect.top<top||rect.bottom>bottom){const target=scrollY+rect.top-top;window.scrollTo({top:Math.max(0,target),behavior:reducedMotion.matches?'instant':'smooth'});}
 }
 function drawCursor(b,c,scroll=false){
   if(b===cursorBar&&c===cursorCell)return;
-  if(b!==cursorBar){if(barViews[cursorBar])barViews[cursorBar].article.classList.remove('current-bar');barViews[b].article.classList.add('current-bar');barViews[b].staff.append(cursor);}
+  if(b!==cursorBar){if(barViews[cursorBar])barViews[cursorBar].article.classList.remove('current-bar');barViews[b].article.classList.add('current-bar');barViews[b].staff.append(cursor);updateLyricsFocus(b);}
   cursor.style.transform=`translateX(${c*100}%)`;cursorBar=b;cursorCell=c;$('barPosition').textContent=`${b+1}마디`;if(scroll&&!fretDrag?.active)scrollRowIntoView(b);
 }
 function parkCursor(){if(barViews.length){cursor.classList.add('parked');drawCursor(loopBounds().start,0);}}
 function updateSelectionReadout(){const label=selection?`${selection.b+1}마디 · ${selection.s+1}번줄 · ${selection.c+1}칸`:'프렛 0–24 · x 뮤트';$('selectionReadout').textContent=label;$('keypadPosition').textContent=label;syncTechniqueEditor();}
 function selectCell(b,s,c,focus=true){
-  if(selection){const old=cellViews[selection.b]?.[selection.s]?.[selection.c];if(old){old.setAttribute('aria-selected','false');old.tabIndex=-1;}}else if(cellViews[0])cellViews[0][0][0].tabIndex=-1;
+  if(fitScore){setScoreFit(false);requestAnimationFrame(()=>scrollRowIntoView(b));}
+  if(selection){const old=cellViews[selection.b]?.[selection.s]?.[selection.c];if(old){old.setAttribute('aria-selected','false');old.tabIndex=-1;}}else{const entry=$('score').querySelector('.cell[tabindex="0"]');if(entry)entry.tabIndex=-1;}
   if(!selection||b!==selection.b||s!==selection.s||c!==selection.c)digitEntry=null;
   selection={b,s,c};const cell=cellViews[b][s][c];cell.tabIndex=0;cell.setAttribute('aria-selected','true');if(focus)cell.focus({preventScroll:true});updateSelectionReadout();
 }
@@ -308,9 +405,9 @@ function enterKey(key){
 }
 function showKeypad(){$('keypad').hidden=false;$('toggleKeypad').setAttribute('aria-pressed','true');updateMeasurements();if(selection){lastScrollRow=-1;scrollRowIntoView(selection.b);}}
 function hideKeypad(){$('keypad').hidden=true;$('toggleKeypad').setAttribute('aria-pressed','false');updateMeasurements();}
-function updateMeasurements(){document.documentElement.style.setProperty('--sticky-height',$('chrome').getBoundingClientRect().height+'px');document.documentElement.style.setProperty('--keypad-height',($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)+'px');}
+function updateMeasurements(){document.documentElement.style.setProperty('--sticky-height',$('chrome').getBoundingClientRect().height+'px');document.documentElement.style.setProperty('--keypad-height',($('keypad').hidden?0:$('keypad').getBoundingClientRect().height)+'px');queueScoreFit();}
 new ResizeObserver(updateMeasurements).observe($('chrome'));new ResizeObserver(updateMeasurements).observe($('keypad'));
-window.addEventListener('resize',()=>{updateMeasurements();resizeMemo();positionOpenPopover();positionTechnique();applyScoreLayout();});
+window.addEventListener('resize',()=>{updateMeasurements();resizeMemo();positionOpenPopover();positionTechnique();queueScoreFit();});
 
 // Musical beats and cursor positions are derived exclusively from AudioContext time.
 // Tempo segments preserve every click already scheduled; timers only fill the queue.
@@ -456,7 +553,7 @@ $('score').addEventListener('click',event=>{
   if(number){engine.seekBar(Number(number.dataset.bar));return;}
   const remove=event.target.closest('.bar-delete');if(remove){const song=activeSong(),b=Number(remove.dataset.bar);if(song.bars.length===1)return;engine.stop();song.bars.splice(b,1);if(loop){if(b<loop.start){loop.start--;loop.end--;}else if(b<=loop.end){loop.end--;if(loop.end<loop.start)loop=null;}}loopAnchor=null;choosingLoop=false;hideKeypad();renderScore();updateMeta();save();}
 });
-$('score').addEventListener('focusin',event=>{const cell=event.target.closest('.cell');if(cell)selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell),false);if(event.target.matches('.chord'))hideKeypad();});
+$('score').addEventListener('focusin',event=>{const cell=event.target.closest('.cell');if(cell)selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell),false);if(event.target.matches('.chord')){if(fitScore)setScoreFit(false);hideKeypad();}});
 $('score').addEventListener('input',event=>{if(event.target.matches('.chord')){activeSong().bars[Number(event.target.dataset.bar)].chord=event.target.value;save();}});
 $('addBar').addEventListener('click',()=>{engine.stop();hideKeypad();const song=activeSong();song.bars.push(makeBar(song.subdiv));renderScore();updateMeta();save();const input=barViews.at(-1).article.querySelector('.chord');input.focus({preventScroll:true});lastScrollRow=-1;scrollRowIntoView(song.bars.length-1);});
 $('memo').addEventListener('input',()=>{activeSong().memo=$('memo').value;resizeMemo();save();});$('memo').addEventListener('focus',hideKeypad);
