@@ -81,6 +81,14 @@ body.score-fit .score-line{column-gap:18px;margin-bottom:3px}
 body.score-fit .score-line>.score-row{margin-bottom:0}
 body.score-fit .score-line.has-section .section-row:not(.has-section){display:flex}
 @media(max-width:600px){.score-line,body.score-fit .score-line{column-gap:10px}.score-layout-label{font-size:9px}}
+.score .section-row h3{display:none}
+.score .bar .chord,.score .bar .bar-number,.score .bar .fret{color:var(--section-color,var(--text))}
+.score .lyric-segment{color:var(--section-color,var(--text))}
+body.score-fit .score .section-row{display:none!important}
+.section-color-key{font-size:11px;color:var(--muted);margin-left:8px}
+.section-color-key summary{cursor:pointer;padding:4px}
+.section-color-items{display:flex;gap:12px;flex-wrap:wrap;padding:5px 0}
+.section-color-items span{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -312,6 +320,35 @@ function renderScore(){
   });
   $('score').replaceChildren(frag);for(let b=0;b<song.bars.length;b+=4)renderRowText(b);refreshFoldedStrings();queueScoreFit();updateLoopUI();parkCursor();updateSelectionReadout();
 }
+function sectionColor(name){
+  const key=name.toUpperCase().replace(/[_–—]/g,'-');
+  if(/PRE.?CHORUS|프리.?코러스/.test(key))return '#c5a5ff';
+  if(/CHORUS|후렴|코러스|가지 마라/.test(key))return '#f0a830';
+  if(/VERSE|벌스/.test(key))return '#92c7ff';
+  if(/SOLO|INTERLUDE|간주|솔로/.test(key))return '#ffa6ca';
+  if(/BRIDGE|브릿지|브리지/.test(key))return '#d4d986';
+  if(/OUTRO|ENDING|END|엔딩|아웃트로/.test(key))return '#b5becd';
+  if(/INTRO|인트로/.test(key))return '#83dcc2';
+  return '#e8eaed';
+}
+function refreshSectionColors(){
+  let section='';const seen=new Map();
+  activeSong().bars.forEach((bar,b)=>{
+    if(bar.section)section=bar.section;
+    const color=sectionColor(section),view=barViews[b];if(!view)return;
+    view.article.style.setProperty('--section-color',color);
+    view.article.setAttribute('aria-label',`${b+1}마디${section?' · '+section:''}`);
+    view.article.querySelector('.chord').title=section||'구간 미지정';
+    if(section)seen.set(section,color);
+    const lyric=$('score').querySelector(`[data-lyric-bar="${b}"]`);
+    if(lyric)lyric.style.setProperty('--section-color',color);
+  });
+  let legend=$('sectionColorKey');
+  if(!legend){legend=document.createElement('details');legend.id='sectionColorKey';legend.className='section-color-key';const summary=document.createElement('summary');summary.textContent='구간 색상';legend.append(summary,document.createElement('div'));legend.lastChild.className='section-color-items';document.querySelector('.score-toolbar').append(legend);legend.addEventListener('toggle',queueScoreFit);}
+  legend.hidden=!seen.size;const items=document.createDocumentFragment();
+  for(const [name,color]of seen){const item=document.createElement('span');item.textContent='● '+name;item.style.color=color;items.append(item);}
+  legend.lastChild.replaceChildren(items);
+}
 function renderRowText(start){
   const row=barViews[start]?.row;if(!row)return;const bars=activeSong().bars.slice(start,start+4);
   let heading=row.querySelector('.section-row');if(!heading){heading=document.createElement('div');heading.className='section-row';row.prepend(heading);}const title=document.createElement('h3');title.textContent=bars.map((bar,i)=>bar.section?`${bar.section}${i?' · '+(start+i+1)+'마디':''}`:'').filter(Boolean).join(' / ');
@@ -319,6 +356,7 @@ function renderRowText(start){
   barViews[start].scoreLine.classList.toggle('has-section',!!barViews[start].scoreLine.querySelector('.section-row.has-section'));
   let lyrics=row.querySelector('.lyrics-row');if(!lyrics){lyrics=document.createElement('div');lyrics.className='lyrics-row';row.append(lyrics);}const fragment=document.createDocumentFragment();
   for(let i=0;i<bars.length;i++){if(!bars[i].lyrics)continue;let end=i+1;while(end<bars.length&&!bars[end].lyrics)end++;const segment=document.createElement('button');segment.className='lyric-segment';segment.dataset.editRow=start;segment.dataset.lyricBar=start+i;segment.style.gridColumn=`${i+1} / span ${end-i}`;segment.textContent=bars[i].lyrics;segment.title=bars[i].lyrics;segment.setAttribute('aria-label',`${start+i+1}마디 가사: ${bars[i].lyrics}`);fragment.append(segment);}lyrics.replaceChildren(fragment);lyrics.hidden=!lyrics.children.length;if(cursorBar>=start&&cursorBar<start+4)updateLyricsFocus(cursorBar);
+  refreshSectionColors();queueScoreFit();
 }
 let rowTextTarget=null;
 function openRowText(start,focusBar=start){
