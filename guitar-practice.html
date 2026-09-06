@@ -619,7 +619,7 @@ window.addEventListener('blur',cancelFretDrag);
 $('score').addEventListener('click',event=>{
   if(performance.now()<suppressDragClickUntil){event.preventDefault();return;}
   const textEdit=event.target.closest('[data-edit-row]');if(textEdit){const start=Number(textEdit.dataset.editRow);openRowText(start,textEdit.dataset.lyricBar===undefined?start:Number(textEdit.dataset.lyricBar));return;}
-  const cell=event.target.closest('.cell');if(cell){selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell));if(lastPointerType==='touch'||lastPointerType==='pen'||matchMedia('(pointer: coarse)').matches)showKeypad();return;}
+  const cell=event.target.closest('.cell');if(cell){const hasFret=cell.classList.contains('has-value');selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell));if(lastPointerType==='touch'||lastPointerType==='pen'||matchMedia('(pointer: coarse)').matches)showKeypad();if(hasFret)openTechnique();return;}
   const number=event.target.closest('.bar-number');if(number&&choosingLoop){const b=Number(number.dataset.bar);if(loopAnchor===null)loopAnchor=b;else{engine.stop();loop={start:Math.min(loopAnchor,b),end:Math.max(loopAnchor,b)};choosingLoop=false;loopAnchor=null;parkCursor();}updateLoopUI();return;}
   if(number){engine.seekBar(Number(number.dataset.bar));return;}
   const remove=event.target.closest('.bar-delete');if(remove){const song=activeSong(),b=Number(remove.dataset.bar);if(song.bars.length===1)return;engine.stop();song.bars.splice(b,1);if(loop){if(b<loop.start){loop.start--;loop.end--;}else if(b<=loop.end){loop.end--;if(loop.end<loop.start)loop=null;}}loopAnchor=null;choosingLoop=false;hideKeypad();renderScore();updateMeta();save();}
