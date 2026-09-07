@@ -1018,16 +1018,16 @@ class DriveSync{
   }
   finishSave(snapshot){this.baseRaw=snapshot;this.pending=canonical(state)!==snapshot;this.lastSaved=new Date().toISOString();this.error='';this.cacheSafely();}
   async sync(manual=false){
-    if(!this.account||this.restoring)return false;if(this.conflict){if(manual)this.showConflict();this.updateStatus();return false;}
+    if(!this.account||this.restoring)return false;if(this.conflict){if(manual)this.showConflict(true);this.updateStatus();return false;}
     if(!this.validToken()){this.updateStatus();return false;}if(this.needsVerification)return this.resumeSession();if(this.flight)return this.flight;
     const epoch=this.epoch;this.busy=true;this.error='';this.updateStatus();
     this.flight=(async()=>{
       try{const operation=()=>{if(epoch!==this.epoch)return false;return this.performSync(epoch);};return navigator.locks?await navigator.locks.request('guitar-practice-drive:'+this.account.id,operation):await operation();}
       catch(error){if(epoch!==this.epoch||error.stale)return false;this.error=this.describe(error);this.cacheSafely();return false;}
-      finally{if(epoch===this.epoch){this.busy=false;this.flight=null;this.updateStatus();if(this.conflict&&!document.body.classList.contains('auth-locked'))this.showConflict();else if(this.pending&&!this.error&&this.validToken())this.scheduleSync();}}
+      finally{if(epoch===this.epoch){this.busy=false;this.flight=null;this.updateStatus();if(this.conflict){if(manual&&!document.body.classList.contains('auth-locked'))this.showConflict(true);}else if(this.pending&&!this.error&&this.validToken())this.scheduleSync();}}
     })();return this.flight;
   }
-  showConflict(){if(!this.conflict)return;engine.stop();$('cloudConflictDetail').textContent=`이 기기 ${state.songs.length}곡 · Drive ${this.conflict.data.songs.length}곡. 두 버전을 보관하면 내용이 다른 같은 곡은 “이 기기 사본”으로 추가됩니다.`;if(!$('cloudConflictDialog').open)$('cloudConflictDialog').showModal();}
+  showConflict(manual=false){if(!this.conflict||!manual)return;engine.stop();$('cloudConflictDetail').textContent=`이 기기 ${state.songs.length}곡 · Drive ${this.conflict.data.songs.length}곡. 두 버전을 보관하면 내용이 다른 같은 곡은 “이 기기 사본”으로 추가됩니다.`;if(!$('cloudConflictDialog').open)$('cloudConflictDialog').showModal();}
   resolveConflict(keepBoth){
     if(!this.conflict)return;const remote=this.conflict,local=validateState(state);let next=validateState(remote.data);
     if(keepBoth){const byId=new Map(next.songs.map(song=>[song.id,song]));let selected=next.activeSongId;for(const song of local.songs){const other=byId.get(song.id);if(!other){next.songs.push(song);if(song.id===local.activeSongId)selected=song.id;}else if(JSON.stringify(song)!==JSON.stringify(other)){const copy={...song,id:crypto.randomUUID(),title:song.title+' (이 기기 사본)'};next.songs.push(copy);if(song.id===local.activeSongId)selected=copy.id;}else if(song.id===local.activeSongId)selected=song.id;}next.activeSongId=selected;}
