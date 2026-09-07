@@ -228,6 +228,7 @@ function validateState(data){
         return row.slice();
       });
       const normalized={chord:bar.chord,cells};
+      if(bar.blockColor!==undefined){if(typeof bar.blockColor!=='string'||!/^#[0-9a-f]{6}$/i.test(bar.blockColor))fail(`${where}, ${j+1}마디: 블록 색상은 #RRGGBB 형식이어야 합니다.`);normalized.blockColor=bar.blockColor;}
       for(const field of ['section','lyrics']){if(bar[field]!==undefined){if(typeof bar[field]!=='string')fail(`${where}, ${j+1}마디: 구간 이름과 가사는 문자열이어야 합니다.`);if(bar[field]!=='')normalized[field]=bar[field];}}
       if(bar.techniques!==undefined){
         if(!Array.isArray(bar.techniques)||bar.techniques.length!==6)fail(`${where}, ${j+1}마디: 주법은 6줄이어야 합니다.`);
@@ -362,6 +363,7 @@ function refreshSectionColors(){
     if(bar.section)section=bar.section;
     const color=sectionColor(section),view=barViews[b];if(!view)return;
     view.article.style.setProperty('--section-color',color);
+    if(bar.blockColor)view.article.style.setProperty('--chord-band',`color-mix(in srgb,${bar.blockColor} 65%,#10141c)`);else view.article.style.removeProperty('--chord-band');
     view.article.setAttribute('aria-label',`${b+1}마디${section?' · '+section:''}`);
     view.article.querySelector('.chord').title=section||'구간 미지정';
     if(section)seen.set(section,color);
@@ -578,9 +580,20 @@ let barDrag=null,barCopy=false,barUndo=null,barSelection=new Set(),barAnchor=nul
 const blockTools=document.createElement('div');blockTools.className='bar-block-tools';
 blockTools.innerHTML='<span id="barSelectionCount">마디 블록 ⠿ 드래그</span><button type="button" id="clearBarSelection">선택 해제</button><button type="button" id="barCopyMode" aria-pressed="false">이동 모드</button><button type="button" id="undoBarBlock" disabled>실행 취소</button><span>□ 여러 마디 선택 · Shift: 연속 선택 · Ctrl: 추가 선택 · ⠿ 드래그 · Option: 복사</span>';
 $('scoreViewport').before(blockTools);
+const colorTools=document.createElement('span');colorTools.style.cssText='display:inline-flex;gap:6px;align-items:center';
+colorTools.innerHTML='<label for="blockColor">블록 색상</label><input type="color" id="blockColor" value="#f0a830" aria-label="블록 색상 선택" style="width:44px;height:36px;padding:3px"><button type="button" id="applyBlockColor" disabled>색 적용</button><button type="button" id="resetBlockColor" disabled>기본색</button>';
+blockTools.append(colorTools);
+function setSelectedBlockColor(color){
+  if(!barSelection.size){toast('□ 버튼으로 색을 바꿀 마디를 선택하세요.');return;}
+  for(const b of barSelection){const bar=activeSong().bars[b];if(!bar)continue;if(color)bar.blockColor=color;else delete bar.blockColor;}
+  barUndo=null;$('undoBarBlock').disabled=true;refreshSectionColors();save();toast(`${barSelection.size}개 마디 ${color?'색상 적용':'기본색 복원'}`);
+}
+$('applyBlockColor').onclick=()=>setSelectedBlockColor($('blockColor').value);
+$('resetBlockColor').onclick=()=>setSelectedBlockColor(null);
 function refreshBarSelection(){
   barViews.forEach((v,i)=>{v.article.classList.toggle('bar-selected',barSelection.has(i));const b=v.article.querySelector('.bar-select');b.setAttribute('aria-pressed',String(barSelection.has(i)));b.textContent=barSelection.has(i)?'☑':'□';});
   $('barSelectionCount').textContent=barSelection.size?`${barSelection.size}마디 선택`:'마디 블록 ⠿ 드래그';
+  $('applyBlockColor').disabled=$('resetBlockColor').disabled=!barSelection.size;
 }
 function chooseBar(b,event){
   if(event.shiftKey&&barAnchor!==null){for(let i=Math.min(b,barAnchor);i<=Math.max(b,barAnchor);i++)barSelection.add(i);}
@@ -741,7 +754,7 @@ const LESSON_EXAMPLE={format:'guitar-lesson-v1',title:'수업 연습곡',bpm:90,
 const lessonFormatText=`${JSON.stringify(LESSON_EXAMPLE,null,2)}\n\nstring: 1~6 (1=가는 e줄, 6=굵은 E줄)\ncell: 마디 안의 1~subdiv칸\nsubdiv: 4 / 8 / 16, beatsPerBar: 4\nfret: 빈 문자열 / 0~24 문자열 / x\ntechniques: 아래 코드의 배열. 생략하면 주법 없음.\n${TECHNIQUES.map(tech=>`${tech.id}: ${tech.symbol} ${tech.label}`).join('\n')}\n\nh/p/slide는 도착 음에 표시하고 출발 음은 앞 칸에 입력합니다. 벤딩과 릴리즈가 서로 다른 시점이면 별도 칸에 입력합니다. 판독이 어려운 칸은 fret를 빈 문자열로 두고 check를 붙이세요.`;
 const lessonTextHelp='\n\nsection: 구간이 시작하는 마디의 이름 (예: VERSE 1, CHORUS), 선택 항목\nlyrics: 이 마디에서 시작하는 가사, 선택 항목. 한 줄의 다음 가사 또는 네 번째 마디까지 이어서 표시됩니다.\n가사와 구간 이름도 악보에서 수정할 수 있으며 JSON과 Google Drive에 함께 저장됩니다.';
 $('lessonFormatHelp').textContent=lessonFormatText+lessonTextHelp;
-function toLessonJson(song){return{format:'guitar-lesson-v1',title:song.title,bpm:song.bpm,subdiv:song.subdiv,beatsPerBar:4,bars:song.bars.map(bar=>{const notes=[];for(let s=0;s<6;s++)for(let c=0;c<song.subdiv;c++){const fret=bar.cells[s][c],techniques=getTechniques(bar,s,c);if(fret!==''||techniques.length)notes.push({string:s+1,cell:c+1,fret,...(techniques.length?{techniques:techniques.slice()}:{})});}return{chord:bar.chord,...(bar.section?{section:bar.section}:{}),...(bar.lyrics?{lyrics:bar.lyrics}:{}),notes};}),memo:song.memo};}
+function toLessonJson(song){return{format:'guitar-lesson-v1',title:song.title,bpm:song.bpm,subdiv:song.subdiv,beatsPerBar:4,bars:song.bars.map(bar=>{const notes=[];for(let s=0;s<6;s++)for(let c=0;c<song.subdiv;c++){const fret=bar.cells[s][c],techniques=getTechniques(bar,s,c);if(fret!==''||techniques.length)notes.push({string:s+1,cell:c+1,fret,...(techniques.length?{techniques:techniques.slice()}:{})});}return{chord:bar.chord,...(bar.section?{section:bar.section}:{}),...(bar.lyrics?{lyrics:bar.lyrics}:{}),...(bar.blockColor?{blockColor:bar.blockColor}:{}),notes};}),memo:song.memo};}
 function parseLessonJson(text){
   if(text.length>20*1024*1024)throw new Error('JSON은 20MB 이하로 입력해 주세요.');
   let source=text.trim().replace(/^\uFEFF/,'');if(source.startsWith('```')){const fenced=source.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i);if(!fenced)throw new Error('JSON 코드 블록 하나만 붙여넣어 주세요.');source=fenced[1].trim();}
@@ -756,7 +769,7 @@ function parseLessonJson(text){
     if(!entry||typeof entry!=='object'||Array.isArray(entry))throw new Error(`${b+1}마디 형식이 올바르지 않습니다.`);
     if(entry.cells!==undefined){if(data.format==='guitar-lesson-v1'||entry.notes!==undefined)throw new Error(`${b+1}마디: 수업 JSON은 notes 형식을 사용해 주세요.`);return entry;}
     if(!Array.isArray(entry.notes))throw new Error(`${b+1}마디: notes 배열이 필요합니다. 빈 마디는 []로 입력하세요.`);
-    const bar=makeBar(song.subdiv);bar.chord=entry.chord===undefined?'':entry.chord;for(const field of ['section','lyrics'])if(entry[field]!==undefined)bar[field]=entry[field];const occupied=new Set();
+    const bar=makeBar(song.subdiv);bar.chord=entry.chord===undefined?'':entry.chord;for(const field of ['section','lyrics','blockColor'])if(entry[field]!==undefined)bar[field]=entry[field];const occupied=new Set();
     for(const note of entry.notes){
       if(!note||typeof note!=='object'||Array.isArray(note)||!Number.isInteger(note.string)||note.string<1||note.string>6||!Number.isInteger(note.cell)||note.cell<1||note.cell>song.subdiv)throw new Error(`${b+1}마디: string은 1~6, cell은 1~${song.subdiv}의 정수여야 합니다.`);
       const position=`${note.string}:${note.cell}`;if(occupied.has(position))throw new Error(`${b+1}마디 ${note.string}번줄 ${note.cell}칸이 중복되었습니다.`);occupied.add(position);
