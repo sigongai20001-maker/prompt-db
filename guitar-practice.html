@@ -108,6 +108,7 @@ body.score-fit .score .bar .bar-number{height:22px;min-height:22px;width:12px;mi
 
 .cell.is-pm{box-shadow:inset 0 -2px #8dcfff;background-color:#31536a33}.cell.is-pm .tech-mark{color:#b9e3ff}.cell.is-pm+.cell.is-pm .tech-mark.pm-only{font-size:0;border-bottom:1px dashed #8dcfff;bottom:calc(50% + 9px)}
 .pm-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pm-fields label{display:grid;gap:6px}.pm-fields input,.pm-fields select{width:100%;min-height:44px}.pm-help{color:var(--muted);font-size:12px;line-height:1.6}
+.bar-block-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;color:var(--muted);font-size:11px}.bar-block-tools button{font-size:11px;min-height:32px;padding:4px 8px}.score .bar-grip{flex-shrink:0;width:22px;min-height:22px;padding:0;border:0;background:#0002;color:white;cursor:grab;touch-action:none;user-select:none;font-size:18px;line-height:1}.score .bar-grip:active{cursor:grabbing}.bar-moving{opacity:.45}.bar-insert-marker{position:fixed;width:4px;background:var(--amber);box-shadow:0 0 8px #f0a830;z-index:180;pointer-events:none;transform:translateX(-2px)}.bar-block-ghost{position:fixed;padding:6px 12px;background:#3a3021;border:1px solid var(--amber);color:white;border-radius:6px;z-index:181;pointer-events:none}body.score-fit .bar-grip{width:15px;min-height:18px;font-size:14px}
 </style>
 </head>
 <body>
@@ -323,7 +324,7 @@ function renderTabs(){
 function updateSubdivisionControls(){for(const count of [4,8,16]){const pressed=String(activeSong().subdiv===count);$('subdiv'+count).setAttribute('aria-pressed',pressed);$('quickSubdiv'+count).setAttribute('aria-pressed',pressed);}}
 function updateMeta(){const song=activeSong();$('songTitle').textContent=song.title;$('songMeta').textContent=`${song.bars.length}마디 · ${song.subdiv}분음표 · Standard E`;$('divisionLabel').textContent=`1/${song.subdiv} NOTE`;updateSubdivisionControls();}
 function renderScore(){
-  cancelFretDrag();closeTechnique();discardClearUndo();
+  cancelBarDrag();cancelFretDrag();closeTechnique();discardClearUndo();
   const song=activeSong(),frag=document.createDocumentFragment();barViews=[];cellViews=[];cursorBar=-1;cursorCell=-1;lastScrollRow=-1;selection=null;digitEntry=null;
   $('score').classList.toggle('subdiv-16',song.subdiv===16);$('score').style.setProperty('--subdiv',song.subdiv);
   let row,scoreLine;
@@ -332,6 +333,7 @@ function renderScore(){
     if(b%4===0){row=document.createElement('div');row.className='score-row';const names=document.createElement('div');names.className='string-labels';names.setAttribute('aria-hidden','true');for(const name of stringNames){const label=document.createElement('span');label.textContent=name;names.append(label);}row.append(names);scoreLine.append(row);}
     const article=document.createElement('article');article.className='bar';article.dataset.bar=b;article.setAttribute('aria-label',`${b+1}마디`);
     const header=document.createElement('div');header.className='bar-header';const tools=document.createElement('div');tools.className='bar-tools';
+    const grip=document.createElement('button');grip.className='bar-grip';grip.textContent='⠿';grip.dataset.bar=b;grip.title='드래그하여 마디 이동 · Ctrl/Option: 복사';grip.setAttribute('aria-label',`${b+1}마디 블록 드래그`);header.append(grip);
     const number=document.createElement('button');number.className='bar-number';number.textContent=circled(b+1);number.dataset.bar=b;number.title=`${b+1}마디부터 연주 · 구간지정 중에는 시작 또는 끝 선택`;number.setAttribute('aria-label',`${b+1}마디 번호`);
     const remove=document.createElement('button');remove.className='bar-delete';remove.textContent='×';remove.dataset.bar=b;remove.setAttribute('aria-label',`${b+1}마디 삭제`);remove.disabled=song.bars.length===1;tools.append(number,remove);
     const chord=document.createElement('input');chord.className='chord';chord.placeholder='–';chord.value=bar.chord;chord.dataset.bar=b;chord.setAttribute('aria-label',`${b+1}마디 코드`);chord.autocomplete='off';chord.spellcheck=false;header.append(tools,chord);
@@ -563,6 +565,69 @@ for(const id of ['deleteSong','deleteCurrentSong'])$(id).addEventListener('click
 $('newSong').addEventListener('click',()=>{closePopovers();$('newSongTitle').value='';$('newSongDialog').showModal();$('newSongTitle').focus();});$('cancelNewSong').addEventListener('click',()=>$('newSongDialog').close());
 $('newSongForm').addEventListener('submit',event=>{event.preventDefault();const title=$('newSongTitle').value.trim();if(!title)return;engine.stop();const song=makeSong(title);state.songs.push(song);state.activeSongId=song.id;loop=null;choosingLoop=false;loopAnchor=null;$('newSongDialog').close();renderSong();save();tabViews.get(song.id).scrollIntoView({block:'nearest',inline:'nearest'});});
 $('selectLoop').addEventListener('click',()=>{choosingLoop=!choosingLoop;loopAnchor=null;updateLoopUI();});$('clearLoop').addEventListener('click',()=>{engine.stop();loop=null;choosingLoop=false;loopAnchor=null;updateLoopUI();parkCursor();});
+// Whole-bar operations keep all attached lyrics, sections and techniques together.
+function insertBarBlock(bars,from,boundary,copy){
+  const next=bars.slice(),item=copy?JSON.parse(JSON.stringify(bars[from])):bars[from];
+  if(!copy){next.splice(from,1);if(boundary>from)boundary--;}
+  next.splice(boundary,0,item);return {bars:next,index:boundary};
+}
+let barDrag=null,barCopy=false,barUndo=null;
+const blockTools=document.createElement('div');blockTools.className='bar-block-tools';
+blockTools.innerHTML='<span>마디 블록 ⠿ 드래그</span><button type="button" id="barCopyMode" aria-pressed="false">이동 모드</button><button type="button" id="undoBarBlock" disabled>실행 취소</button><span>마디 왼쪽/오른쪽에 끼우기 · Ctrl/Option: 복사 · Esc: 취소</span>';
+$('scoreViewport').before(blockTools);
+$('barCopyMode').onclick=()=>{barCopy=!barCopy;$('barCopyMode').setAttribute('aria-pressed',String(barCopy));$('barCopyMode').textContent=barCopy?'복사 모드':'이동 모드';};
+function finishBarBlock(from,boundary,copy){
+  const song=activeSong();if(from<0||from>=song.bars.length||boundary<0||boundary>song.bars.length)return;
+  if(!copy&&(boundary===from||boundary===from+1))return;
+  engine.stop();hideKeypad();
+  const result=insertBarBlock(song.bars,from,boundary,copy);
+  barUndo={songId:song.id,before:song.bars,after:JSON.stringify(result.bars),loop:loop?{...loop}:null};
+  song.bars=result.bars;loop=null;loopAnchor=null;choosingLoop=false;
+  renderScore();updateMeta();save();$('undoBarBlock').disabled=false;
+  barViews[result.index].article.querySelector('.bar-grip').focus({preventScroll:true});scrollRowIntoView(result.index);
+  toast(`${from+1}마디를 ${result.index+1}번째에 ${copy?'복사':'이동'}했습니다.`);
+}
+$('undoBarBlock').onclick=()=>{
+  const song=activeSong();if(!barUndo||song.id!==barUndo.songId||JSON.stringify(song.bars)!==barUndo.after){toast('이후 편집한 내용이 있어 실행 취소할 수 없습니다.');return;}
+  engine.stop();song.bars=barUndo.before;loop=barUndo.loop;barUndo=null;renderScore();updateMeta();save();$('undoBarBlock').disabled=true;
+};
+function cancelBarDrag(){
+  if(!barDrag)return;const d=barDrag;barDrag=null;cancelAnimationFrame(d.frame);d.marker.remove();d.ghost.remove();d.source.classList.remove('bar-moving');
+  if(d.handle.hasPointerCapture(d.id))d.handle.releasePointerCapture(d.id);
+  if(d.active)suppressDragClickUntil=performance.now()+400;
+}
+function trackBarDrag(){
+  const d=barDrag;if(!d)return;
+  d.ghost.style.left=`${Math.min(innerWidth-120,d.x+12)}px`;d.ghost.style.top=`${Math.max(0,d.y-35)}px`;
+  d.ghost.textContent=`${d.copy?'복사':'이동'} · ${d.from+1}마디`;
+  const hit=document.elementFromPoint(d.x,d.y)?.closest('.bar');d.boundary=null;d.marker.hidden=true;
+  if(hit&&$('score').contains(hit)){const r=hit.getBoundingClientRect(),after=d.x>r.left+r.width/2;d.boundary=Number(hit.dataset.bar)+(after?1:0);d.marker.hidden=false;Object.assign(d.marker.style,{left:`${after?r.right:r.left}px`,top:`${r.top}px`,height:`${r.height}px`});}
+}
+function scrollBarDrag(t){
+  const d=barDrag;if(!d?.active)return;
+  const delta=Math.min(32,t-(d.time||t));d.time=t;
+  const top=$('chrome').getBoundingClientRect().bottom+30;
+  if(d.y<top)window.scrollBy(0,-delta*.5);else if(d.y>innerHeight-45)window.scrollBy(0,delta*.5);
+  trackBarDrag();d.frame=requestAnimationFrame(scrollBarDrag);
+}
+$('score').addEventListener('pointerdown',event=>{
+  const handle=event.target.closest('.bar-grip');if(!handle||event.button!==0||!event.isPrimary)return;
+  cancelBarDrag();const marker=document.createElement('div'),ghost=document.createElement('div');marker.className='bar-insert-marker';ghost.className='bar-block-ghost';marker.hidden=ghost.hidden=true;document.body.append(marker,ghost);
+  barDrag={handle,source:handle.closest('.bar'),from:Number(handle.dataset.bar),songId:state.activeSongId,id:event.pointerId,x:event.clientX,y:event.clientY,startX:event.clientX,startY:event.clientY,active:false,copy:barCopy||event.ctrlKey||event.altKey,marker,ghost,boundary:null};
+  handle.setPointerCapture(event.pointerId);event.preventDefault();
+});
+$('score').addEventListener('pointermove',event=>{
+  const d=barDrag;if(!d||event.pointerId!==d.id)return;d.x=event.clientX;d.y=event.clientY;d.copy=barCopy||event.ctrlKey||event.altKey;
+  if(!d.active&&Math.hypot(d.x-d.startX,d.y-d.startY)>6){d.active=true;d.ghost.hidden=false;d.source.classList.add('bar-moving');d.frame=requestAnimationFrame(scrollBarDrag);}
+  if(d.active){event.preventDefault();trackBarDrag();}
+});
+$('score').addEventListener('pointerup',event=>{
+  const d=barDrag;if(!d||event.pointerId!==d.id)return;d.x=event.clientX;d.y=event.clientY;trackBarDrag();cancelBarDrag();
+  if(d.active&&d.boundary!==null&&d.songId===state.activeSongId)finishBarBlock(d.from,d.boundary,d.copy);
+});
+for(const name of ['pointercancel','lostpointercapture'])$('score').addEventListener(name,event=>{if(barDrag?.id===event.pointerId)cancelBarDrag();});
+window.addEventListener('blur',cancelBarDrag);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')cancelBarDrag();});
 let lastPointerType='mouse';
 const cellAddress=cell=>({b:Number(cell.dataset.bar),s:Number(cell.dataset.string),c:Number(cell.dataset.cell)});
 function setDropTarget(cell){
