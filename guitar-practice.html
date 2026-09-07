@@ -110,6 +110,15 @@ body.score-fit .score .bar .bar-number{height:22px;min-height:22px;width:12px;mi
 .pm-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pm-fields label{display:grid;gap:6px}.pm-fields input,.pm-fields select{width:100%;min-height:44px}.pm-help{color:var(--muted);font-size:12px;line-height:1.6}
 .bar-block-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;color:var(--muted);font-size:11px}.bar-block-tools button{font-size:11px;min-height:32px;padding:4px 8px}.score .bar-grip{flex-shrink:0;width:22px;min-height:22px;padding:0;border:0;background:#0002;color:white;cursor:grab;touch-action:none;user-select:none;font-size:18px;line-height:1}.score .bar-grip:active{cursor:grabbing}.bar-moving{opacity:.45}.bar-insert-marker{position:fixed;width:4px;background:var(--amber);box-shadow:0 0 8px #f0a830;z-index:180;pointer-events:none;transform:translateX(-2px)}.bar-block-ghost{position:fixed;padding:6px 12px;background:#3a3021;border:1px solid var(--amber);color:white;border-radius:6px;z-index:181;pointer-events:none}body.score-fit .bar-grip{width:15px;min-height:18px;font-size:14px}
 .score .bar-selected{outline:2px solid #70bbff;outline-offset:-1px}.score .bar-select{flex-shrink:0;width:20px;min-height:22px;padding:0;border:0;background:transparent;color:white;font-size:16px}.score .bar-select[aria-pressed=true]{background:#164a77;color:#fff}body.score-fit .bar-select{width:14px;min-height:18px;font-size:12px}
+/* Keep technique marks legible without changing ordinary TAB spacing. */
+.score-line:has(.has-technique){--staff-gap:32px}
+.score .cell.has-technique .tech-mark{left:50%;right:auto;bottom:calc(50% + 6px);transform:translateX(-50%);width:max-content;max-width:none;overflow:visible;color:#fff;background:#24496c;border:1px solid #89c8ff;border-radius:3px;padding:1px 3px;font:800 11px/13px var(--mono);text-shadow:0 1px #000;z-index:4}
+.score .cell.is-pm+.cell.is-pm .tech-mark.pm-only{font-size:11px;border:1px solid #89c8ff;bottom:calc(50% + 6px)}
+.score .cell.has-technique{background-color:#24496c44}
+body.score-fit .score-line:has(.has-technique){--staff-gap:20px}
+body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:10px;padding:0 1px;bottom:calc(50% + 3px)}
+.technique-visible{display:block;padding:8px 12px;margin:4px 14px;border:1px solid #89c8ff;border-radius:6px;background:#24496c;color:#fff;font:700 14px/1.5 system-ui;white-space:normal;overflow-wrap:anywhere}
+.technique-visible[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -197,6 +206,7 @@ const TECHNIQUES=[
 ];
 const pmButton=document.createElement('button');pmButton.id='pmRangeButton';pmButton.textContent='팜 뮤트 구간';pmButton.className='editor-tool';pmButton.setAttribute('aria-controls','pmDialog');$('editTechnique').parentElement.before(pmButton);
 const techniqueById=new Map(TECHNIQUES.map(tech=>[tech.id,tech]));
+const techniqueVisible=document.createElement('div');techniqueVisible.className='technique-visible';techniqueVisible.hidden=true;techniqueVisible.setAttribute('role','status');$('scoreViewport').before(techniqueVisible);
 const getTechniques=(bar,s,c)=>bar.techniques?.[s]?.[c]||[];
 const makeTechniques=subdiv=>Array.from({length:6},()=>Array.from({length:subdiv},()=>[]));
 const techniqueNames=ids=>ids.map(id=>techniqueById.get(id).label).join(' · ');
@@ -402,7 +412,7 @@ function writeCell(b,s,c,value,techniques){
   const bar=activeSong().bars[b];bar.cells[s][c]=value;
   const next=techniques===undefined?(value===''?[]:getTechniques(bar,s,c)):techniques;
   if(next.length||bar.techniques){if(!bar.techniques)bar.techniques=makeTechniques(activeSong().subdiv);bar.techniques[s][c]=next.slice();if(!bar.techniques.some(row=>row.some(list=>list.length)))delete bar.techniques;}
-  const cell=cellViews[b][s][c];cell.firstChild.textContent=value;updateCellLabel(cell,b,s,c,value);
+  const cell=cellViews[b][s][c];cell.firstChild.textContent=value;updateCellLabel(cell,b,s,c,value);queueScoreFit();
 }
 pmButton.addEventListener('click',()=>{const song=activeSong(),bar=selection?.b??0;for(const id of ['pmStartBar','pmEndBar']){$(id).max=song.bars.length;$(id).value=bar+1;}for(const id of ['pmStartCell','pmEndCell'])$(id).max=song.subdiv;$('pmStartCell').value=selection?selection.c+1:1;$('pmEndCell').value=song.subdiv;$('pmError').textContent='';$('pmDialog').showModal();});
 $('pmCancel').addEventListener('click',()=>$('pmDialog').close());
@@ -419,6 +429,7 @@ function syncTechniqueEditor(){
   const ids=selection?getTechniques(activeSong().bars[selection.b],selection.s,selection.c):[];
   $('techniqueSelection').textContent=selection?`${selection.b+1}마디 · ${selection.s+1}번줄 · ${selection.c+1}칸`:'악보에서 칸을 먼저 선택하세요.';
   const names=ids.length?techniqueNames(ids):'주법 없음';$('techniqueReadout').textContent=names;$('keypadTechniques').textContent=names;$('keypadTechniques').title=names;
+  techniqueVisible.hidden=!ids.length;techniqueVisible.textContent=ids.length?`${selection.b+1}마디 · ${selection.s+1}번줄 · ${selection.c+1}칸 — ${techniqueSymbols(ids)}  ${names}`:'';
   for(const button of $('techniqueButtons').children){button.disabled=!selection;button.setAttribute('aria-pressed',String(ids.includes(button.dataset.technique)));}
   $('clearTechnique').disabled=!ids.length;
 }
