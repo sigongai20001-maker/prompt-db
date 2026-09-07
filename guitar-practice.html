@@ -424,7 +424,7 @@ function syncTechniqueEditor(){
 }
 function closeTechnique(restoreFocus=false){const wasOpen=!$('techniquePanel').hidden;$('techniquePanel').hidden=true;$('editTechnique').setAttribute('aria-expanded','false');if(restoreFocus===true&&wasOpen&&selection)cellViews[selection.b]?.[selection.s]?.[selection.c]?.focus({preventScroll:true});}
 function positionTechnique(){const panel=$('techniquePanel');if(panel.hidden)return;const anchor=selection?cellViews[selection.b]?.[selection.s]?.[selection.c]:$('editTechnique');if(anchor)positionPopover(panel,anchor);}
-function openTechnique(){if(!selection){toast('주법을 표시할 칸을 먼저 선택하세요.');return;}closePopovers();syncTechniqueEditor();$('techniquePanel').hidden=false;$('editTechnique').setAttribute('aria-expanded','true');positionTechnique();$('techniqueButtons').querySelector('button').focus({preventScroll:true});}
+function openTechnique(focusPanel=true){if(!selection){toast('주법을 표시할 칸을 먼저 선택하세요.');return;}closePopovers();syncTechniqueEditor();$('techniquePanel').hidden=false;$('editTechnique').setAttribute('aria-expanded','true');positionTechnique();if(focusPanel)$('techniqueButtons').querySelector('button').focus({preventScroll:true});}
 for(const tech of TECHNIQUES){const button=document.createElement('button');button.dataset.technique=tech.id;button.setAttribute('aria-label',tech.label);button.setAttribute('aria-pressed','false');const symbol=document.createElement('b');symbol.textContent=tech.symbol;const label=document.createElement('span');label.textContent=tech.label;button.append(symbol,label);$('techniqueButtons').append(button);}
 $('techniqueButtons').addEventListener('click',event=>{const button=event.target.closest('[data-technique]');if(!button||!selection)return;const{b,s,c}=selection,tech=techniqueById.get(button.dataset.technique),bar=activeSong().bars[b],ids=getTechniques(bar,s,c);let next=ids.includes(tech.id)?ids.filter(id=>id!==tech.id):[...ids.filter(id=>!tech.group||techniqueById.get(id).group!==tech.group),tech.id];next=validateTechniques(next,'선택한 칸');writeCell(b,s,c,bar.cells[s][c],next);digitEntry=null;syncTechniqueEditor();save();});
 $('clearTechnique').addEventListener('click',()=>{if(!selection)return;const{b,s,c}=selection;writeCell(b,s,c,activeSong().bars[b].cells[s][c],[]);syncTechniqueEditor();save();});
@@ -715,7 +715,7 @@ window.addEventListener('blur',cancelFretDrag);
 $('score').addEventListener('click',event=>{
   if(performance.now()<suppressDragClickUntil){event.preventDefault();return;}
   const textEdit=event.target.closest('[data-edit-row]');if(textEdit){const start=Number(textEdit.dataset.editRow);openRowText(start,textEdit.dataset.lyricBar===undefined?start:Number(textEdit.dataset.lyricBar));return;}
-  const cell=event.target.closest('.cell');if(cell){const hasFret=cell.classList.contains('has-value');selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell));if(lastPointerType==='touch'||lastPointerType==='pen'||matchMedia('(pointer: coarse)').matches)showKeypad();if(hasFret)openTechnique();return;}
+  const cell=event.target.closest('.cell');if(cell){const hasFret=cell.classList.contains('has-value');selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell));if(lastPointerType==='touch'||lastPointerType==='pen'||matchMedia('(pointer: coarse)').matches)showKeypad();if(hasFret)openTechnique(false);return;}
   const number=event.target.closest('.bar-number');if(number&&choosingLoop){const b=Number(number.dataset.bar);if(loopAnchor===null)loopAnchor=b;else{engine.stop();loop={start:Math.min(loopAnchor,b),end:Math.max(loopAnchor,b)};choosingLoop=false;loopAnchor=null;parkCursor();}updateLoopUI();return;}
   if(number){engine.seekBar(Number(number.dataset.bar));return;}
   const remove=event.target.closest('.bar-delete');if(remove){const song=activeSong(),b=Number(remove.dataset.bar);if(song.bars.length===1)return;engine.stop();song.bars.splice(b,1);if(loop){if(b<loop.start){loop.start--;loop.end--;}else if(b<=loop.end){loop.end--;if(loop.end<loop.start)loop=null;}}loopAnchor=null;choosingLoop=false;hideKeypad();renderScore();updateMeta();save();}
@@ -733,7 +733,9 @@ document.addEventListener('keydown',event=>{
   if(event.key==='Escape'){if(choosingLoop){choosingLoop=false;loopAnchor=null;updateLoopUI();}hideKeypad();closePopovers();return;}
   if(event.key===' '&&!typing&&!document.querySelector('dialog[open]')){event.preventDefault();if(!event.repeat)engine.toggle();return;}
   if(event.key==='ArrowLeft'&&event.altKey&&!typing&&!document.querySelector('dialog[open]')){event.preventDefault();if(!event.repeat)engine.previousBar();return;}
-  if(typing||event.ctrlKey||event.metaKey||event.altKey||!target.closest('.cell'))return;
+  const fretKey=/^[0-9xX]$/.test(event.key)||['Backspace','Delete'].includes(event.key);
+  const editorTarget=target.closest('.cell')||(selection&&fretKey&&target.closest('#techniquePanel,#keypad'));
+  if(typing||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||document.querySelector('dialog[open]')||!editorTarget)return;
   const directions={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
   if(directions[event.key]){event.preventDefault();moveSelection(directions[event.key]);}
   else if(event.key==='Tab'){const index=selection.b*activeSong().subdiv+selection.c,edge=event.shiftKey?index===0:index===activeSong().bars.length*activeSong().subdiv-1;if(!edge){event.preventDefault();moveSelection(event.shiftKey?'left':'right');}}
