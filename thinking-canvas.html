@@ -2993,6 +2993,7 @@
         </svg>
       </button>
       <button class="toolbar-button" id="saveButton" type="button">저장</button>
+      <button class="toolbar-button" id="saveAsButton" type="button">다른 이름으로 저장</button>
       <button class="toolbar-button danger" id="clearButton" type="button">전체 삭제</button>
     </header>
 
@@ -3491,6 +3492,11 @@
         "#888780", "#31343A", "#F7F1E8", "#FFFFFF"
       ];
       var uidCounter = 1;
+      var currentJsonHandle = null;
+      var currentJsonName = "";
+      var pendingJsonHandle = null;
+      var pendingJsonName = "";
+      var jsonSaveBusy = false;
 
       var store = {
         data: createEmptyDiagram(),
@@ -3739,6 +3745,7 @@
           setConnectionStyle("curve");
         });
         els.saveButton.addEventListener("click", saveDiagram);
+        document.getElementById("saveAsButton").addEventListener("click", function () { saveDiagram(true); });
         els.clearButton.addEventListener("click", clearCanvas);
         els.bulkColorBar.addEventListener("pointerdown", function (event) {
           event.stopPropagation();
@@ -3749,6 +3756,7 @@
         els.cancelJsonButton.addEventListener("click", closeJsonModal);
         els.applyJsonButton.addEventListener("click", applyJsonFromModal);
         els.jsonFile.addEventListener("change", handleJsonFileSelect);
+        els.jsonFile.addEventListener("click", pickJsonSourceFile);
         els.jsonText.addEventListener("dragenter", handleJsonDragEnter);
         els.jsonText.addEventListener("dragover", handleJsonDragOver);
         els.jsonText.addEventListener("dragleave", handleJsonDragLeave);
@@ -3924,12 +3932,31 @@
         };
       }
 
-      async function saveDiagram() {
+      async function saveDiagram(saveAs) {
+        if (jsonSaveBusy) return;
+        jsonSaveBusy = true;
         var data = getExportData();
-        saveLocalState(data);
-        var saved = await saveTextFile(createFileName(data.title, "html"), createStandaloneHtml(data), "text/html;charset=utf-8", "HTML 문서", "html");
-        if (saved) {
-          showToast("HTML 파일로 저장했습니다.");
+        var content = JSON.stringify(data, null, 2);
+        var name = currentJsonName || createFileName(data.title, "json");
+        try {
+          var handle = saveAs === true ? null : currentJsonHandle;
+          if (!handle && window.showSaveFilePicker) {
+            handle = await pickSaveFile(name, "application/json", "JSON 문서", "json", JSON_PICKER_ID);
+          }
+          if (handle) {
+            await writeFileHandle(handle, content);
+            currentJsonHandle = handle;
+            currentJsonName = handle.name;
+            showToast(handle.name + " 저장했습니다.");
+          } else {
+            downloadTextFile(name, content, "application/json");
+            showToast("JSON을 다운로드했습니다. 이 브라우저에서는 원본 덮어쓰기를 지원하지 않습니다.");
+          }
+          saveLocalState(data);
+        } catch (error) {
+          showToast(error && error.name === "AbortError" ? "파일 저장을 취소했습니다." : "저장하지 못했습니다. 파일 권한을 확인하거나 다른 이름으로 저장해주세요.");
+        } finally {
+          jsonSaveBusy = false;
         }
       }
 
@@ -4085,6 +4112,8 @@
         var isExport = mode === "export";
         var isAppend = mode === "append";
         store.jsonMode = mode;
+        pendingJsonHandle = null;
+        pendingJsonName = "";
         els.jsonModalTitle.textContent = isAppend ? "JSON 추가" : (mode === "import" ? "JSON 불러오기" : "JSON 내보내기");
         els.jsonMessage.textContent = "";
         els.jsonMessage.classList.remove("is-success");
@@ -4172,6 +4201,8 @@
         }
         pushUndoSnapshot(createUndoSnapshot());
         store.data = normalizeDiagram(parsed);
+        currentJsonHandle = pendingJsonHandle;
+        currentJsonName = pendingJsonName;
         arrangeAllGroupChildren();
         clearSelectionState();
         resetView();
@@ -4354,6 +4385,23 @@
         return Math.round(Number(x) || 0) + "|" + Math.round(Number(y) || 0);
       }
 
+      async function pickJsonSourceFile(event) {
+        if (!window.showOpenFilePicker) return;
+        event.preventDefault();
+        try {
+          var handles = await window.showOpenFilePicker({
+            multiple: false,
+            types: [{ description: "캔버스 파일", accept: { "application/json": [".json", ".txt"], "text/html": [".html", ".htm"] } }]
+          });
+          var file = await handles[0].getFile();
+          await loadJsonFileToTextArea(file, handles[0]);
+        } catch (error) {
+          if (!error || error.name !== "AbortError") {
+            els.jsonMessage.textContent = "파일을 열지 못했습니다. 파일 권한을 확인해주세요.";
+          }
+        }
+      }
+
       function handleJsonFileSelect(event) {
         var file = event.target.files && event.target.files[0];
         if (!file) {
@@ -4385,7 +4433,7 @@
         }
       }
 
-      function handleJsonDrop(event) {
+      async function handleJsonDrop(event) {
         if (!isImportMode()) {
           return;
         }
@@ -4395,11 +4443,18 @@
         if (!file) {
           return;
         }
-        loadJsonFileToTextArea(file);
+        var item = event.dataTransfer.items && event.dataTransfer.items[0];
+        var handle = null;
+        try {
+          if (item && item.getAsFileSystemHandle) handle = await item.getAsFileSystemHandle();
+        } catch (error) { /* File content remains available without a writable handle. */ }
+        loadJsonFileToTextArea(file, handle);
       }
 
-      function loadJsonFileToTextArea(file) {
-        readTextFile(file).then(function (text) {
+      function loadJsonFileToTextArea(file, handle) {
+        return readTextFile(file).then(function (text) {
+          pendingJsonHandle = /\.json$/i.test(file.name) ? (handle || null) : null;
+          pendingJsonName = /\.json$/i.test(file.name) ? file.name : "";
           var extracted = extractDiagramJsonFromText(text);
           if (extracted) {
             els.jsonText.value = JSON.stringify(extracted, null, 2);
