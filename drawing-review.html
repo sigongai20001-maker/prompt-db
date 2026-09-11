@@ -1021,6 +1021,7 @@ body.quick-mode #export-warning { margin-bottom: 6px; }
             <button id="polyline-tool-btn" class="tool-button icon-only" type="button" aria-label="열린 꺾은선" aria-keyshortcuts="Q" aria-pressed="false" title="열린 꺾은선 (Q) — 점을 찍고 Enter 또는 더블클릭으로 완료"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18l5-10 6 7 7-10"/><circle cx="3" cy="18" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="14" cy="15" r="1"/><circle cx="21" cy="5" r="1"/></svg></button>
             <button id="freehand-tool-btn" class="tool-button icon-only" type="button" aria-label="자유연필" aria-keyshortcuts="L" aria-pressed="false" title="자유연필 (L) — 드래그하여 그리기"><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-9 5 5 9-5s5 5 9-4"/></svg></button>
           </div>
+          <button id="add-textbox-btn" class="tool-button icon-only" type="button" aria-label="선택한 표시에 글상자 추가" title="선택한 표시에 글상자 추가" disabled><svg class="toolbar-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h12M9 5v14M5 19h8M19 11v8M15 15h8"/></svg></button>
           <label class="line-style-control" for="line-style-select" title="선 형식">
             <select id="line-style-select" aria-label="도형 선 형식">
               <option value="solid">━━━━</option>
@@ -3170,8 +3171,27 @@ async function finishOverlayTextEntry(editor, comment, field) {
   return true;
 }
 
+function hasAnnotationTextBox(comment) {
+  return comment?.shape !== "freehand" || Array.isArray(comment.text_rect)
+    || Boolean(String(comment.kr || "").trim() || String(comment.cn || "").trim());
+}
+
+function addSelectedTextBox() {
+  const comment = selectedComment();
+  if (!comment || state.selectedImageId || state.gesture) return;
+  comment.text_rect = resolvedTextRect(comment);
+  scheduleSave(comment);
+  setInteractionMode("select", { announce: false, render: false });
+  renderDerivedUI();
+  requestAnimationFrame(() => {
+    const editor = $(`.annotation-group[data-no="${comment.no}"] .annotation-text-editor`);
+    editor?.focus({ preventScroll: true });
+  });
+}
+
 function appendTextBoxOverlay(group, comment, markRect) {
   if (!comment.no) return;
+  if (!hasAnnotationTextBox(comment)) return;
   const language = state.overlayLanguage === "CN" ? "CN" : "KR";
   const field = language === "CN" ? "cn" : "kr";
   const placeholder = language === "CN" ? "中文内容输入" : "수정 내용을 입력하세요";
@@ -3646,7 +3666,7 @@ function beginMoveGesture(event, comment) {
     startFitz: viewportToFitz(pointerViewportPoint(event, frame)),
     originalRect: comment.rect.map(Number),
     originalPoints: Array.isArray(comment.points) ? comment.points.map((point) => point.map(Number)) : null,
-    originalTextRect: Array.isArray(comment.text_rect) ? comment.text_rect.map(Number) : resolvedTextRect(comment),
+    originalTextRect: hasAnnotationTextBox(comment) ? resolvedTextRect(comment) : null,
     moved: false,
   };
   layer.setPointerCapture(event.pointerId);
@@ -3892,9 +3912,9 @@ async function handlePointerEnd(event) {
       toast("도형 생성 실패", "드래그 거리가 너무 짧습니다. 입력 내용은 초안으로 보존했습니다.", "error");
       return;
     }
-    draft.text_rect = defaultTextRect(draft.rect);
+    draft.text_rect = draft.shape === "freehand" ? null : defaultTextRect(draft.rect);
     const created = await createComment(draft);
-    setInteractionMode("select", { announce: false });
+    setInteractionMode(created && draft.shape === "freehand" ? "draw" : "select", { announce: false });
     if (!created) toast("초안을 보존했습니다", "실패 원인을 확인한 뒤 그리기 모드에서 다시 지정해 주세요.", "error");
   } else if (["image-move", "image-resize"].includes(gesture.mode)) {
     const item = state.imageOverlays.find((entry) => entry.id === gesture.imageId);
@@ -4869,6 +4889,8 @@ function renderCounts() {
 }
 
 function renderDerivedUI() {
+  const textButton = $("#add-textbox-btn");
+  if (textButton) textButton.disabled = !selectedComment() || Boolean(state.selectedImageId || state.gesture);
   renderOverlay();
   if (state.gesture?.mode !== "draw") renderDynamicForm();
   renderCommentList();
@@ -5598,6 +5620,7 @@ function bindEvents() {
   $("#polygon-tool-btn")?.addEventListener("click", () => setTool("polygon"));
   $("#polyline-tool-btn")?.addEventListener("click", () => setTool("polyline"));
   $("#freehand-tool-btn")?.addEventListener("click", () => setTool("freehand"));
+  $("#add-textbox-btn")?.addEventListener("click", addSelectedTextBox);
   $("#line-style-select")?.addEventListener("change", (event) => { void setActiveLineStyle(event.currentTarget.value); });
   $("#paste-image-btn")?.addEventListener("click", pasteImageFromClipboard);
   $("#overlay-language-kr")?.addEventListener("click", () => setOverlayLanguage("KR"));
