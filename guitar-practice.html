@@ -119,6 +119,7 @@ body.score-fit .score-line:has(.has-technique){--staff-gap:20px}
 body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:10px;padding:0 1px;bottom:calc(50% + 3px)}
 .technique-visible{display:block;padding:8px 12px;margin:4px 14px;border:1px solid #89c8ff;border-radius:6px;background:#24496c;color:#fff;font:700 14px/1.5 system-ui;white-space:normal;overflow-wrap:anywhere}
 .technique-visible[hidden]{display:none}
+.bar-options{display:flex;gap:3px;align-items:center;height:28px}.bar-options select,.bar-options button{min-width:0;min-height:24px;height:24px;font-size:10px;padding:1px 3px}.bar-options select{background:#252932;color:#fff;max-width:50%}.bar-options button{flex:1}.string-labels{padding-top:calc(var(--bar-head) + 29px)!important}
 </style>
 </head>
 <body>
@@ -158,7 +159,7 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
   <details class="json-storage-help"><summary>JSON은 어디에 저장되나요?</summary><p>Google 로그인: 내 드라이브 → Guitar Practice → guitar-practice-v1.json에 모든 곡이 자동 저장됩니다.<br>로컬 HTML 사용: 이 브라우저 저장소에 보관됩니다.<br>JSON 내보내기·내려받기: 브라우저에서 지정한 다운로드 폴더에 파일로 저장됩니다.<br>Drive 저장 폴더는 상단 계정 버튼 → ‘Drive 저장 폴더 열기’에서 확인할 수 있습니다.</p></details>
   <section class="score-section" aria-label="TAB 악보">
     <div class="score-toolbar"><div class="score-label">TAB <span id="divisionLabel">1/8 NOTE</span></div><div class="score-layout"><span class="score-layout-label">8마디 · 4 + 4 →</span></div><div class="score-view-controls"><span id="fitScale" class="fit-scale"></span><button id="foldStrings" aria-pressed="true" title="한 줄의 8마디에서 프렛·뮤트·주법이 전혀 없는 줄만 접습니다. 편집할 때는 6줄 모두 표시됩니다.">빈 줄 접기</button><button id="fitScore" aria-pressed="true" title="전체 보기에서는 현재 구간의 가사를 하단에 표시합니다. 확대·편집에서 6줄과 가사 전체를 확인하세요.">확대·편집</button></div><div class="score-hint" id="scoreHint" role="status">셀을 선택하고 프렛 번호를 입력하세요</div></div>
-    <div class="score-editor-tools"><div class="subdivision-picker"><span>마디당 칸</span><div class="subdivision-buttons" role="group" aria-label="마디당 4·8·16칸"><button id="quickSubdiv4" aria-pressed="false" aria-label="4칸 · 4분음표">4</button><button id="quickSubdiv8" aria-pressed="true" aria-label="8칸 · 8분음표">8</button><button id="quickSubdiv16" aria-pressed="false" aria-label="16칸 · 16분음표">16</button></div></div><button class="editor-tool" id="toggleKeypad" aria-controls="keypad" aria-pressed="false">숫자패드</button><button class="editor-tool undo-clear-button" id="undoClearScore" hidden>지우기 취소</button><button class="editor-tool clear-score-button" id="clearScore">전체 지우기</button></div>
+    <div class="score-editor-tools"><div class="subdivision-picker"><span>전체 마디 칸 변경</span><div class="subdivision-buttons" role="group" aria-label="마디당 4·8·16칸"><button id="quickSubdiv4" aria-pressed="false" aria-label="4칸 · 4분음표">4</button><button id="quickSubdiv8" aria-pressed="true" aria-label="8칸 · 8분음표">8</button><button id="quickSubdiv16" aria-pressed="false" aria-label="16칸 · 16분음표">16</button></div></div><button class="editor-tool" id="toggleKeypad" aria-controls="keypad" aria-pressed="false">숫자패드</button><button class="editor-tool undo-clear-button" id="undoClearScore" hidden>지우기 취소</button><button class="editor-tool clear-score-button" id="clearScore">전체 지우기</button></div>
     <p class="drag-help">프렛과 주법을 함께 드래그해 이동 · 음이 있는 칸에 놓으면 서로 자리 바꿈 <button class="editor-tool" id="editTechnique" aria-controls="techniquePanel" aria-expanded="false">선택한 칸 주법</button></p>
     <p class="score-order-hint" id="scoreOrderHint">한 줄 8마디 · 4마디씩 구분 · 왼쪽 → 오른쪽 → 다음 줄</p><div class="score-viewport" id="scoreViewport"><div class="score" id="score"></div></div><button class="lyrics-focus" id="lyricsFocus" aria-label="현재 구간 가사 전체 보기"><span class="lyrics-focus-range" id="lyricsFocusRange">1–4마디 가사</span><span class="lyrics-focus-text" id="lyricsFocusText">마디 번호를 누르면 그 구간의 가사를 보여줍니다.</span></button>
     <div class="score-footer"><button class="add-bar" id="addBar">+ 마디 추가</button><span class="selection-readout" id="selectionReadout">프렛 0–24 · x 뮤트</span></div>
@@ -171,7 +172,7 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
   <h2>곡 설정</h2><button class="icon-button popover-close" id="closeSettings" aria-label="곡 설정 닫기">×</button>
   <label class="field">곡 제목<input id="settingsTitle" autocomplete="off"></label>
   <label class="field">BPM · 40–240<input id="settingsBpm" type="number" min="40" max="240" step="1"></label>
-  <div class="field">한 마디의 칸 수<div class="subdiv-options"><button id="subdiv4" aria-pressed="false">4칸<small>4분음표</small></button><button id="subdiv8" aria-pressed="true">8칸<small>8분음표</small></button><button id="subdiv16" aria-pressed="false">16칸<small>16분음표</small></button></div></div>
+  <div class="field">전체 마디 칸 수<div class="subdiv-options"><button id="subdiv4" aria-pressed="false">4칸<small>4분음표</small></button><button id="subdiv8" aria-pressed="true">8칸<small>8분음표</small></button><button id="subdiv16" aria-pressed="false">16칸<small>16분음표</small></button></div></div>
   <p class="popover-note">활성 곡 탭을 다시 누르면 설정이 열립니다.</p><button class="danger" id="deleteSong">곡 삭제</button>
 </div>
 <div class="popover backup-menu" id="backupMenu" role="dialog" aria-label="데이터 백업" hidden><button id="exportJson">↓ JSON 내보내기</button><button id="importJson">↑ JSON 가져오기</button></div>
@@ -216,7 +217,8 @@ function validateTechniques(value,where){
   const groups=value.map(id=>techniqueById.get(id).group).filter(Boolean);if(new Set(groups).size!==groups.length)throw new Error(`${where}: 벤딩 높이·피킹 방향 등 같은 종류의 주법은 하나만 선택해 주세요.`);
   return TECHNIQUES.filter(tech=>value.includes(tech.id)).map(tech=>tech.id);
 }
-const makeBar=subdiv=>({chord:'',cells:Array.from({length:6},()=>Array(subdiv).fill(''))});
+const barSize=bar=>bar.subdiv||bar.cells[0].length;
+const makeBar=(subdiv=8)=>({subdiv,chord:'',cells:Array.from({length:6},()=>Array(subdiv).fill(''))});
 const makeSong=(title='연습곡 1')=>({id:crypto.randomUUID(),title,bpm:90,subdiv:8,beatsPerBar:4,bars:Array.from({length:4},()=>makeBar(8)),memo:''});
 const makeState=()=>{const song=makeSong();return{songs:[song],activeSongId:song.id};};
 function validateState(data){
@@ -233,16 +235,17 @@ function validateState(data){
     if(![4,8,16].includes(song.subdiv)||song.beatsPerBar!==4||!Array.isArray(song.bars)||!song.bars.length)fail(`${where}: 칸 수, 박자 또는 마디가 올바르지 않습니다.`);
     const bars=song.bars.map((bar,j)=>{
       if(!object(bar)||typeof bar.chord!=='string'||!Array.isArray(bar.cells)||bar.cells.length!==6)fail(`${where}, ${j+1}마디: 코드 또는 기타줄 형식이 올바르지 않습니다.`);
+      const n=bar.subdiv===undefined?song.subdiv:bar.subdiv;if(![4,8,16].includes(n))fail(`마디 칸 수는 4, 8, 16이어야 합니다.`);
       const cells=bar.cells.map(row=>{
-        if(!Array.isArray(row)||row.length!==song.subdiv||row.some(v=>typeof v!=='string'||! /^(?:|x|[0-9]|1[0-9]|2[0-4])$/.test(v)))fail(`${where}, ${j+1}마디: 셀은 빈칸, 0–24 또는 x여야 합니다.`);
+        if(!Array.isArray(row)||row.length!==n||row.some(v=>typeof v!=='string'||! /^(?:|x|[0-9]|1[0-9]|2[0-4])$/.test(v)))fail(`${where}, ${j+1}마디: 셀은 빈칸, 0–24 또는 x여야 합니다.`);
         return row.slice();
       });
-      const normalized={chord:bar.chord,cells};
+      const normalized={chord:bar.chord,cells,...(bar.subdiv!==undefined?{subdiv:n}:{})};
       if(bar.blockColor!==undefined){if(typeof bar.blockColor!=='string'||!/^#[0-9a-f]{6}$/i.test(bar.blockColor))fail(`${where}, ${j+1}마디: 블록 색상은 #RRGGBB 형식이어야 합니다.`);normalized.blockColor=bar.blockColor;}
       for(const field of ['section','lyrics']){if(bar[field]!==undefined){if(typeof bar[field]!=='string')fail(`${where}, ${j+1}마디: 구간 이름과 가사는 문자열이어야 합니다.`);if(bar[field]!=='')normalized[field]=bar[field];}}
       if(bar.techniques!==undefined){
         if(!Array.isArray(bar.techniques)||bar.techniques.length!==6)fail(`${where}, ${j+1}마디: 주법은 6줄이어야 합니다.`);
-        const techniques=bar.techniques.map((row,s)=>{if(!Array.isArray(row)||row.length!==song.subdiv)fail(`${where}, ${j+1}마디: 주법 칸 수가 맞지 않습니다.`);return row.map((list,c)=>validateTechniques(list,`${where}, ${j+1}마디 ${s+1}번줄 ${c+1}칸`));});
+        const techniques=bar.techniques.map((row,s)=>{if(!Array.isArray(row)||row.length!==n)fail(`${where}, ${j+1}마디: 주법 칸 수가 맞지 않습니다.`);return row.map((list,c)=>validateTechniques(list,`${where}, ${j+1}마디 ${s+1}번줄 ${c+1}칸`));});
         if(techniques.some(row=>row.some(list=>list.length)))normalized.techniques=techniques;
       }
       return normalized;
@@ -333,26 +336,27 @@ function renderTabs(){
   $('songTabs').replaceChildren(frag);
   tabViews.get(state.activeSongId).scrollIntoView({block:'nearest',inline:'nearest'});
 }
-function updateSubdivisionControls(){for(const count of [4,8,16]){const pressed=String(activeSong().subdiv===count);$('subdiv'+count).setAttribute('aria-pressed',pressed);$('quickSubdiv'+count).setAttribute('aria-pressed',pressed);}}
-function updateMeta(){const song=activeSong();$('songTitle').textContent=song.title;$('songMeta').textContent=`${song.bars.length}마디 · ${song.subdiv}분음표 · Standard E`;$('divisionLabel').textContent=`1/${song.subdiv} NOTE`;updateSubdivisionControls();}
+function updateSubdivisionControls(){for(const count of [4,8,16]){const pressed=String(activeSong().bars.every(bar=>barSize(bar)===count));$('subdiv'+count).setAttribute('aria-pressed',pressed);$('quickSubdiv'+count).setAttribute('aria-pressed',pressed);}}
+function updateMeta(){const song=activeSong();$('songTitle').textContent=song.title;$('songMeta').textContent=`${song.bars.length}마디 · 마디별 4·8·16칸 · Standard E`;$('divisionLabel').textContent='마디별 칸 수';updateSubdivisionControls();}
 function renderScore(){
   cancelBarDrag();barSelection.clear();barAnchor=null;$('barSelectionCount').textContent='마디 블록 ⠿ 드래그';cancelFretDrag();closeTechnique();discardClearUndo();
   const song=activeSong(),frag=document.createDocumentFragment();barViews=[];cellViews=[];cursorBar=-1;cursorCell=-1;lastScrollRow=-1;selection=null;digitEntry=null;
-  $('score').classList.toggle('subdiv-16',song.subdiv===16);$('score').style.setProperty('--subdiv',song.subdiv);
+  $('score').classList.remove('subdiv-16');$('score').style.setProperty('--subdiv',song.subdiv);
   let row,scoreLine;
   song.bars.forEach((bar,b)=>{
     if(b%8===0){scoreLine=document.createElement('section');scoreLine.className='score-line';scoreLine.setAttribute('aria-label',`${b+1}–${Math.min(b+8,song.bars.length)}마디`);frag.append(scoreLine);}
     if(b%4===0){row=document.createElement('div');row.className='score-row';const names=document.createElement('div');names.className='string-labels';names.setAttribute('aria-hidden','true');for(const name of stringNames){const label=document.createElement('span');label.textContent=name;names.append(label);}row.append(names);scoreLine.append(row);}
     const article=document.createElement('article');article.className='bar';article.dataset.bar=b;article.setAttribute('aria-label',`${b+1}마디`);
+    article.style.setProperty('--subdiv',barSize(bar));article.classList.toggle('subdiv-16',barSize(bar)===16);
     const header=document.createElement('div');header.className='bar-header';const tools=document.createElement('div');tools.className='bar-tools';
     const grip=document.createElement('button');grip.className='bar-grip';grip.textContent='⠿';grip.dataset.bar=b;grip.title='선택 마디 드래그 · Shift/Ctrl: 선택 · Option: 복사';grip.setAttribute('aria-label',`${b+1}마디 블록 드래그`);const select=document.createElement('button');select.className='bar-select';select.textContent='□';select.dataset.bar=b;select.setAttribute('aria-label',`${b+1}마디 선택`);select.setAttribute('aria-pressed','false');header.append(select,grip);
     const number=document.createElement('button');number.className='bar-number';number.textContent=circled(b+1);number.dataset.bar=b;number.title=`${b+1}마디부터 연주 · 구간지정 중에는 시작 또는 끝 선택`;number.setAttribute('aria-label',`${b+1}마디 번호`);
     const remove=document.createElement('button');remove.className='bar-delete';remove.textContent='×';remove.dataset.bar=b;remove.setAttribute('aria-label',`${b+1}마디 삭제`);remove.disabled=song.bars.length===1;tools.append(number,remove);
     const chord=document.createElement('input');chord.className='chord';chord.placeholder='–';chord.value=bar.chord;chord.dataset.bar=b;chord.setAttribute('aria-label',`${b+1}마디 코드`);chord.autocomplete='off';chord.spellcheck=false;header.append(tools,chord);
-    const staff=document.createElement('div');staff.className='staff';staff.setAttribute('role','grid');staff.setAttribute('aria-label',`${b+1}마디 TAB`);staff.setAttribute('aria-rowcount','6');staff.setAttribute('aria-colcount',String(song.subdiv));
+    const staff=document.createElement('div');staff.className='staff';staff.setAttribute('role','grid');staff.setAttribute('aria-label',`${b+1}마디 TAB`);staff.setAttribute('aria-rowcount','6');staff.setAttribute('aria-colcount',String(barSize(bar)));
     const cells=[];
-    for(let s=0;s<6;s++){const line=document.createElement('div');line.className='string-row';line.setAttribute('role','row');const stringCells=[];for(let c=0;c<song.subdiv;c++){const cell=document.createElement('button');cell.className='cell'+(c>0&&c%(song.subdiv/4)===0?' beat-edge':'');cell.setAttribute('role','gridcell');cell.setAttribute('aria-selected','false');cell.dataset.bar=b;cell.dataset.string=s;cell.dataset.cell=c;cell.tabIndex=b===0&&s===0&&c===0?0:-1;const fret=document.createElement('span');fret.className='fret';fret.textContent=bar.cells[s][c];cell.append(fret);updateCellLabel(cell,b,s,c,bar.cells[s][c]);line.append(cell);stringCells.push(cell);}cells.push(stringCells);staff.append(line);}
-    article.append(header,staff);row.append(article);barViews.push({article,staff,row,scoreLine});cellViews.push(cells);
+    for(let s=0;s<6;s++){const line=document.createElement('div');line.className='string-row';line.setAttribute('role','row');const stringCells=[];for(let c=0;c<barSize(bar);c++){const cell=document.createElement('button');cell.className='cell'+(c>0&&c%(barSize(bar)/4)===0?' beat-edge':'');cell.setAttribute('role','gridcell');cell.setAttribute('aria-selected','false');cell.dataset.bar=b;cell.dataset.string=s;cell.dataset.cell=c;cell.tabIndex=b===0&&s===0&&c===0?0:-1;const fret=document.createElement('span');fret.className='fret';fret.textContent=bar.cells[s][c];cell.append(fret);updateCellLabel(cell,b,s,c,bar.cells[s][c]);line.append(cell);stringCells.push(cell);}cells.push(stringCells);staff.append(line);}
+    const options=document.createElement('div');options.className='bar-options';const size=document.createElement('select');size.setAttribute('aria-label',`${b+1}마디 칸 수`);for(const n of [4,8,16]){const o=document.createElement('option');o.value=n;o.textContent=n+'칸';size.append(o);}size.value=barSize(bar);size.onchange=()=>{changeBarSubdiv(b,Number(size.value));size.value=barSize(activeSong().bars[b]);};const clear=document.createElement('button');clear.textContent='내용 지우기';clear.setAttribute('aria-label',`${b+1}마디 내용 지우기`);clear.onclick=()=>clearBarContents(b);options.append(size,clear);article.append(header,options,staff);row.append(article);barViews.push({article,staff,row,scoreLine});cellViews.push(cells);
   });
   $('score').replaceChildren(frag);for(let b=0;b<song.bars.length;b+=4)renderRowText(b);refreshFoldedStrings();queueScoreFit();updateLoopUI();parkCursor();updateSelectionReadout();
 }
@@ -411,17 +415,17 @@ function updateCellLabel(cell,b,s,c,value){
 function writeCell(b,s,c,value,techniques){
   const bar=activeSong().bars[b];bar.cells[s][c]=value;
   const next=techniques===undefined?(value===''?[]:getTechniques(bar,s,c)):techniques;
-  if(next.length||bar.techniques){if(!bar.techniques)bar.techniques=makeTechniques(activeSong().subdiv);bar.techniques[s][c]=next.slice();if(!bar.techniques.some(row=>row.some(list=>list.length)))delete bar.techniques;}
+  if(next.length||bar.techniques){if(!bar.techniques)bar.techniques=makeTechniques(barSize(bar));bar.techniques[s][c]=next.slice();if(!bar.techniques.some(row=>row.some(list=>list.length)))delete bar.techniques;}
   const cell=cellViews[b][s][c];cell.firstChild.textContent=value;updateCellLabel(cell,b,s,c,value);queueScoreFit();
 }
-pmButton.addEventListener('click',()=>{const song=activeSong(),bar=selection?.b??0;for(const id of ['pmStartBar','pmEndBar']){$(id).max=song.bars.length;$(id).value=bar+1;}for(const id of ['pmStartCell','pmEndCell'])$(id).max=song.subdiv;$('pmStartCell').value=selection?selection.c+1:1;$('pmEndCell').value=song.subdiv;$('pmError').textContent='';$('pmDialog').showModal();});
+pmButton.addEventListener('click',()=>{const song=activeSong(),bar=selection?.b??0;for(const id of ['pmStartBar','pmEndBar']){$(id).max=song.bars.length;$(id).value=bar+1;}for(const id of ['pmStartCell','pmEndCell'])$(id).max=16;$('pmStartCell').value=selection?selection.c+1:1;$('pmEndCell').value=barSize(song.bars[bar]);$('pmError').textContent='';$('pmDialog').showModal();});
 $('pmCancel').addEventListener('click',()=>$('pmDialog').close());
 function applyPalmMuteRange(remove){
- const song=activeSong(),n=song.subdiv,values=['pmStartBar','pmStartCell','pmEndBar','pmEndCell'].map(id=>Number($(id).value));
- if(values.some((v,i)=>!Number.isInteger(v)||v<1||v>(i%2?n:song.bars.length))){$('pmError').textContent='마디와 칸을 유효한 범위의 정수로 입력하세요.';return;}
- let start=(values[0]-1)*n+values[1]-1,end=(values[2]-1)*n+values[3]-1;if(start>end)[start,end]=[end,start];
+ const song=activeSong(),values=['pmStartBar','pmStartCell','pmEndBar','pmEndCell'].map(id=>Number($(id).value));
+ if(values.some((v,i)=>!Number.isInteger(v)||v<1||v>(i%2?barSize(song.bars[Math.max(0,Math.min(song.bars.length-1,values[i-1]-1))]):song.bars.length))){$('pmError').textContent='마디와 칸을 유효한 범위의 정수로 입력하세요.';return;}
+ const positions=song.bars.flatMap((bar,b)=>Array.from({length:barSize(bar)},(_,c)=>({b,c})));let start=positions.findIndex(p=>p.b===values[0]-1&&p.c===values[1]-1),end=positions.findIndex(p=>p.b===values[2]-1&&p.c===values[3]-1);if(start>end)[start,end]=[end,start];
  const strings=$('pmString').value==='all'?[0,1,2,3,4,5]:[Number($('pmString').value)];
- for(let index=start;index<=end;index++){const b=Math.floor(index/n),c=index%n,bar=song.bars[b];for(const row of strings){const old=getTechniques(bar,row,c),next=remove?old.filter(id=>id!=='palm-mute'):[...new Set([...old,'palm-mute'])];writeCell(b,row,c,bar.cells[row][c],next);}}
+ for(let index=start;index<=end;index++){const {b,c}=positions[index],bar=song.bars[b];for(const row of strings){const old=getTechniques(bar,row,c),next=remove?old.filter(id=>id!=='palm-mute'):[...new Set([...old,'palm-mute'])];writeCell(b,row,c,bar.cells[row][c],next);}}
  save();syncTechniqueEditor();$('pmDialog').close();renderSong();toast(remove?'팜 뮤트 구간 표시를 해제했습니다.':'팜 뮤트 구간을 표시했습니다.');
 }
 $('pmApply').addEventListener('click',()=>applyPalmMuteRange(false));$('pmRemove').addEventListener('click',()=>applyPalmMuteRange(true));
@@ -481,7 +485,7 @@ function selectCell(b,s,c,focus=true){
 }
 function moveSelection(direction){
   if(!selection)return;let{b,s,c}=selection;const subdiv=activeSong().subdiv;
-  if(direction==='left'||direction==='right'){const next=b*subdiv+c+(direction==='right'?1:-1);if(next<0||next>=activeSong().bars.length*subdiv)return;b=Math.floor(next/subdiv);c=next%subdiv;}else{s=Math.max(0,Math.min(5,s+(direction==='down'?1:-1)));}
+  if(direction==='right'){if(++c>=barSize(activeSong().bars[b])){if(b===activeSong().bars.length-1)return;b++;c=0;}}else if(direction==='left'){if(--c<0){if(b===0)return;b--;c=barSize(activeSong().bars[b])-1;}}else{s=Math.max(0,Math.min(5,s+(direction==='down'?1:-1)));}
   selectCell(b,s,c);lastScrollRow=-1;scrollRowIntoView(b);
 }
 function enterKey(key){
@@ -541,7 +545,7 @@ class Metronome{
     if(!this.running)return;const now=this.ctx.currentTime,beat=this.beatAtTime(now),integerBeat=Math.floor(beat+1e-8);
     if(now>=this.startTime&&integerBeat!==this.displayBeat){this.displayBeat=integerBeat;beatDots.forEach((dot,i)=>dot.classList.toggle('on',i===((integerBeat%4)+4)%4));$('transportStatus').textContent=beat<0?`COUNT ${Math.min(4,integerBeat+5)}/4`:`BEAT ${integerBeat%4+1}/4`;}
     // One cell lasts 60 / BPM * (4 / subdiv) seconds; no timer counter drives it.
-    if(now>=this.startTime&&beat>=-1e-8){const song=activeSong(),bounds=loopBounds(),cellsPerBeat=song.subdiv/4,length=(bounds.end-bounds.start+1)*song.subdiv;const absoluteCell=Math.max(0,Math.floor((beat+this.playFromBeat)*cellsPerBeat+1e-7)),cell=absoluteCell%length;drawCursor(bounds.start+Math.floor(cell/song.subdiv),cell%song.subdiv,true);}
+    if(now>=this.startTime&&beat>=-1e-8){const song=activeSong(),bounds=loopBounds(),length=(bounds.end-bounds.start+1)*4,position=((beat+this.playFromBeat)%length+length)%length,b=bounds.start+Math.floor(position/4),n=barSize(song.bars[b]);drawCursor(b,Math.min(n-1,Math.floor((position%4)*n/4+1e-7)),true);}
     this.frame=requestAnimationFrame(()=>this.tick());
   }
   stop(){
@@ -566,13 +570,11 @@ $('songTabs').addEventListener('click',event=>{const remove=event.target.closest
 $('songTabs').addEventListener('keydown',event=>{if(!event.target.closest('.song-tab')||!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();const buttons=[...tabViews.values()],current=buttons.indexOf(document.activeElement),next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(current+(event.key==='ArrowRight'?1:-1)+buttons.length)%buttons.length;buttons[next].focus();buttons[next].scrollIntoView({block:'nearest',inline:'nearest'});});
 $('settingsTitle').addEventListener('input',event=>{const value=event.target.value;if(!value.trim())return;activeSong().title=value;const tab=tabViews.get(state.activeSongId);tab.lastChild.textContent=value;const remove=tab.parentElement.querySelector('.song-tab-delete');remove.title=`${value} 곡 삭제`;remove.setAttribute('aria-label',remove.title);updateMeta();save();});$('settingsTitle').addEventListener('blur',()=>{$('settingsTitle').value=activeSong().title;});
 $('closeSettings').addEventListener('click',()=>{closePopovers();tabViews.get(state.activeSongId).focus();});
-function changeSubdiv(subdiv){
-  const song=activeSong(),previous=song.subdiv;if(![4,8,16].includes(subdiv)||previous===subdiv)return;
-  const shrinking=subdiv<previous,step=shrinking?previous/subdiv:subdiv/previous;
-  if(shrinking&&song.bars.some(bar=>bar.cells.some((row,s)=>row.some((value,i)=>i%step!==0&&(value!==''||getTechniques(bar,s,i).length)))))if(!confirm(`일부 음이 삭제됩니다. ${subdiv}칸에 맞지 않는 중간 칸의 음과 주법을 삭제하고 변경할까요?`))return;
-  engine.stop();hideKeypad();for(const bar of song.bars){bar.cells=bar.cells.map(row=>shrinking?row.filter((value,i)=>i%step===0):row.flatMap(value=>[value,...Array(step-1).fill('')]));if(bar.techniques){bar.techniques=bar.techniques.map(row=>shrinking?row.filter((value,i)=>i%step===0):row.flatMap(value=>[value,...Array.from({length:step-1},()=>[])]));if(!bar.techniques.some(row=>row.some(list=>list.length)))delete bar.techniques;}}
-  song.subdiv=subdiv;renderScore();updateMeta();save();
-}
+function resizeBar(bar,n){const old=barSize(bar);if(old===n)return;const shrink=n<old,step=shrink?old/n:n/old;bar.cells=bar.cells.map(row=>shrink?row.filter((_,i)=>i%step===0):row.flatMap(v=>[v,...Array(step-1).fill('')]));if(bar.techniques)bar.techniques=bar.techniques.map(row=>shrink?row.filter((_,i)=>i%step===0):row.flatMap(v=>[v,...Array.from({length:step-1},()=>[])]));bar.subdiv=n;}
+function losesCells(bar,n){const old=barSize(bar);return n<old&&bar.cells.some((row,s)=>row.some((v,i)=>i%(old/n)!==0&&(v!==''||getTechniques(bar,s,i).length)));}
+function changeBarSubdiv(b,n){const bar=activeSong().bars[b];if(![4,8,16].includes(n)||barSize(bar)===n)return;if(losesCells(bar,n)&&!confirm('일부 음이 삭제됩니다. 중간 칸의 프렛·주법을 삭제할까요?'))return;engine.stop();hideKeypad();resizeBar(bar,n);renderScore();updateMeta();save();}
+function clearBarContents(b){if(!confirm(`${b+1}마디의 프렛·주법·코드·가사를 지울까요? 마디와 구간 색상은 유지됩니다.`))return;engine.stop();const bar=activeSong().bars[b];bar.cells=makeBar(barSize(bar)).cells;bar.chord='';delete bar.techniques;delete bar.lyrics;renderScore();save();}
+function changeSubdiv(n){if(![4,8,16].includes(n))return;const song=activeSong();if(song.bars.some(bar=>losesCells(bar,n))&&!confirm('일부 음이 삭제됩니다. 전체 마디 칸 수를 변경할까요?'))return;engine.stop();hideKeypad();song.bars.forEach(bar=>resizeBar(bar,n));song.subdiv=n;renderScore();updateMeta();save();}
 for(const count of [4,8,16]){for(const prefix of ['subdiv','quickSubdiv'])$(prefix+count).addEventListener('click',()=>changeSubdiv(count));}
 function deleteSongById(id){const index=state.songs.findIndex(song=>song.id===id);if(index<0)return;const song=state.songs[index];if(!confirm(`“${song.title}” 곡을 삭제할까요?${state.songs.length===1?' 마지막 곡을 삭제하면 빈 연습곡이 만들어집니다.':''}`))return;const wasActive=id===state.activeSongId;if(wasActive)engine.stop();state.songs.splice(index,1);if(!state.songs.length)state.songs.push(makeSong());if(wasActive){state.activeSongId=state.songs[Math.min(index,state.songs.length-1)].id;loop=null;choosingLoop=false;loopAnchor=null;renderSong();}else renderTabs();save();}
 for(const id of ['deleteSong','deleteCurrentSong'])$(id).addEventListener('click',()=>deleteSongById(state.activeSongId));
@@ -733,7 +735,7 @@ $('score').addEventListener('click',event=>{
 });
 $('score').addEventListener('focusin',event=>{const cell=event.target.closest('.cell');if(cell)selectCell(Number(cell.dataset.bar),Number(cell.dataset.string),Number(cell.dataset.cell),false);if(event.target.matches('.chord')){if(fitScore)setScoreFit(false);hideKeypad();}});
 $('score').addEventListener('input',event=>{if(event.target.matches('.chord')){activeSong().bars[Number(event.target.dataset.bar)].chord=event.target.value;save();}});
-$('addBar').addEventListener('click',()=>{engine.stop();hideKeypad();const song=activeSong();song.bars.push(makeBar(song.subdiv));renderScore();updateMeta();save();const input=barViews.at(-1).article.querySelector('.chord');input.focus({preventScroll:true});lastScrollRow=-1;scrollRowIntoView(song.bars.length-1);});
+$('addBar').addEventListener('click',()=>{engine.stop();hideKeypad();const song=activeSong();song.bars.push(makeBar(8));renderScore();updateMeta();save();const input=barViews.at(-1).article.querySelector('.chord');input.focus({preventScroll:true});lastScrollRow=-1;scrollRowIntoView(song.bars.length-1);});
 $('memo').addEventListener('input',()=>{activeSong().memo=$('memo').value;resizeMemo();save();});$('memo').addEventListener('focus',hideKeypad);
 $('clearScore').addEventListener('click',clearScore);$('undoClearScore').addEventListener('click',undoClearScore);
 $('toggleKeypad').addEventListener('click',()=>{if(!$('keypad').hidden){hideKeypad();return;}if(!selection)selectCell(0,0,0);showKeypad();});
@@ -749,7 +751,7 @@ document.addEventListener('keydown',event=>{
   if(typing||event.isComposing||event.ctrlKey||event.metaKey||event.altKey||document.querySelector('dialog[open]')||!editorTarget)return;
   const directions={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};
   if(directions[event.key]){event.preventDefault();moveSelection(directions[event.key]);}
-  else if(event.key==='Tab'){const index=selection.b*activeSong().subdiv+selection.c,edge=event.shiftKey?index===0:index===activeSong().bars.length*activeSong().subdiv-1;if(!edge){event.preventDefault();moveSelection(event.shiftKey?'left':'right');}}
+  else if(event.key==='Tab'){const edge=event.shiftKey?selection.b===0&&selection.c===0:selection.b===activeSong().bars.length-1&&selection.c===barSize(activeSong().bars[selection.b])-1;if(!edge){event.preventDefault();moveSelection(event.shiftKey?'left':'right');}}
   else if(/^[0-9xX]$/.test(event.key)||['Backspace','Delete'].includes(event.key)){event.preventDefault();if(!event.repeat)enterKey(event.key);}
 });
 $('keypad').addEventListener('pointerdown',event=>{if(event.target.closest('button'))event.preventDefault();});$('keypad').addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;if(button.dataset.key)enterKey(button.dataset.key);if(button.dataset.move)moveSelection(button.dataset.move);});$('closeKeypad').addEventListener('click',hideKeypad);
@@ -767,7 +769,7 @@ const LESSON_EXAMPLE={format:'guitar-lesson-v1',title:'수업 연습곡',bpm:90,
 const lessonFormatText=`${JSON.stringify(LESSON_EXAMPLE,null,2)}\n\nstring: 1~6 (1=가는 e줄, 6=굵은 E줄)\ncell: 마디 안의 1~subdiv칸\nsubdiv: 4 / 8 / 16, beatsPerBar: 4\nfret: 빈 문자열 / 0~24 문자열 / x\ntechniques: 아래 코드의 배열. 생략하면 주법 없음.\n${TECHNIQUES.map(tech=>`${tech.id}: ${tech.symbol} ${tech.label}`).join('\n')}\n\nh/p/slide는 도착 음에 표시하고 출발 음은 앞 칸에 입력합니다. 벤딩과 릴리즈가 서로 다른 시점이면 별도 칸에 입력합니다. 판독이 어려운 칸은 fret를 빈 문자열로 두고 check를 붙이세요.`;
 const lessonTextHelp='\n\nsection: 구간이 시작하는 마디의 이름 (예: VERSE 1, CHORUS), 선택 항목\nlyrics: 이 마디에서 시작하는 가사, 선택 항목. 한 줄의 다음 가사 또는 네 번째 마디까지 이어서 표시됩니다.\n가사와 구간 이름도 악보에서 수정할 수 있으며 JSON과 Google Drive에 함께 저장됩니다.';
 $('lessonFormatHelp').textContent=lessonFormatText+lessonTextHelp;
-function toLessonJson(song){return{format:'guitar-lesson-v1',title:song.title,bpm:song.bpm,subdiv:song.subdiv,beatsPerBar:4,bars:song.bars.map(bar=>{const notes=[];for(let s=0;s<6;s++)for(let c=0;c<song.subdiv;c++){const fret=bar.cells[s][c],techniques=getTechniques(bar,s,c);if(fret!==''||techniques.length)notes.push({string:s+1,cell:c+1,fret,...(techniques.length?{techniques:techniques.slice()}:{})});}return{chord:bar.chord,...(bar.section?{section:bar.section}:{}),...(bar.lyrics?{lyrics:bar.lyrics}:{}),...(bar.blockColor?{blockColor:bar.blockColor}:{}),notes};}),memo:song.memo};}
+function toLessonJson(song){return{format:'guitar-lesson-v1',title:song.title,bpm:song.bpm,subdiv:song.subdiv,beatsPerBar:4,bars:song.bars.map(bar=>{const notes=[];for(let s=0;s<6;s++)for(let c=0;c<barSize(bar);c++){const fret=bar.cells[s][c],techniques=getTechniques(bar,s,c);if(fret!==''||techniques.length)notes.push({string:s+1,cell:c+1,fret,...(techniques.length?{techniques:techniques.slice()}:{})});}return{subdiv:barSize(bar),chord:bar.chord,...(bar.section?{section:bar.section}:{}),...(bar.lyrics?{lyrics:bar.lyrics}:{}),...(bar.blockColor?{blockColor:bar.blockColor}:{}),notes};}),memo:song.memo};}
 function parseLessonJson(text){
   if(text.length>20*1024*1024)throw new Error('JSON은 20MB 이하로 입력해 주세요.');
   let source=text.trim().replace(/^\uFEFF/,'');if(source.startsWith('```')){const fenced=source.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i);if(!fenced)throw new Error('JSON 코드 블록 하나만 붙여넣어 주세요.');source=fenced[1].trim();}
@@ -782,14 +784,14 @@ function parseLessonJson(text){
     if(!entry||typeof entry!=='object'||Array.isArray(entry))throw new Error(`${b+1}마디 형식이 올바르지 않습니다.`);
     if(entry.cells!==undefined){if(data.format==='guitar-lesson-v1'||entry.notes!==undefined)throw new Error(`${b+1}마디: 수업 JSON은 notes 형식을 사용해 주세요.`);return entry;}
     if(!Array.isArray(entry.notes))throw new Error(`${b+1}마디: notes 배열이 필요합니다. 빈 마디는 []로 입력하세요.`);
-    const bar=makeBar(song.subdiv);bar.chord=entry.chord===undefined?'':entry.chord;for(const field of ['section','lyrics','blockColor'])if(entry[field]!==undefined)bar[field]=entry[field];const occupied=new Set();
+    const n=entry.subdiv??song.subdiv;if(![4,8,16].includes(n))throw new Error('마디 칸 수는 4,8,16이어야 합니다.');const bar=makeBar(n);bar.chord=entry.chord===undefined?'':entry.chord;for(const field of ['section','lyrics','blockColor'])if(entry[field]!==undefined)bar[field]=entry[field];const occupied=new Set();
     for(const note of entry.notes){
-      if(!note||typeof note!=='object'||Array.isArray(note)||!Number.isInteger(note.string)||note.string<1||note.string>6||!Number.isInteger(note.cell)||note.cell<1||note.cell>song.subdiv)throw new Error(`${b+1}마디: string은 1~6, cell은 1~${song.subdiv}의 정수여야 합니다.`);
+      if(!note||typeof note!=='object'||Array.isArray(note)||!Number.isInteger(note.string)||note.string<1||note.string>6||!Number.isInteger(note.cell)||note.cell<1||note.cell>barSize(bar))throw new Error(`${b+1}마디: string은 1~6, cell은 1~${song.subdiv}의 정수여야 합니다.`);
       const position=`${note.string}:${note.cell}`;if(occupied.has(position))throw new Error(`${b+1}마디 ${note.string}번줄 ${note.cell}칸이 중복되었습니다.`);occupied.add(position);
       const fret=typeof note.fret==='number'&&Number.isInteger(note.fret)?String(note.fret):note.fret;
       if(typeof fret!=='string'||!/^(?:|x|[0-9]|1[0-9]|2[0-4])$/.test(fret))throw new Error(`${b+1}마디 ${note.string}번줄 ${note.cell}칸: fret는 빈 문자열, 0~24 또는 x여야 합니다.`);
       const techniques=validateTechniques(note.techniques===undefined?[]:note.techniques,`${b+1}마디 ${note.string}번줄 ${note.cell}칸`);bar.cells[note.string-1][note.cell-1]=fret;
-      if(techniques.length){if(!bar.techniques)bar.techniques=makeTechniques(song.subdiv);bar.techniques[note.string-1][note.cell-1]=techniques;}
+      if(techniques.length){if(!bar.techniques)bar.techniques=makeTechniques(barSize(bar));bar.techniques[note.string-1][note.cell-1]=techniques;}
     }
     return bar;
   });
@@ -803,12 +805,12 @@ function renderLessonPreview(songs){
   const container=$('lessonPreview'),grid=document.createElement('div');grid.className='preview-bars';let shown=0;
   for(const song of songs){for(let b=0;b<song.bars.length&&shown<8;b++,shown++){
     const bar=song.bars[b],article=document.createElement('article');article.className='preview-bar';if(bar.section){const section=document.createElement('p');section.className='preview-section';section.textContent=bar.section;article.append(section);}const heading=document.createElement('h3');heading.textContent=`${song.title} · ${b+1}마디${bar.chord?' · '+bar.chord:''}`;article.append(heading);const table=document.createElement('table');table.setAttribute('aria-label',`${song.title} ${b+1}마디 미리보기`);
-    for(let s=0;s<6;s++){const tr=document.createElement('tr'),th=document.createElement('th');th.textContent=stringNames[s];th.scope='row';tr.append(th);for(let c=0;c<song.subdiv;c++){const td=document.createElement('td'),small=document.createElement('small'),ids=getTechniques(bar,s,c);small.textContent=techniqueSymbols(ids);td.append(small,document.createTextNode(bar.cells[s][c]||'–'));td.title=`${s+1}번줄 ${c+1}칸${ids.length?' · '+techniqueNames(ids):''}`;tr.append(td);}table.append(tr);}article.append(table);if(bar.lyrics){const lyrics=document.createElement('p');lyrics.className='preview-lyrics';lyrics.textContent=bar.lyrics;article.append(lyrics);}grid.append(article);
+    for(let s=0;s<6;s++){const tr=document.createElement('tr'),th=document.createElement('th');th.textContent=stringNames[s];th.scope='row';tr.append(th);for(let c=0;c<barSize(bar);c++){const td=document.createElement('td'),small=document.createElement('small'),ids=getTechniques(bar,s,c);small.textContent=techniqueSymbols(ids);td.append(small,document.createTextNode(bar.cells[s][c]||'–'));td.title=`${s+1}번줄 ${c+1}칸${ids.length?' · '+techniqueNames(ids):''}`;tr.append(td);}table.append(tr);}article.append(table);if(bar.lyrics){const lyrics=document.createElement('p');lyrics.className='preview-lyrics';lyrics.textContent=bar.lyrics;article.append(lyrics);}grid.append(article);
   }}
   container.replaceChildren(grid);const total=songs.reduce((sum,song)=>sum+song.bars.length,0);if(total>shown){const note=document.createElement('p');note.textContent=`미리보기는 앞 ${shown}마디입니다. 적용 시 전체 ${total}마디를 입력합니다.`;container.append(note);}container.hidden=false;
 }
 function previewLessonJson(){
-  resetLessonPreview();try{const songs=parseLessonJson($('lessonJsonText').value);let notes=0,techniques=0,uncertain=0;for(const song of songs)for(const bar of song.bars)for(let s=0;s<6;s++)for(let c=0;c<song.subdiv;c++){if(bar.cells[s][c]!=='')notes++;const ids=getTechniques(bar,s,c);if(ids.length)techniques++;if(ids.includes('check'))uncertain++;}
+  resetLessonPreview();try{const songs=parseLessonJson($('lessonJsonText').value);let notes=0,techniques=0,uncertain=0;for(const song of songs)for(const bar of song.bars)for(let s=0;s<6;s++)for(let c=0;c<barSize(bar);c++){if(bar.cells[s][c]!=='')notes++;const ids=getTechniques(bar,s,c);if(ids.length)techniques++;if(ids.includes('check'))uncertain++;}
     lessonCandidate=songs;lessonMessage(`${songs.map(song=>`${song.title} · BPM ${song.bpm} · ${song.subdiv}칸 · ${song.bars.length}마디`).join('\n')}\n음 ${notes}개 · 주법 표시 ${techniques}칸${uncertain?' · 확인 필요 '+uncertain+'칸':''}`,'valid');renderLessonPreview(songs);$('applyLessonJson').disabled=false;
   }catch(error){lessonMessage('입력하지 않았습니다. '+error.message,'invalid');}
 }
@@ -818,11 +820,10 @@ function applyLessonJson(){
   if(lessonTarget?.songId!==state.activeSongId||lessonTarget?.accountId!==(cloud?.account?.id||null)){lessonMessage('곡 또는 계정이 바뀌었습니다. 창을 닫고 다시 열어 입력해 주세요.','invalid');return;}
   const mode=document.querySelector('input[name="lessonMode"]:checked').value;
   if(mode!=='new'&&lessonCandidate.length!==1){lessonMessage('현재 곡에 추가하거나 교체하려면 JSON에 곡이 하나만 있어야 합니다.','invalid');return;}
-  if(mode==='append'&&lessonCandidate[0].subdiv!==activeSong().subdiv){lessonMessage(`칸 수가 다릅니다. 현재 곡은 ${activeSong().subdiv}칸, JSON은 ${lessonCandidate[0].subdiv}칸입니다. 새 곡으로 추가하거나 칸 수를 맞춰 주세요.`,'invalid');return;}
   if(mode==='replace'&&!confirm(`“${activeSong().title}”을 “${lessonCandidate[0].title}”의 악보·주법·BPM·메모로 교체할까요? 다른 곡은 유지됩니다.`))return;
   engine.stop();const songs=lessonCandidate.map(song=>({...song,id:crypto.randomUUID()}));
   if(mode==='new'){state.songs.push(...songs);state.activeSongId=songs[0].id;}
-  else if(mode==='append'){activeSong().bars.push(...songs[0].bars);}
+  else if(mode==='append'){activeSong().bars.push(...songs[0].bars.map(bar=>({...bar,subdiv:barSize(bar)})));}
   else{const index=state.songs.findIndex(song=>song.id===state.activeSongId);state.songs[index]={...songs[0],id:state.activeSongId};}
   loop=null;choosingLoop=false;loopAnchor=null;$('lessonJsonDialog').close();renderSong();save();toast(mode==='append'?'수업 악보를 현재 곡 뒤에 추가했습니다.':'수업 악보와 주법을 입력했습니다. 셀을 선택해 수정할 수 있습니다.');
 }
