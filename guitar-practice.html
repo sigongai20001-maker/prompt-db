@@ -1077,7 +1077,9 @@ $('keepBothCloud').addEventListener('click',()=>cloud.resolveConflict(true));$('
 $('closeOnlineDialog').addEventListener('click',()=>$('onlineDialog').close());$('exportBeforeOnline').addEventListener('click',()=>$('exportJson').click());
 window.addEventListener('online',()=>{if(cloud.account&&cloud.validToken())cloud.sync();});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cloud.account){cloud.updateStatus();if(cloud.validToken()&&!engine.running)cloud.sync();}});
-window.addEventListener('beforeunload',event=>{if(cloud.account&&cloud.pending){cloud.cacheSafely();event.preventDefault();event.returnValue='';}});
+// Refresh keeps the same tab session. Warn only if the local draft cannot be saved.
+window.addEventListener('beforeunload',event=>{flushSave();if(cloud.account){cloud.cacheSafely();if(cloud.cacheError||cloud.sessionError){event.preventDefault();event.returnValue='';}}else if(dirty||saveFailed){event.preventDefault();event.returnValue='';}});
+document.addEventListener('keydown',event=>{if(event.key==='F5'){flushSave();if(cloud.account)cloud.cacheSafely();}},true);
 renderSong();cloud.boot();updateMeasurements();if(isFresh&&!cloud.hosted)save();if(initialNotice){toast(initialNotice);$('saveStatus').textContent='기존 저장 데이터 확인 필요';$('saveStatus').classList.add('error');}
 </script>
 </body>
