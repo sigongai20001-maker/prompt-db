@@ -140,6 +140,11 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
 #chrome #editorDock .bar-block-tools>span:last-of-type{font-size:10px}
 #usedColors{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:3px 0;font-size:11px}
 #usedColors .used-color-chip{width:26px;height:26px;min-height:26px;padding:0;border-width:2px;border-radius:5px}
+#songInfoBanner{max-width:1680px;margin:auto;background:#1d222b;border-top:1px solid #414956;padding:5px 14px}
+#songInfoBanner>summary{cursor:pointer;font-size:12px;color:#f0c16d;padding:5px}
+#songInfoBanner .intro{margin:5px 0;min-height:0}#songInfoBanner .intro h1{font-size:18px}#songInfoBanner .eyebrow{display:none}
+#songInfoBanner .lesson-entry{margin:6px 0;padding:6px 10px}#songInfoBanner .json-storage-help{margin:2px 0}
+#songInfoBanner[open]{max-height:35vh;overflow:auto}
 </style>
 </head>
 <body>
@@ -617,7 +622,8 @@ $('scoreViewport').before(blockTools);
 const colorTools=document.createElement('span');colorTools.style.cssText='display:inline-flex;gap:6px;align-items:center';
 colorTools.innerHTML='<label for="blockColor">블록 색상</label><input type="color" id="blockColor" value="#f0a830" aria-label="블록 색상 선택" style="width:44px;height:36px;padding:3px"><button type="button" id="applyBlockColor" disabled>색 적용</button><button type="button" id="resetBlockColor" disabled>기본색</button>';
 blockTools.append(colorTools);
-const editorDock=document.createElement('div');editorDock.id='editorDock';const editorHome=document.createComment('editor tools position');const scoreSection=document.querySelector('.score-section');scoreSection.insertBefore(editorHome,scoreSection.firstChild);const editorNodes=[];for(let node=editorHome.nextSibling;node&&node!==$('scoreViewport');node=node.nextSibling)editorNodes.push(node);editorNodes.forEach(node=>editorDock.append(node));
+const infoBanner=document.createElement('details');infoBanner.id='songInfoBanner';const infoSummary=document.createElement('summary');infoSummary.textContent='곡 정보 · JSON 입력';infoBanner.append(infoSummary);for(const selector of ['.intro','.lesson-entry','.json-storage-help']){const node=document.querySelector(selector);if(node)infoBanner.append(node);}$('chrome').append(infoBanner);
+const editorDock=document.createElement('div');editorDock.id='editorDock';const editorHome=document.createComment('editor tools position');const scoreSection=document.querySelector('.score-section');scoreSection.insertBefore(editorHome,scoreSection.firstChild);const editorNodes=[];for(let node=editorHome.nextSibling;node&&node!==$('scoreViewport');node=node.nextSibling)editorNodes.push(node);editorNodes.forEach(node=>editorDock.append(node));editorHome.parentNode.insertBefore(editorDock,editorHome.nextSibling);
 function dockEditorTools(){if(fitScore)editorHome.parentNode.insertBefore(editorDock,editorHome.nextSibling);else $('chrome').append(editorDock);updateMeasurements();}
 const usedColors=document.createElement('div');usedColors.id='usedColors';usedColors.setAttribute('aria-label','현재 악보에 쓰인 색상');blockTools.append(usedColors);
 function renderUsedColors(){const colors=new Map();let section='';for(const bar of activeSong().bars){if(bar.section)section=bar.section;const color=bar.blockColor||sectionColor(section);if(!colors.has(color))colors.set(color,bar.blockColor?'사용자 색상':section||'기본');}const fragment=document.createDocumentFragment();const label=document.createElement('span');label.textContent='악보 색상';fragment.append(label);for(const [color,name]of colors){const chip=document.createElement('button');chip.className='used-color-chip';chip.style.background=`color-mix(in srgb,${color} ${name==='사용자 색상'?65:38}%,#10141c)`;chip.style.borderColor=color;chip.title=name+' '+color;chip.setAttribute('aria-label',name+' 색상 '+color);chip.onclick=()=>{$('blockColor').value=color;if(barSelection.size)setSelectedBlockColor(color);else toast('색상을 골랐습니다. 마디 선택 후 색 적용을 누르세요.');};fragment.append(chip);}usedColors.replaceChildren(fragment);}
