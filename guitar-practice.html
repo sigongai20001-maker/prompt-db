@@ -630,6 +630,12 @@ function chooseBar(b,event){
   refreshBarSelection();
 }
 $('clearBarSelection').onclick=()=>{barSelection.clear();barAnchor=null;refreshBarSelection();};
+document.addEventListener('click',event=>{
+  if(!barSelection.size||performance.now()<suppressDragClickUntil||barDrag?.active||fretDrag?.active)return;
+  const target=event.target instanceof Element?event.target:null;
+  if(!target||target.closest('.bar,.bar-block-tools,button,input,select,textarea,a,label,summary,dialog,.popover,[role="dialog"],[contenteditable="true"]'))return;
+  barSelection.clear();barAnchor=null;refreshBarSelection();
+});
 $('score').addEventListener('click',event=>{const b=event.target.closest('.bar-select');if(b)chooseBar(Number(b.dataset.bar),event);});
 $('barCopyMode').onclick=()=>{barCopy=!barCopy;$('barCopyMode').setAttribute('aria-pressed',String(barCopy));$('barCopyMode').textContent=barCopy?'복사 모드':'이동 모드';};
 function finishBarBlock(from,boundary,copy){
