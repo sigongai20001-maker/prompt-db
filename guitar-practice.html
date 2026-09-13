@@ -132,6 +132,14 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
 #chrome .technique-note{display:none}
 #chrome #clearTechnique{grid-column:3;grid-row:1 / span 2;font-size:10px;min-height:44px;padding:5px}
 @media(max-width:600px){#chrome .technique-panel{grid-template-columns:minmax(0,1fr) auto;padding:5px 8px;gap:3px}#chrome .technique-panel h2{display:none}#chrome .technique-selection{grid-column:1;grid-row:1}#chrome .technique-buttons{grid-column:1 / -1;grid-row:2}#chrome .technique-readout{grid-column:1 / -1;grid-row:3}#chrome #clearTechnique{grid-column:2;grid-row:1;min-height:26px}}
+#editorDock{background:var(--card);max-width:1680px;margin:auto;width:100%}
+#chrome #editorDock{border-top:1px solid var(--line);box-shadow:0 5px 12px #0003}
+#chrome #editorDock .score-toolbar,#chrome #editorDock .score-editor-tools{padding:4px 12px}
+#chrome #editorDock .drag-help,#chrome #editorDock .score-order-hint{display:none}
+#chrome #editorDock .bar-block-tools{padding:4px 12px}
+#chrome #editorDock .bar-block-tools>span:last-of-type{font-size:10px}
+#usedColors{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:3px 0;font-size:11px}
+#usedColors .used-color-chip{width:26px;height:26px;min-height:26px;padding:0;border-width:2px;border-radius:5px}
 </style>
 </head>
 <body>
@@ -335,7 +343,7 @@ function fitEntireScore(){
   score.style.width=`${width/scale}px`;scale=Math.min(scale,height/Math.max(1,score.scrollHeight));
   const naturalWidth=score.offsetWidth;scale=Math.min(scale,width/naturalWidth);score.style.transform=`scale(${scale})`;score.style.marginLeft=`${Math.max(0,(width-naturalWidth*scale)/2)}px`;viewport.style.height=`${height}px`;$('fitScale').textContent=`전체 ${Math.round(scale*100)}%`;
 }
-function setScoreFit(value){fitScore=value;try{localStorage.setItem(`${STORAGE_KEY}:fit-score`,value?'on':'off');}catch(error){}refreshFoldedStrings();fitEntireScore();lastScrollRow=-1;if(value){hideKeypad();window.scrollTo({top:0,behavior:'instant'});queueScoreFit();}else if(cursorBar>=0)requestAnimationFrame(()=>scrollRowIntoView(selection?.b??cursorBar));}
+function setScoreFit(value){fitScore=value;dockEditorTools();try{localStorage.setItem(`${STORAGE_KEY}:fit-score`,value?'on':'off');}catch(error){}refreshFoldedStrings();fitEntireScore();lastScrollRow=-1;if(value){hideKeypad();window.scrollTo({top:0,behavior:'instant'});queueScoreFit();}else if(cursorBar>=0)requestAnimationFrame(()=>scrollRowIntoView(selection?.b??cursorBar));}
 $('fitScore').addEventListener('click',()=>setScoreFit(!fitScore));
 new ResizeObserver(queueScoreFit).observe($('score'));
 window.visualViewport?.addEventListener('resize',queueScoreFit);
@@ -401,7 +409,7 @@ function refreshSectionColors(){
   if(!legend){legend=document.createElement('details');legend.id='sectionColorKey';legend.className='section-color-key';const summary=document.createElement('summary');summary.textContent='구간 색상';legend.append(summary,document.createElement('div'));legend.lastChild.className='section-color-items';document.querySelector('.score-toolbar').append(legend);legend.addEventListener('toggle',queueScoreFit);}
   legend.hidden=!seen.size;const items=document.createDocumentFragment();
   for(const [name,color]of seen){const item=document.createElement('span');item.textContent='● '+name;item.style.color=color;items.append(item);}
-  legend.lastChild.replaceChildren(items);
+  legend.lastChild.replaceChildren(items);renderUsedColors();
 }
 function renderRowText(start){
   const row=barViews[start]?.row;if(!row)return;const bars=activeSong().bars.slice(start,start+4);
@@ -609,6 +617,11 @@ $('scoreViewport').before(blockTools);
 const colorTools=document.createElement('span');colorTools.style.cssText='display:inline-flex;gap:6px;align-items:center';
 colorTools.innerHTML='<label for="blockColor">블록 색상</label><input type="color" id="blockColor" value="#f0a830" aria-label="블록 색상 선택" style="width:44px;height:36px;padding:3px"><button type="button" id="applyBlockColor" disabled>색 적용</button><button type="button" id="resetBlockColor" disabled>기본색</button>';
 blockTools.append(colorTools);
+const editorDock=document.createElement('div');editorDock.id='editorDock';const editorHome=document.createComment('editor tools position');const scoreSection=document.querySelector('.score-section');scoreSection.insertBefore(editorHome,scoreSection.firstChild);const editorNodes=[];for(let node=editorHome.nextSibling;node&&node!==$('scoreViewport');node=node.nextSibling)editorNodes.push(node);editorNodes.forEach(node=>editorDock.append(node));
+function dockEditorTools(){if(fitScore)editorHome.parentNode.insertBefore(editorDock,editorHome.nextSibling);else $('chrome').append(editorDock);updateMeasurements();}
+const usedColors=document.createElement('div');usedColors.id='usedColors';usedColors.setAttribute('aria-label','현재 악보에 쓰인 색상');blockTools.append(usedColors);
+function renderUsedColors(){const colors=new Map();let section='';for(const bar of activeSong().bars){if(bar.section)section=bar.section;const color=bar.blockColor||sectionColor(section);if(!colors.has(color))colors.set(color,bar.blockColor?'사용자 색상':section||'기본');}const fragment=document.createDocumentFragment();const label=document.createElement('span');label.textContent='악보 색상';fragment.append(label);for(const [color,name]of colors){const chip=document.createElement('button');chip.className='used-color-chip';chip.style.background=`color-mix(in srgb,${color} ${name==='사용자 색상'?65:38}%,#10141c)`;chip.style.borderColor=color;chip.title=name+' '+color;chip.setAttribute('aria-label',name+' 색상 '+color);chip.onclick=()=>{$('blockColor').value=color;if(barSelection.size)setSelectedBlockColor(color);else toast('색상을 골랐습니다. 마디 선택 후 색 적용을 누르세요.');};fragment.append(chip);}usedColors.replaceChildren(fragment);}
+
 const copySelectedBars=document.createElement('button');copySelectedBars.id='copySelectedBars';copySelectedBars.textContent='선택 마디 복사';copySelectedBars.disabled=true;copySelectedBars.title='마지막 선택 마디 바로 뒤에 순서대로 복사';$('clearBarSelection').before(copySelectedBars);
 copySelectedBars.onclick=()=>{const from=[...barSelection].sort((a,b)=>a-b);if(from.length)finishBarBlock(from,from[from.length-1]+1,true);};
 function setSelectedBlockColor(color){
@@ -1099,7 +1112,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cloud.acc
 // Refresh keeps the same tab session. Warn only if the local draft cannot be saved.
 window.addEventListener('beforeunload',event=>{flushSave();if(cloud.account){cloud.cacheSafely();if(cloud.cacheError||cloud.sessionError){event.preventDefault();event.returnValue='';}}else if(dirty||saveFailed){event.preventDefault();event.returnValue='';}});
 document.addEventListener('keydown',event=>{if(event.key==='F5'){flushSave();if(cloud.account)cloud.cacheSafely();}},true);
-renderSong();cloud.boot();updateMeasurements();if(isFresh&&!cloud.hosted)save();if(initialNotice){toast(initialNotice);$('saveStatus').textContent='기존 저장 데이터 확인 필요';$('saveStatus').classList.add('error');}
+renderSong();dockEditorTools();cloud.boot();updateMeasurements();if(isFresh&&!cloud.hosted)save();if(initialNotice){toast(initialNotice);$('saveStatus').textContent='기존 저장 데이터 확인 필요';$('saveStatus').classList.add('error');}
 </script>
 </body>
 </html>
