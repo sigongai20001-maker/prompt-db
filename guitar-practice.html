@@ -120,6 +120,18 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
 .technique-visible{display:block;padding:8px 12px;margin:4px 14px;border:1px solid #89c8ff;border-radius:6px;background:#24496c;color:#fff;font:700 14px/1.5 system-ui;white-space:normal;overflow-wrap:anywhere}
 .technique-visible[hidden]{display:none}
 .bar-options{display:flex;gap:3px;align-items:center;height:28px}.bar-options select,.bar-options button{min-width:0;min-height:24px;height:24px;font-size:10px;padding:1px 3px}.bar-options select{background:#252932;color:#fff;max-width:50%}.bar-options button{flex:1}.string-labels{padding-top:calc(var(--bar-head) + 29px)!important}
+/* Persistent compact technique toolbar inside the sticky app header. */
+#chrome{position:sticky;top:0;z-index:30}
+#chrome .technique-panel{position:static;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;width:auto;max-width:1680px;max-height:none;margin:0 auto;padding:7px 14px;border:0;border-top:1px solid #414956;border-radius:0;background:#202630;box-shadow:none;overflow:visible}
+#chrome .technique-panel h2{font-size:11px;margin:0;grid-column:1}
+#chrome .technique-selection{font-size:10px;margin:0;grid-column:1;grid-row:2}
+#chrome .technique-buttons{display:flex;gap:4px;overflow-x:auto;min-width:0;grid-column:2;grid-row:1 / span 2;padding:2px}
+#chrome .technique-buttons button{flex:0 0 66px;min-height:44px;padding:3px;font-size:9px}
+#chrome .technique-buttons b{font-size:13px}
+#chrome .technique-readout{grid-column:2;font-size:11px;margin:0;color:#c4e2ff}
+#chrome .technique-note{display:none}
+#chrome #clearTechnique{grid-column:3;grid-row:1 / span 2;font-size:10px;min-height:44px;padding:5px}
+@media(max-width:600px){#chrome .technique-panel{grid-template-columns:minmax(0,1fr) auto;padding:5px 8px;gap:3px}#chrome .technique-panel h2{display:none}#chrome .technique-selection{grid-column:1;grid-row:1}#chrome .technique-buttons{grid-column:1 / -1;grid-row:2}#chrome .technique-readout{grid-column:1 / -1;grid-row:3}#chrome #clearTechnique{grid-column:2;grid-row:1;min-height:26px}}
 </style>
 </head>
 <body>
@@ -206,6 +218,7 @@ const TECHNIQUES=[
   {id:'pick-down',symbol:'↓',label:'다운 피킹',group:'pick'}, {id:'pick-up',symbol:'↑',label:'업 피킹',group:'pick'}, {id:'check',symbol:'?',label:'확인 필요'}
 ];
 const pmButton=document.createElement('button');pmButton.id='pmRangeButton';pmButton.textContent='팜 뮤트 구간';pmButton.className='editor-tool';pmButton.setAttribute('aria-controls','pmDialog');$('editTechnique').parentElement.before(pmButton);
+$('chrome').append($('techniquePanel'));$('techniquePanel').hidden=false;$('techniquePanel').setAttribute('role','region');$('techniquePanel').setAttribute('aria-label','기타 주법 툴바');$('closeTechnique').hidden=true;
 const techniqueById=new Map(TECHNIQUES.map(tech=>[tech.id,tech]));
 const techniqueVisible=document.createElement('div');techniqueVisible.className='technique-visible';techniqueVisible.hidden=true;techniqueVisible.setAttribute('role','status');$('scoreViewport').before(techniqueVisible);
 const getTechniques=(bar,s,c)=>bar.techniques?.[s]?.[c]||[];
@@ -437,9 +450,9 @@ function syncTechniqueEditor(){
   for(const button of $('techniqueButtons').children){button.disabled=!selection;button.setAttribute('aria-pressed',String(ids.includes(button.dataset.technique)));}
   $('clearTechnique').disabled=!ids.length;
 }
-function closeTechnique(restoreFocus=false){const wasOpen=!$('techniquePanel').hidden;$('techniquePanel').hidden=true;$('editTechnique').setAttribute('aria-expanded','false');if(restoreFocus===true&&wasOpen&&selection)cellViews[selection.b]?.[selection.s]?.[selection.c]?.focus({preventScroll:true});}
-function positionTechnique(){const panel=$('techniquePanel');if(panel.hidden)return;const anchor=selection?cellViews[selection.b]?.[selection.s]?.[selection.c]:$('editTechnique');if(anchor)positionPopover(panel,anchor);}
-function openTechnique(focusPanel=true){if(!selection){toast('주법을 표시할 칸을 먼저 선택하세요.');return;}closePopovers();syncTechniqueEditor();$('techniquePanel').hidden=false;$('editTechnique').setAttribute('aria-expanded','true');positionTechnique();if(focusPanel)$('techniqueButtons').querySelector('button').focus({preventScroll:true});}
+function closeTechnique(restoreFocus=false){if(restoreFocus===true&&selection)cellViews[selection.b]?.[selection.s]?.[selection.c]?.focus({preventScroll:true});}
+function positionTechnique(){}
+function openTechnique(focusPanel=true){if(!selection){toast('주법을 표시할 칸을 먼저 선택하세요.');return;}syncTechniqueEditor();if(focusPanel)$('techniqueButtons').querySelector('button').focus({preventScroll:true});}
 for(const tech of TECHNIQUES){const button=document.createElement('button');button.dataset.technique=tech.id;button.setAttribute('aria-label',tech.label);button.setAttribute('aria-pressed','false');const symbol=document.createElement('b');symbol.textContent=tech.symbol;const label=document.createElement('span');label.textContent=tech.label;button.append(symbol,label);$('techniqueButtons').append(button);}
 $('techniqueButtons').addEventListener('click',event=>{const button=event.target.closest('[data-technique]');if(!button||!selection)return;const{b,s,c}=selection,tech=techniqueById.get(button.dataset.technique),bar=activeSong().bars[b],ids=getTechniques(bar,s,c);let next=ids.includes(tech.id)?ids.filter(id=>id!==tech.id):[...ids.filter(id=>!tech.group||techniqueById.get(id).group!==tech.group),tech.id];next=validateTechniques(next,'선택한 칸');writeCell(b,s,c,bar.cells[s][c],next);digitEntry=null;syncTechniqueEditor();save();});
 $('clearTechnique').addEventListener('click',()=>{if(!selection)return;const{b,s,c}=selection;writeCell(b,s,c,activeSong().bars[b].cells[s][c],[]);syncTechniqueEditor();save();});
