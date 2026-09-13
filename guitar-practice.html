@@ -339,7 +339,7 @@ function renderTabs(){
 function updateSubdivisionControls(){for(const count of [4,8,16]){const pressed=String(activeSong().bars.every(bar=>barSize(bar)===count));$('subdiv'+count).setAttribute('aria-pressed',pressed);$('quickSubdiv'+count).setAttribute('aria-pressed',pressed);}}
 function updateMeta(){const song=activeSong();$('songTitle').textContent=song.title;$('songMeta').textContent=`${song.bars.length}마디 · 마디별 4·8·16칸 · Standard E`;$('divisionLabel').textContent='마디별 칸 수';updateSubdivisionControls();}
 function renderScore(){
-  cancelBarDrag();barSelection.clear();barAnchor=null;$('barSelectionCount').textContent='마디 블록 ⠿ 드래그';cancelFretDrag();closeTechnique();discardClearUndo();
+  cancelBarDrag();barSelection.clear();barAnchor=null;$('copySelectedBars').disabled=true;$('barSelectionCount').textContent='마디 블록 ⠿ 드래그';cancelFretDrag();closeTechnique();discardClearUndo();
   const song=activeSong(),frag=document.createDocumentFragment();barViews=[];cellViews=[];cursorBar=-1;cursorCell=-1;lastScrollRow=-1;selection=null;digitEntry=null;
   $('score').classList.remove('subdiv-16');$('score').style.setProperty('--subdiv',song.subdiv);
   let row,scoreLine;
@@ -596,6 +596,8 @@ $('scoreViewport').before(blockTools);
 const colorTools=document.createElement('span');colorTools.style.cssText='display:inline-flex;gap:6px;align-items:center';
 colorTools.innerHTML='<label for="blockColor">블록 색상</label><input type="color" id="blockColor" value="#f0a830" aria-label="블록 색상 선택" style="width:44px;height:36px;padding:3px"><button type="button" id="applyBlockColor" disabled>색 적용</button><button type="button" id="resetBlockColor" disabled>기본색</button>';
 blockTools.append(colorTools);
+const copySelectedBars=document.createElement('button');copySelectedBars.id='copySelectedBars';copySelectedBars.textContent='선택 마디 복사';copySelectedBars.disabled=true;copySelectedBars.title='마지막 선택 마디 바로 뒤에 순서대로 복사';$('clearBarSelection').before(copySelectedBars);
+copySelectedBars.onclick=()=>{const from=[...barSelection].sort((a,b)=>a-b);if(from.length)finishBarBlock(from,from[from.length-1]+1,true);};
 function setSelectedBlockColor(color){
   if(!barSelection.size){toast('□ 버튼으로 색을 바꿀 마디를 선택하세요.');return;}
   for(const b of barSelection){const bar=activeSong().bars[b];if(!bar)continue;if(color)bar.blockColor=color;else delete bar.blockColor;}
@@ -607,6 +609,7 @@ function refreshBarSelection(){
   barViews.forEach((v,i)=>{v.article.classList.toggle('bar-selected',barSelection.has(i));const b=v.article.querySelector('.bar-select');b.setAttribute('aria-pressed',String(barSelection.has(i)));b.textContent=barSelection.has(i)?'☑':'□';});
   $('barSelectionCount').textContent=barSelection.size?`${barSelection.size}마디 선택`:'마디 블록 ⠿ 드래그';
   $('applyBlockColor').disabled=$('resetBlockColor').disabled=!barSelection.size;
+  copySelectedBars.disabled=!barSelection.size;
 }
 function chooseBar(b,event){
   if(event.shiftKey&&barAnchor!==null){for(let i=Math.min(b,barAnchor);i<=Math.max(b,barAnchor);i++)barSelection.add(i);}
