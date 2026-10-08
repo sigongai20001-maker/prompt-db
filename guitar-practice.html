@@ -159,6 +159,11 @@ body.score-fit .score-toolbar{justify-content:flex-end;border:0;padding:2px 6px}
 body.score-fit .score-view-controls{margin-left:auto}
 body.score-fit .string-labels{padding-top:var(--bar-head)!important}
 body.score-fit .workspace{padding-top:0}
+/* Expand staff spacing and readable fret text into the available overview height. */
+body.score-fit .score{--overview-zoom:1;--overview-font-limit:22px;--staff-gap:calc(10px * var(--overview-zoom))}
+body.score-fit .score-line:has(.has-technique){--staff-gap:calc(20px * var(--overview-zoom))}
+body.score-fit .cell,body.score-fit .subdiv-16 .cell{font-size:min(var(--overview-font-limit),calc(11px * var(--overview-zoom)))}
+body.score-fit .score .cell.has-technique .tech-mark{font-size:min(14px,calc(9px * var(--overview-zoom)));line-height:1.05}
 </style>
 </head>
 <body>
@@ -357,6 +362,15 @@ function fitEntireScore(){
   if(!viewport.clientWidth||!barViews.length)return;
   const width=viewport.clientWidth,height=Math.max(40,(window.visualViewport?.height||innerHeight)-viewport.getBoundingClientRect().top-$('lyricsFocus').getBoundingClientRect().height-6);
   let scale=1;score.style.transform='none';score.style.marginLeft='0';
+  score.style.width=`${width}px`;
+  score.style.setProperty('--overview-font-limit',`${Math.min(22,width/(8*Math.max(...activeSong().bars.map(bar=>barSize(bar))))*.8)}px`);
+  // Fill free vertical space by increasing staff spacing, without widening the eight-bar layout.
+  let low=1,high=12;
+  score.style.setProperty('--overview-zoom','1');
+  if(score.scrollHeight<height){
+    for(let i=0;i<12;i++){const mid=(low+high)/2;score.style.setProperty('--overview-zoom',String(mid));if(score.scrollHeight<=height)low=mid;else high=mid;}
+    score.style.setProperty('--overview-zoom',String(low));
+  }
   // Reflow the lyrics at the fitted width, then bound both axes. Audio timing is untouched.
   for(let i=0;i<4;i++){score.style.width=`${width/scale}px`;const next=Math.min(1,height/Math.max(1,score.scrollHeight));if(Math.abs(next-scale)<.001){scale=next;break;}scale=next;}
   score.style.width=`${width/scale}px`;scale=Math.min(scale,height/Math.max(1,score.scrollHeight));
