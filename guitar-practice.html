@@ -145,6 +145,20 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:9px;line-height:1
 #songInfoBanner .intro{margin:5px 0;min-height:0}#songInfoBanner .intro h1{font-size:18px}#songInfoBanner .eyebrow{display:none}
 #songInfoBanner .lesson-entry{margin:6px 0;padding:6px 10px}#songInfoBanner .json-storage-help{margin:2px 0}
 #songInfoBanner[open]{max-height:35vh;overflow:auto}
+/* Score-only overview; editing controls return in edit mode. */
+body.score-fit #chrome{display:none}
+body.score-fit #editorDock>:not(.score-toolbar),
+body.score-fit .score-toolbar>:not(.score-view-controls),
+body.score-fit .score-view-controls>:not(#fitScore),
+body.score-fit .lyrics-focus,
+body.score-fit .bar-options,
+body.score-fit .bar-select,
+body.score-fit .bar-grip{display:none!important}
+body.score-fit #editorDock{max-width:none;background:transparent}
+body.score-fit .score-toolbar{justify-content:flex-end;border:0;padding:2px 6px}
+body.score-fit .score-view-controls{margin-left:auto}
+body.score-fit .string-labels{padding-top:var(--bar-head)!important}
+body.score-fit .workspace{padding-top:0}
 </style>
 </head>
 <body>
