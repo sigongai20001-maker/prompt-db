@@ -186,7 +186,7 @@ body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:cr
     <div class="control-primary">
       <button class="play" id="playButton" aria-pressed="false" aria-keyshortcuts="Space">▶ 재생</button>
       <div class="transport-nav"><button id="previousBar" aria-label="이전 마디로 이동" title="이전 마디의 첫 박으로 이동 (Alt+←)">↶ 이전 마디</button><span class="transport-position" id="barPosition" aria-live="off">1마디</span></div>
-      <div class="tempo"><label for="bpm">BPM</label><input class="bpm-input" id="bpm" type="number" min="40" max="240" step="0.01" value="90" aria-label="BPM"><input id="bpmSlider" type="range" min="40" max="240" step="0.01" value="90" aria-label="BPM 슬라이더"><button class="step" id="bpmDown" aria-label="BPM 1 낮추기">−</button><button class="step" id="bpmUp" aria-label="BPM 1 높이기">+</button></div>
+      <div class="tempo"><label for="bpm">BPM</label><input class="bpm-input" id="bpm" type="number" min="10" max="240" step="0.01" value="90" aria-label="BPM"><input id="bpmSlider" type="range" min="10" max="240" step="0.01" value="90" aria-label="BPM 슬라이더"><button class="step" id="bpmDown" aria-label="BPM 1 낮추기">−</button><button class="step" id="bpmUp" aria-label="BPM 1 높이기">+</button></div>
       <span class="time-signature" aria-label="4분의 4박자">4/4</span>
     </div>
     <div class="control-secondary">
@@ -219,7 +219,7 @@ body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:cr
 <div class="popover" id="songSettings" role="dialog" aria-label="곡 설정" hidden>
   <h2>곡 설정</h2><button class="icon-button popover-close" id="closeSettings" aria-label="곡 설정 닫기">×</button>
   <label class="field">곡 제목<input id="settingsTitle" autocomplete="off"></label>
-  <label class="field">BPM · 40–240<input id="settingsBpm" type="number" min="40" max="240" step="0.01"></label>
+  <label class="field">BPM · 10–240<input id="settingsBpm" type="number" min="10" max="240" step="0.01"></label>
   <div class="field">전체 마디 칸 수<div class="subdiv-options"><button id="subdiv4" aria-pressed="false">4칸<small>4분음표</small></button><button id="subdiv8" aria-pressed="true">8칸<small>8분음표</small></button><button id="subdiv16" aria-pressed="false">16칸<small>16분음표</small></button></div></div>
   <p class="popover-note">활성 곡 탭을 다시 누르면 설정이 열립니다.</p><button class="danger" id="deleteSong">곡 삭제</button>
 </div>
@@ -285,7 +285,7 @@ function validateState(data){
     if(!object(song)||typeof song.id!=='string'||!song.id.trim()||ids.has(song.id))fail(`${where}: 곡 ID가 없거나 중복되었습니다.`);
     ids.add(song.id);
     if(typeof song.title!=='string'||!song.title.trim()||typeof song.memo!=='string')fail(`${where}: 제목 또는 메모가 올바르지 않습니다.`);
-    if(!Number.isFinite(song.bpm)||song.bpm<40||song.bpm>240)fail(`${where}: BPM은 40–240의 숫자여야 합니다.`);
+    if(!Number.isFinite(song.bpm)||song.bpm<10||song.bpm>240)fail(`${where}: BPM은 10–240의 숫자여야 합니다.`);
     if(![4,8,16].includes(song.subdiv)||song.beatsPerBar!==4||!Array.isArray(song.bars)||!song.bars.length)fail(`${where}: 칸 수, 박자 또는 마디가 올바르지 않습니다.`);
     const bars=song.bars.map((bar,j)=>{
       if(!object(bar)||typeof bar.chord!=='string'||!Array.isArray(bar.cells)||bar.cells.length!==6)fail(`${where}, ${j+1}마디: 코드 또는 기타줄 형식이 올바르지 않습니다.`);
@@ -627,9 +627,9 @@ const engine=new Metronome();
 try{if(localStorage.getItem('guitar-practice-click-mode')==='rhythm')engine.soundMode='rhythm';}catch(error){}
 $('clickMode').value=engine.soundMode;
 $('clickMode').addEventListener('change',()=>{engine.soundMode=$('clickMode').value;try{localStorage.setItem('guitar-practice-click-mode',engine.soundMode);}catch(error){}toast(engine.soundMode==='rhythm'?'프렛·뮤트가 입력된 칸마다 한 번 클릭합니다. 타이는 제외합니다.':'박자마다 메트로놈을 재생합니다.');});
-function syncBpm(){const bpm=activeSong().bpm;for(const id of ['bpm','bpmSlider','settingsBpm'])if(document.activeElement!==$(id))$(id).value=bpm;$('bpmDown').disabled=bpm===40;$('bpmUp').disabled=bpm===240;}
-function setBpm(value){const bpm=Math.max(40,Math.min(240,Math.round(Number(value)*100)/100));if(!Number.isFinite(bpm))return;if(activeSong().bpm!==bpm){activeSong().bpm=bpm;engine.setBpm(bpm);save();}syncBpm();}
-for(const id of ['bpm','settingsBpm']){$(id).addEventListener('input',event=>{const n=Number(event.target.value);if(Number.isFinite(n)&&n>=40&&n<=240)setBpm(n);});$(id).addEventListener('blur',event=>{setBpm(event.target.value===''?activeSong().bpm:event.target.value);event.target.value=activeSong().bpm;});}
+function syncBpm(){const bpm=activeSong().bpm;for(const id of ['bpm','bpmSlider','settingsBpm'])if(document.activeElement!==$(id))$(id).value=bpm;$('bpmDown').disabled=bpm===10;$('bpmUp').disabled=bpm===240;}
+function setBpm(value){const bpm=Math.max(10,Math.min(240,Math.round(Number(value)*100)/100));if(!Number.isFinite(bpm))return;if(activeSong().bpm!==bpm){activeSong().bpm=bpm;engine.setBpm(bpm);save();}syncBpm();}
+for(const id of ['bpm','settingsBpm']){$(id).addEventListener('input',event=>{const n=Number(event.target.value);if(Number.isFinite(n)&&n>=10&&n<=240)setBpm(n);});$(id).addEventListener('blur',event=>{setBpm(event.target.value===''?activeSong().bpm:event.target.value);event.target.value=activeSong().bpm;});}
 $('bpmSlider').addEventListener('input',event=>setBpm(event.target.value));$('bpmDown').addEventListener('click',()=>setBpm(activeSong().bpm-1));$('bpmUp').addEventListener('click',()=>setBpm(activeSong().bpm+1));$('playButton').addEventListener('click',()=>engine.toggle());
 $('previousBar').addEventListener('click',()=>engine.previousBar());
 function positionPopover(popover,anchor){const rect=anchor.getBoundingClientRect();popover.style.left=Math.max(12,Math.min(rect.left,innerWidth-popover.offsetWidth-12))+'px';popover.style.top=Math.max(12,Math.min(rect.bottom+8,innerHeight-popover.offsetHeight-12))+'px';}
