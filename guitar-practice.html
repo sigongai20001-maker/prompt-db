@@ -167,6 +167,7 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:min(14px,calc(9px
 .meter-badge{font:10px var(--mono);color:white;padding:0 3px}.bar-options select{max-width:32%}
 body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:crosshair}body.selecting-practice #score .bar *{cursor:crosshair}.bar.practice-preview{background:#2a3a52;outline:2px solid #f0a830;outline-offset:-2px}#repeatSelected:not(:disabled){border-color:#f0a830;color:#f0a830}
 .select-score-line{min-height:28px;padding:2px 8px;margin-right:auto;white-space:nowrap;color:#f0a830}.select-score-line[aria-pressed="true"]{background:#2a3a52;border-color:#f0a830}body.score-fit .select-score-line{min-height:16px;padding:0 3px;font-size:10px}
+.sound-mode-label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}#clickMode{min-height:36px;max-width:180px;padding:4px 7px}
 </style>
 </head>
 <body>
@@ -190,7 +191,7 @@ body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:cr
     </div>
     <div class="control-secondary">
       <span class="loop-status" id="loopStatus">🔁 전체</span>
-      <div class="loop-controls"><button class="small-button" id="selectLoop" aria-pressed="false">구간지정</button><button class="small-button" id="repeatSelected" disabled>▶ 선택 구간 반복</button><button class="small-button clear-loop" id="clearLoop" disabled>해제</button></div>
+      <label class="sound-mode-label">클릭 <select id="clickMode" aria-label="클릭 사운드 모드"><option value="beat">박자 메트로놈</option><option value="rhythm">연주 리듬 · 입력 칸</option></select></label><div class="loop-controls"><button class="small-button" id="selectLoop" aria-pressed="false">구간지정</button><button class="small-button" id="repeatSelected" disabled>▶ 선택 구간 반복</button><button class="small-button clear-loop" id="clearLoop" disabled>해제</button></div>
       <label class="count-check"><input id="countIn" type="checkbox">카운트인</label>
       <button class="icon-button more" id="moreButton" aria-label="데이터 백업 메뉴" aria-expanded="false" aria-controls="backupMenu">⋯</button>
     </div>
@@ -563,10 +564,15 @@ function updateMeasurements(){document.documentElement.style.setProperty('--stic
 new ResizeObserver(updateMeasurements).observe($('chrome'));new ResizeObserver(updateMeasurements).observe($('keypad'));
 window.addEventListener('resize',()=>{updateMeasurements();resizeMemo();positionOpenPopover();positionTechnique();queueScoreFit();});
 
+function hasRhythmAttack(bar,offset){
+  const index=offset*barSize(bar)/barQuarters(bar),cell=Math.round(index);
+  if(Math.abs(index-cell)>1e-7||cell<0||cell>=barSize(bar))return false;
+  return bar.cells.some((row,string)=>row[cell]!==''&&!getTechniques(bar,string,cell).includes('tie'));
+}
 // Musical beats and cursor positions are derived exclusively from AudioContext time.
 // Tempo segments preserve every click already scheduled; timers only fill the queue.
 class Metronome{
-  constructor(){this.ctx=null;this.running=false;this.starting=false;this.generation=0;this.interval=0;this.frame=0;this.nodes=new Set();this.segments=[];this.nextBeat=0;this.lastScheduledTime=-Infinity;this.displayBeat=null;this.startBar=null;}
+  constructor(){this.ctx=null;this.running=false;this.starting=false;this.generation=0;this.interval=0;this.frame=0;this.nodes=new Set();this.segments=[];this.nextBeat=0;this.lastScheduledTime=-Infinity;this.displayBeat=null;this.startBar=null;this.soundMode="beat";}
   beatAtTime(time){let segment=this.segments[0];for(let i=this.segments.length-1;i>=0;i--){if(time>=this.segments[i].time){segment=this.segments[i];break;}}return segment.beat+(time-segment.time)*segment.bpm/60;}
   timeAtBeat(beat){let segment=this.segments[0];for(let i=this.segments.length-1;i>=0;i--){if(beat>=this.segments[i].beat-1e-9){segment=this.segments[i];break;}}return segment.time+(beat-segment.beat)*60/segment.bpm;}
   async start(){
@@ -586,8 +592,8 @@ class Metronome{
   scheduler(){
     if(!this.running)return;const now=this.ctx.currentTime,horizon=now+.1;
     // If the browser suspended JS, skip missed clicks instead of playing a burst.
-    if(this.timeAtBeat(this.nextBeat)<now-.03)this.nextBeat=Math.max(this.nextBeat,Math.ceil(this.beatAtTime(now+.005)*2-1e-9)/2);
-    while(this.timeAtBeat(this.nextBeat)<horizon){const time=this.timeAtBeat(this.nextBeat);const pos=this.nextBeat<0?{offset:this.nextBeat+this.countDuration,duration:this.countDuration}:this.position(this.nextBeat);if(pos.duration===3||Math.abs(pos.offset-Math.round(pos.offset))<1e-7){this.scheduleClick(this.nextBeat,time);this.lastScheduledTime=time;}this.nextBeat+=.5;}
+    if(this.timeAtBeat(this.nextBeat)<now-.03)this.nextBeat=Math.max(this.nextBeat,Math.ceil(this.beatAtTime(now+.005)*8-1e-9)/8);
+    while(this.timeAtBeat(this.nextBeat)<horizon){const time=this.timeAtBeat(this.nextBeat);const pos=this.nextBeat<0?{offset:this.nextBeat+this.countDuration,duration:this.countDuration}:this.position(this.nextBeat);const unit=pos.duration===3?.5:1;const click=this.nextBeat>=0&&this.soundMode==='rhythm'?hasRhythmAttack(activeSong().bars[pos.b],pos.offset):Math.abs(pos.offset/unit-Math.round(pos.offset/unit))<1e-7;if(click){this.scheduleClick(this.nextBeat,time);this.lastScheduledTime=time;}this.nextBeat+=.125;}
     while(this.segments.length>2&&this.segments[1].time<now-1)this.segments.shift();
   }
   setBpm(bpm){
@@ -618,6 +624,9 @@ class Metronome{
   toggle(){if(this.running||this.starting)this.stop();else this.start();}
 }
 const engine=new Metronome();
+try{if(localStorage.getItem('guitar-practice-click-mode')==='rhythm')engine.soundMode='rhythm';}catch(error){}
+$('clickMode').value=engine.soundMode;
+$('clickMode').addEventListener('change',()=>{engine.soundMode=$('clickMode').value;try{localStorage.setItem('guitar-practice-click-mode',engine.soundMode);}catch(error){}toast(engine.soundMode==='rhythm'?'프렛·뮤트가 입력된 칸마다 한 번 클릭합니다. 타이는 제외합니다.':'박자마다 메트로놈을 재생합니다.');});
 function syncBpm(){const bpm=activeSong().bpm;for(const id of ['bpm','bpmSlider','settingsBpm'])if(document.activeElement!==$(id))$(id).value=bpm;$('bpmDown').disabled=bpm===40;$('bpmUp').disabled=bpm===240;}
 function setBpm(value){const bpm=Math.max(40,Math.min(240,Math.round(Number(value)*100)/100));if(!Number.isFinite(bpm))return;if(activeSong().bpm!==bpm){activeSong().bpm=bpm;engine.setBpm(bpm);save();}syncBpm();}
 for(const id of ['bpm','settingsBpm']){$(id).addEventListener('input',event=>{const n=Number(event.target.value);if(Number.isFinite(n)&&n>=40&&n<=240)setBpm(n);});$(id).addEventListener('blur',event=>{setBpm(event.target.value===''?activeSong().bpm:event.target.value);event.target.value=activeSong().bpm;});}
