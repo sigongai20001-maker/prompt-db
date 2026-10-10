@@ -229,10 +229,10 @@ body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:cr
 <dialog id="onlineDialog"><h2>Google Drive에 연결하기</h2><p>Google 로그인은 온라인 앱에서 사용할 수 있습니다. 현재 파일에 적은 곡은 JSON으로 내보낸 뒤 온라인 앱에서 가져오세요.</p><button id="exportBeforeOnline">현재 곡 JSON 내보내기</button><a class="online-link" id="openOnlineApp" target="_blank" rel="noopener noreferrer">온라인 앱 열기 ↗</a><div class="dialog-actions"><button id="closeOnlineDialog">닫기</button></div></dialog>
 <input id="importFile" type="file" accept=".json,application/json" hidden>
 <dialog id="newSongDialog"><form id="newSongForm"><h2>새 연습곡</h2><p>오늘 연습할 곡의 이름을 적어주세요.</p><input id="newSongTitle" aria-label="새 곡 제목" placeholder="곡 제목" autocomplete="off" required><div class="dialog-actions"><button type="button" id="cancelNewSong">취소</button><button class="primary" type="submit">곡 만들기</button></div></form></dialog>
-<dialog id="importDialog"><h2>연습곡 가져오기</h2><p id="importSummary"></p><p>덮어쓰기는 현재 곡 전체를 교체합니다. 병합은 가져온 곡을 새 곡으로 추가합니다.</p><div class="dialog-actions"><button id="cancelImport">취소</button><button id="overwriteImport">덮어쓰기</button><button class="primary" id="mergeImport">병합(곡 추가)</button></div></dialog>
+<dialog id="importDialog"><h2>연습곡 가져오기</h2><p id="importSummary"></p><p>덮어쓰기는 현재 곡 전체를 교체합니다. 병합은 같은 ID 또는 제목의 곡을 갱신하고 없는 곡만 추가합니다.</p><div class="dialog-actions"><button id="cancelImport">취소</button><button id="overwriteImport">덮어쓰기</button><button class="primary" id="mergeImport">병합 / 갱신</button></div></dialog>
 <aside class="keypad" id="keypad" aria-label="TAB 숫자 키패드" hidden><div class="keypad-top"><span class="keypad-position" id="keypadPosition">1마디 · 1번줄 · 1칸</span><button data-move="left" aria-label="이전 칸">←</button><button data-move="up" aria-label="위 기타줄">↑</button><button data-move="down" aria-label="아래 기타줄">↓</button><button data-move="right" aria-label="다음 칸">→</button><button id="closeKeypad" aria-label="키패드 닫기">×</button></div><div class="keys"><button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button data-key="0">0</button><button data-key="x" aria-label="뮤트">x</button><button data-key="Backspace" aria-label="프렛 삭제">⌫</button></div><div class="keypad-extra"><button id="keypadTechnique">주법 표시</button><span id="keypadTechniques">주법 없음</span></div></aside>
 <section class="technique-panel" id="techniquePanel" role="dialog" aria-label="기타 주법 편집" hidden><h2>선택한 칸의 기타 주법</h2><button class="icon-button popover-close" id="closeTechnique" aria-label="주법 편집 닫기">×</button><p class="technique-selection" id="techniqueSelection"></p><div class="technique-buttons" id="techniqueButtons" role="group" aria-label="주법 선택"></div><p class="technique-readout" id="techniqueReadout"></p><p class="technique-note">여러 주법을 함께 선택할 수 있습니다. 해머온·풀오프·슬라이드는 도착 음에 붙이고, 출발 음은 앞 칸에 입력하세요. 벤딩 b½·b1·b1½는 각각 반음·온음·한 음 반 올림입니다.</p><button class="small-button" id="clearTechnique">이 칸 주법 지우기</button></section>
-<dialog class="lesson-dialog" id="lessonJsonDialog" aria-labelledby="lessonJsonTitle"><h2 id="lessonJsonTitle">수업 JSON을 악보로</h2><button class="icon-button popover-close" id="closeLessonJson" aria-label="수업 JSON 닫기">×</button><p>캡처를 이 대화에 첨부하고 JSON 변환을 요청하세요. 변환된 코드를 아래에 붙여넣으면 악보와 주법을 한 번에 입력할 수 있습니다.</p><label for="lessonJsonText">변환된 JSON 코드</label><textarea class="lesson-json" id="lessonJsonText" spellcheck="false" placeholder='{"format":"guitar-lesson-v1","title":"수업 연습곡","bpm":90,"subdiv":8,"bars":[{"chord":"Am","notes":[{"string":1,"cell":1,"fret":"7","techniques":["bend-full"]}]}],"memo":""}'></textarea><div class="lesson-json-actions"><button id="pasteLessonJson">클립보드 붙여넣기</button><button id="checkLessonJson">JSON 확인</button><button id="copyLessonPrompt">캡처 변환 요청 복사</button><button id="copyCurrentLesson">현재 곡 JSON 복사</button></div><div class="lesson-result" id="lessonJsonResult" role="status">JSON을 붙여넣으면 곡 정보와 악보 미리보기가 표시됩니다.</div><div class="lesson-preview" id="lessonPreview" hidden></div><div class="lesson-options" role="group" aria-label="악보 입력 방식"><label><input type="radio" name="lessonMode" value="new" checked>새 곡으로 추가</label><label><input type="radio" name="lessonMode" value="append">현재 곡 뒤에 추가</label><label><input type="radio" name="lessonMode" value="replace">현재 곡 교체</label></div><p id="lessonModeHint">기존 곡을 유지하고 새 곡으로 추가합니다.</p><details class="format-help"><summary>JSON 형식과 주법 코드</summary><pre id="lessonFormatHelp"></pre></details><div class="dialog-actions"><button id="cancelLessonJson">취소</button><button class="primary" id="applyLessonJson" disabled>악보에 입력</button></div></dialog>
+<dialog class="lesson-dialog" id="lessonJsonDialog" aria-labelledby="lessonJsonTitle"><h2 id="lessonJsonTitle">수업 JSON을 악보로</h2><button class="icon-button popover-close" id="closeLessonJson" aria-label="수업 JSON 닫기">×</button><p>캡처를 이 대화에 첨부하고 JSON 변환을 요청하세요. 변환된 코드를 아래에 붙여넣으면 악보와 주법을 한 번에 입력할 수 있습니다.</p><label for="lessonJsonText">변환된 JSON 코드</label><textarea class="lesson-json" id="lessonJsonText" spellcheck="false" placeholder='{"format":"guitar-lesson-v1","title":"수업 연습곡","bpm":90,"subdiv":8,"bars":[{"chord":"Am","notes":[{"string":1,"cell":1,"fret":"7","techniques":["bend-full"]}]}],"memo":""}'></textarea><div class="lesson-json-actions"><button id="pasteLessonJson">클립보드 붙여넣기</button><button id="checkLessonJson">JSON 확인</button><button id="copyLessonPrompt">캡처 변환 요청 복사</button><button id="copyCurrentLesson">현재 곡 JSON 복사</button></div><div class="lesson-result" id="lessonJsonResult" role="status">JSON을 붙여넣으면 곡 정보와 악보 미리보기가 표시됩니다.</div><div class="lesson-preview" id="lessonPreview" hidden></div><div class="lesson-options" role="group" aria-label="악보 입력 방식"><label><input type="radio" name="lessonMode" value="new" checked>등록 / 같은 곡 갱신</label><label><input type="radio" name="lessonMode" value="append">현재 곡 뒤에 추가</label><label><input type="radio" name="lessonMode" value="replace">현재 곡 교체</label></div><p id="lessonModeHint">같은 ID 또는 같은 제목의 곡은 갱신하고, 없는 곡만 추가합니다.</p><details class="format-help"><summary>JSON 형식과 주법 코드</summary><pre id="lessonFormatHelp"></pre></details><div class="dialog-actions"><button id="cancelLessonJson">취소</button><button class="primary" id="applyLessonJson" disabled>악보에 입력</button></div></dialog>
 <div class="toast" id="toast" role="status" hidden></div>
 <input id="lessonJsonFile" type="file" accept=".json,application/json" hidden>
 <div class="json-file-overlay" id="jsonFileOverlay" hidden aria-hidden="true"><div><strong>JSON 파일을 놓아 주세요</strong><span>악보·코드·가사를 미리 본 뒤 입력합니다.</span></div></div>
@@ -907,7 +907,21 @@ $('exportJson').addEventListener('click',()=>{flushSave();const date=new Date(),
 let pendingImport=null;
 $('importJson').addEventListener('click',()=>{closePopovers();$('importFile').value='';$('importFile').click();});
 $('importFile').addEventListener('change',async event=>{const file=event.target.files[0];if(!file)return;try{if(file.size>20*1024*1024)throw new Error('20MB 이하의 JSON 파일을 선택해 주세요.');const imported=validateState(JSON.parse(await file.text()));pendingImport=imported;$('importSummary').textContent=`${file.name} · ${imported.songs.length}곡 · 총 ${imported.songs.reduce((n,song)=>n+song.bars.length,0)}마디`;$('importDialog').showModal();}catch(error){pendingImport=null;toast('가져오기 실패: '+error.message);}});
-function applyImport(merge){if(!pendingImport)return;engine.stop();if(merge){const additions=pendingImport.songs.map(song=>({...song,id:crypto.randomUUID()}));state.songs.push(...additions);state.activeSongId=additions[0].id;}else state=pendingImport;pendingImport=null;loop=null;choosingLoop=false;loopAnchor=null;$('importDialog').close();renderSong();save();toast(merge?'연습곡을 추가했습니다.':'백업 데이터로 교체했습니다.');}
+function mergeLatestSongs(songs){
+  const next=validateState(state), key=title=>title.trim().normalize('NFC').toLowerCase();
+  let selected=next.activeSongId,updates=0;
+  for(const incoming of songs){
+    let match=next.songs.find(song=>song.id===incoming.id);
+    if(!match){const matches=next.songs.filter(song=>key(song.title)===key(incoming.title));if(matches.length>1)throw new Error('같은 제목이 여러 개입니다. 갱신할 곡을 선택하고 현재 곡 교체를 사용해 주세요.');match=matches[0];}
+    if(match){next.songs[next.songs.indexOf(match)]={...incoming,id:match.id};selected=match.id;updates++;}
+    else{const added={...incoming,id:crypto.randomUUID()};next.songs.push(added);selected=added.id;}
+  }
+  if(updates&&!confirm(`${updates}곡의 기존 항목을 가져온 수정본으로 갱신할까요? 이전 기기 저장본은 백업하며 Drive 저장 시 이전 Drive 버전은 히스토리에 보관합니다.`))return false;
+  // Preserve unsynced edits as well as the server-side history.
+  localStorage.setItem((cloud?.account?cloud.cacheKey():STORAGE_KEY)+':before-song-update',JSON.stringify({savedAt:new Date().toISOString(),state}));
+  next.activeSongId=selected;state=next;return true;
+}
+function applyImport(merge){if(!pendingImport)return;engine.stop();try{if(merge){if(!mergeLatestSongs(pendingImport.songs))return;}else{localStorage.setItem((cloud?.account?cloud.cacheKey():STORAGE_KEY)+':before-song-update',JSON.stringify({savedAt:new Date().toISOString(),state}));state=pendingImport;}}catch(error){toast(error.message);return;}pendingImport=null;loop=null;choosingLoop=false;loopAnchor=null;$('importDialog').close();renderSong();save();toast('가져온 수정본을 적용했습니다.');}
 $('overwriteImport').addEventListener('click',()=>applyImport(false));$('mergeImport').addEventListener('click',()=>applyImport(true));$('cancelImport').addEventListener('click',()=>$('importDialog').close());$('importDialog').addEventListener('close',()=>{pendingImport=null;});
 // Compact lesson JSON uses 1-based guitar string/cell coordinates for transcription.
 // Full backups keep their original schema, with an optional techniques matrix per bar.
@@ -946,7 +960,7 @@ function parseLessonJson(text){
 let lessonCandidate=null,lessonPreviewTimer=0,lessonTarget=null,lessonLoadGeneration=0;
 function resetLessonPreview(){clearTimeout(lessonPreviewTimer);lessonCandidate=null;$('applyLessonJson').disabled=true;$('lessonPreview').replaceChildren();$('lessonPreview').hidden=true;}
 function lessonMessage(text,type=''){$('lessonJsonResult').textContent=text;$('lessonJsonResult').className='lesson-result'+(type?' '+type:'');}
-function updateLessonModeHint(){const mode=document.querySelector('input[name="lessonMode"]:checked').value;$('lessonModeHint').textContent=mode==='new'?'기존 곡을 유지하고 새 곡으로 추가합니다.':mode==='append'?'현재 곡과 칸 수가 같은 JSON 1곡을 뒤에 이어 붙입니다. 현재 제목·BPM·메모를 유지합니다.':'JSON 1곡으로 현재 곡을 교체합니다. 적용 전에 확인합니다.';}
+function updateLessonModeHint(){const mode=document.querySelector('input[name="lessonMode"]:checked').value;$('lessonModeHint').textContent=mode==='new'?'같은 ID 또는 같은 제목의 곡은 갱신하고, 없는 곡만 추가합니다.':mode==='append'?'현재 곡과 칸 수가 같은 JSON 1곡을 뒤에 이어 붙입니다. 현재 제목·BPM·메모를 유지합니다.':'JSON 1곡으로 현재 곡을 교체합니다. 적용 전에 확인합니다.';}
 function renderLessonPreview(songs){
   const container=$('lessonPreview'),grid=document.createElement('div');grid.className='preview-bars';let shown=0;
   for(const song of songs){for(let b=0;b<song.bars.length&&shown<8;b++,shown++){
@@ -968,7 +982,7 @@ function applyLessonJson(){
   if(mode!=='new'&&lessonCandidate.length!==1){lessonMessage('현재 곡에 추가하거나 교체하려면 JSON에 곡이 하나만 있어야 합니다.','invalid');return;}
   if(mode==='replace'&&!confirm(`“${activeSong().title}”을 “${lessonCandidate[0].title}”의 악보·주법·BPM·메모로 교체할까요? 다른 곡은 유지됩니다.`))return;
   engine.stop();const songs=lessonCandidate.map(song=>({...song,id:crypto.randomUUID()}));
-  if(mode==='new'){state.songs.push(...songs);state.activeSongId=songs[0].id;}
+  if(mode==='new'){try{if(!mergeLatestSongs(lessonCandidate))return;}catch(error){lessonMessage(error.message,'invalid');return;}}
   else if(mode==='append'){activeSong().bars.push(...songs[0].bars.map(bar=>({...bar,subdiv:barSize(bar)})));}
   else{const index=state.songs.findIndex(song=>song.id===state.activeSongId);state.songs[index]={...songs[0],id:state.activeSongId};}
   loop=null;choosingLoop=false;loopAnchor=null;$('lessonJsonDialog').close();renderSong();save();toast(mode==='append'?'수업 악보를 현재 곡 뒤에 추가했습니다.':'수업 악보와 주법을 입력했습니다. 셀을 선택해 수정할 수 있습니다.');
@@ -1190,6 +1204,22 @@ class DriveSync{
     const boundary='guitar-'+crypto.randomUUID(),body=[`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',JSON.stringify(metadata),`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',snapshot,`--${boundary}--`,''].join('\r\n');
     const file=await this.request(`${DRIVE_UPLOAD}/files?uploadType=multipart&fields=id`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body},epoch);this.assertEpoch(epoch);if(!file.id)throw new Error('Drive 저장 파일을 만들지 못했습니다.');this.fileId=file.id;
   }
+  async archiveRemote(remote,epoch){
+    // Store the exact previous library, never a copy in the current song list.
+    if(!this.folderId)throw new Error('히스토리 보관 폴더를 확인하지 못했습니다. 현재본은 변경하지 않았습니다.');
+    const list=async q=>this.request(`${DRIVE_API}/files?${new URLSearchParams({q,fields:'files(id)',pageSize:'100'})}`,{},epoch);
+    const folders=await list(`trashed=false and '${this.folderId}' in parents and mimeType='application/vnd.google-apps.folder' and appProperties has { key='guitarPractice' and value='history-folder-v1' }`);
+    let folder=folders.files?.[0]?.id;
+    if(!folder){const made=await this.request(`${DRIVE_API}/files?fields=id`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'히스토리',mimeType:'application/vnd.google-apps.folder',parents:[this.folderId],appProperties:{guitarPractice:'history-folder-v1'}})},epoch);folder=made.id;}
+    if(!folder)throw new Error('히스토리 폴더 생성 실패');
+    const key=this.fileId+':'+remote.version;
+    const existing=await list(`trashed=false and '${folder}' in parents and appProperties has { key='sourceVersion' and value='${key}' }`);
+    if(existing.files?.length)return;
+    const metadata={name:'guitar-practice-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json',mimeType:'application/json',parents:[folder],appProperties:{guitarPractice:'history-v1',sourceVersion:key}};
+    const boundary='history-'+crypto.randomUUID(),body=[`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',JSON.stringify(metadata),`--${boundary}`,'Content-Type: application/json; charset=UTF-8','',remote.raw,`--${boundary}--`,''].join('\r\n');
+    const archived=await this.request(`${DRIVE_UPLOAD}/files?uploadType=multipart&fields=id`,{method:'POST',headers:{'Content-Type':`multipart/related; boundary=${boundary}`},body},epoch);
+    if(!archived.id)throw new Error('이전 버전 보관 실패: 현재본을 변경하지 않았습니다.');
+  }
   replaceState(data){engine.stop();state=validateState(data);loop=null;choosingLoop=false;loopAnchor=null;renderSong();}
   async performSync(epoch){
     if(this.reader)return this.performPull(epoch);
@@ -1199,7 +1229,8 @@ class DriveSync{
     if(local===remote.raw){this.finishSave(remote.raw);return true;}
     if(!this.pending){this.replaceState(remote.data);this.finishSave(remote.raw);return true;}
     if(this.baseRaw!==remote.raw){this.conflict=remote;this.cacheSafely();return false;}
-    // Check the latest version before writing. ETag also guards the final write when exposed by Drive.
+    if(JSON.stringify(state.songs)!==JSON.stringify(remote.data.songs))await this.archiveRemote(remote,epoch);
+    // Check again AFTER archiving, so concurrent edits are not overwritten.
     const check=await this.request(`${DRIVE_API}/files/${encodeURIComponent(this.fileId)}?fields=version`,{},epoch);this.assertEpoch(epoch);
     if(check.version!==remote.version){this.conflict=await this.readRemote(epoch);return false;}
     const snapshot=canonical(state),headers={'Content-Type':'application/json; charset=UTF-8'};if(remote.etag)headers['If-Match']=remote.etag;
@@ -1218,10 +1249,10 @@ class DriveSync{
       finally{if(epoch===this.epoch){this.busy=false;this.flight=null;this.updateStatus();if(this.conflict){if(manual&&!document.body.classList.contains('auth-locked'))this.showConflict(true);}else if(!this.reader&&this.pending&&!this.error&&this.validToken())this.scheduleSync();}}
     })();return this.flight;
   }
-  showConflict(manual=false){if(!this.conflict||!manual)return;engine.stop();$('cloudConflictDetail').textContent=`이 기기 ${state.songs.length}곡 · Drive ${this.conflict.data.songs.length}곡. 두 버전을 보관하면 내용이 다른 같은 곡은 “이 기기 사본”으로 추가됩니다.`;if(!$('cloudConflictDialog').open)$('cloudConflictDialog').showModal();}
+  showConflict(manual=false){if(!this.conflict||!manual)return;engine.stop();$('keepBothCloud').textContent='이 PC 수정본 사용 · 이전 Drive는 히스토리 보관';$('cloudConflictDetail').textContent=`이 기기 ${state.songs.length}곡 · Drive ${this.conflict.data.songs.length}곡. 편집 PC의 곡 목록을 현재본으로 사용합니다. 이전 Drive 저장본은 히스토리에 보관하며 사본 곡을 추가하지 않습니다.`;if(!$('cloudConflictDialog').open)$('cloudConflictDialog').showModal();}
   resolveConflict(keepBoth){
     if(!this.conflict)return;const remote=this.conflict,local=validateState(state);let next=validateState(remote.data);
-    if(keepBoth){const byId=new Map(next.songs.map(song=>[song.id,song]));let selected=next.activeSongId;for(const song of local.songs){const other=byId.get(song.id);if(!other){next.songs.push(song);if(song.id===local.activeSongId)selected=song.id;}else if(JSON.stringify(song)!==JSON.stringify(other)){const copy={...song,id:crypto.randomUUID(),title:song.title+' (이 기기 사본)'};next.songs.push(copy);if(song.id===local.activeSongId)selected=copy.id;}else if(song.id===local.activeSongId)selected=song.id;}next.activeSongId=selected;}
+    if(keepBoth){next=local;}
     else $('exportJson').click();
     this.conflict=null;$('cloudConflictDialog').close();this.replaceState(next);this.baseRaw=remote.raw;this.pending=keepBoth;this.cacheSafely();this.updateStatus();if(keepBoth)this.scheduleSync(0);
   }
@@ -1247,7 +1278,7 @@ class DriveSync{
     $('useEditingPC').hidden=!this.reader;
     if(this.reader){$('syncDrive').textContent='PC 최신 악보 불러오기';$('migrateLocal').hidden=true;$('driveDetail').textContent=(this.error?this.error+'\n':'')+'연습 기기: PC가 Drive에 저장한 곡만 받아옵니다. 이 기기의 수정은 Drive에 올라가지 않습니다.\nPC와 같은 Google 계정으로 연결하세요.';}
   }
-  migrate(){try{const legacy=validateState(JSON.parse(localStorage.getItem(STORAGE_KEY)));const additions=legacy.songs.map(song=>({...song,id:crypto.randomUUID()}));engine.stop();state.songs.push(...additions);state.activeSongId=additions[0].id;loop=null;choosingLoop=false;loopAnchor=null;renderSong();save();toast('기기의 기존 곡을 내 Drive 연습곡에 추가했습니다.');}catch(error){toast('기존 곡을 가져오지 못했습니다. JSON 백업을 이용해 주세요.');}}
+  migrate(){try{const legacy=validateState(JSON.parse(localStorage.getItem(STORAGE_KEY)));engine.stop();if(!mergeLatestSongs(legacy.songs))return;loop=null;choosingLoop=false;loopAnchor=null;renderSong();save();toast('기존 곡을 중복 없이 적용했습니다.');}catch(error){toast(error.message);}}
 }
 cloud=new DriveSync();
 pullPC.onclick=()=>cloud.pullFromPC();pullPCLogin.onclick=()=>cloud.pullFromPC();editingPC.onclick=()=>cloud.useEditingPC();
