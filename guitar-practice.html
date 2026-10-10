@@ -165,6 +165,7 @@ body.score-fit .score-line:has(.has-technique){--staff-gap:calc(20px * var(--ove
 body.score-fit .cell,body.score-fit .subdiv-16 .cell{font-size:min(var(--overview-font-limit),calc(11px * var(--overview-zoom)))}
 body.score-fit .score .cell.has-technique .tech-mark{font-size:min(14px,calc(9px * var(--overview-zoom)));line-height:1.05}
 .meter-badge{font:10px var(--mono);color:white;padding:0 3px}.bar-options select{max-width:32%}
+body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:crosshair}body.selecting-practice #score .bar *{cursor:crosshair}.bar.practice-preview{background:#2a3a52;outline:2px solid #f0a830;outline-offset:-2px}#repeatSelected:not(:disabled){border-color:#f0a830;color:#f0a830}
 </style>
 </head>
 <body>
@@ -188,7 +189,7 @@ body.score-fit .score .cell.has-technique .tech-mark{font-size:min(14px,calc(9px
     </div>
     <div class="control-secondary">
       <span class="loop-status" id="loopStatus">🔁 전체</span>
-      <div class="loop-controls"><button class="small-button" id="selectLoop" aria-pressed="false">구간지정</button><button class="small-button clear-loop" id="clearLoop" disabled>해제</button></div>
+      <div class="loop-controls"><button class="small-button" id="selectLoop" aria-pressed="false">구간지정</button><button class="small-button" id="repeatSelected" disabled>▶ 선택 구간 반복</button><button class="small-button clear-loop" id="clearLoop" disabled>해제</button></div>
       <label class="count-check"><input id="countIn" type="checkbox">카운트인</label>
       <button class="icon-button more" id="moreButton" aria-label="데이터 백업 메뉴" aria-expanded="false" aria-controls="backupMenu">⋯</button>
     </div>
@@ -520,8 +521,9 @@ function renderSong(){hideKeypad();closePopovers();renderTabs();renderScore();up
 function resizeMemo(){const memo=$('memo');memo.style.height='auto';memo.style.height=(memo.scrollHeight+memo.offsetHeight-memo.clientHeight)+'px';}
 function loopBounds(){return loop||{start:0,end:activeSong().bars.length-1};}
 function updateLoopUI(){
-  $('loopStatus').textContent=loop?`🔁 ${loop.start+1}–${loop.end+1}마디`:'🔁 전체';$('selectLoop').setAttribute('aria-pressed',String(choosingLoop));$('selectLoop').textContent=choosingLoop?'지정 취소':'구간지정';$('clearLoop').disabled=!loop&&!choosingLoop;
-  $('scoreHint').textContent=choosingLoop?(loopAnchor===null?'시작 마디의 번호를 선택하세요':`${loopAnchor+1}마디 선택됨 · 끝 마디의 번호를 선택하세요`):'셀을 선택하고 프렛 번호를 입력하세요';$('scoreHint').classList.toggle('selecting',choosingLoop);
+  document.body.classList.toggle('selecting-practice',choosingLoop);$('repeatSelected').disabled=!loop&&!barSelection.size;
+  $('loopStatus').textContent=loop?`🔁 ${loop.start+1}–${loop.end+1}마디`:'🔁 전체';$('selectLoop').setAttribute('aria-pressed',String(choosingLoop));$('selectLoop').textContent=choosingLoop?'구간 선택 취소':'구간 연습';$('clearLoop').disabled=!loop&&!choosingLoop;
+  $('scoreHint').textContent=choosingLoop?(loopAnchor===null?'마디를 드래그하거나 시작·끝 마디를 차례로 누르세요':`${loopAnchor+1}마디 선택됨 · 끝 마디를 누르세요`):'셀을 선택하고 프렛 번호를 입력하세요';$('scoreHint').classList.toggle('selecting',choosingLoop);
   barViews.forEach(({article},i)=>{article.classList.toggle('in-loop',!!loop&&i>=loop.start&&i<=loop.end);article.classList.toggle('loop-anchor',choosingLoop&&i===loopAnchor);});
 }
 function scrollRowIntoView(b){
@@ -675,7 +677,7 @@ function refreshBarSelection(){
   barViews.forEach((v,i)=>{v.article.classList.toggle('bar-selected',barSelection.has(i));const b=v.article.querySelector('.bar-select');b.setAttribute('aria-pressed',String(barSelection.has(i)));b.textContent=barSelection.has(i)?'☑':'□';});
   $('barSelectionCount').textContent=barSelection.size?`${barSelection.size}마디 선택`:'마디 블록 ⠿ 드래그';
   $('applyBlockColor').disabled=$('resetBlockColor').disabled=!barSelection.size;
-  copySelectedBars.disabled=!barSelection.size;
+  copySelectedBars.disabled=!barSelection.size;$('repeatSelected').disabled=!barSelection.size&&!loop;
 }
 function chooseBar(b,event){
   if(event.shiftKey&&barAnchor!==null){for(let i=Math.min(b,barAnchor);i<=Math.max(b,barAnchor);i++)barSelection.add(i);}
@@ -747,6 +749,63 @@ $('score').addEventListener('pointerup',event=>{
 for(const name of ['pointercancel','lostpointercapture'])$('score').addEventListener(name,event=>{if(barDrag?.id===event.pointerId)cancelBarDrag();});
 window.addEventListener('blur',cancelBarDrag);
 document.addEventListener('keydown',event=>{if(event.key==='Escape')cancelBarDrag();});
+// Practice selection captures pointer events before fret editing or block movement.
+let practiceDrag=null;
+const practiceRange=(a,b)=>({start:Math.min(a,b),end:Math.max(a,b)});
+function finishPracticeRange(a,b){
+  engine.stop();loop=practiceRange(a,b);choosingLoop=false;loopAnchor=null;
+  barSelection=new Set(Array.from({length:loop.end-loop.start+1},(_,i)=>loop.start+i));
+  refreshBarSelection();updateLoopUI();engine.startBar=loop.start;parkCursor();
+  toast(`${loop.start+1}–${loop.end+1}마디 선택 · 선택 구간 반복을 누르세요`);
+}
+function cancelPracticeDrag(){
+  const d=practiceDrag;if(!d)return;practiceDrag=null;cancelAnimationFrame(d.frame);
+  if($('score').hasPointerCapture(d.id))$('score').releasePointerCapture(d.id);
+  barViews.forEach(v=>v.article.classList.remove('practice-preview'));
+}
+function trackPracticeDrag(time){
+  const d=practiceDrag;if(!d)return;
+  if(!choosingLoop||d.song!==state.activeSongId){cancelPracticeDrag();return;}
+  const elapsed=Math.min(32,time-(d.last||time));d.last=time;
+  const top=$('chrome').getBoundingClientRect().bottom+20;
+  if(d.moved){if(d.y>innerHeight-35)window.scrollBy(0,elapsed*.5);else if(d.y<top)window.scrollBy(0,-elapsed*.5);}
+  const hit=document.elementFromPoint(d.x,d.y)?.closest('.bar');
+  if(hit&&$('score').contains(hit))d.end=Number(hit.dataset.bar);
+  const range=practiceRange(d.start,d.end);
+  barViews.forEach((v,i)=>v.article.classList.toggle('practice-preview',i>=range.start&&i<=range.end));
+  d.frame=requestAnimationFrame(trackPracticeDrag);
+}
+$('score').addEventListener('pointerdown',event=>{
+  if(!choosingLoop||event.button!==0||!event.isPrimary)return;
+  const bar=event.target.closest('.bar');if(!bar)return;
+  event.preventDefault();event.stopImmediatePropagation();cancelPracticeDrag();
+  const b=Number(bar.dataset.bar);practiceDrag={id:event.pointerId,start:b,end:b,x:event.clientX,y:event.clientY,sx:event.clientX,sy:event.clientY,song:state.activeSongId,moved:false};
+  $('score').setPointerCapture(event.pointerId);practiceDrag.frame=requestAnimationFrame(trackPracticeDrag);
+},true);
+$('score').addEventListener('pointermove',event=>{
+  const d=practiceDrag;if(!d||d.id!==event.pointerId)return;
+  event.preventDefault();event.stopImmediatePropagation();d.x=event.clientX;d.y=event.clientY;d.moved||=Math.hypot(d.x-d.sx,d.y-d.sy)>6;
+},true);
+$('score').addEventListener('pointerup',event=>{
+  const d=practiceDrag;if(!d||d.id!==event.pointerId)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const hit=document.elementFromPoint(event.clientX,event.clientY)?.closest('.bar');if(hit&&$('score').contains(hit))d.end=Number(hit.dataset.bar);
+  cancelPracticeDrag();suppressDragClickUntil=performance.now()+500;
+  if(d.moved)finishPracticeRange(d.start,d.end);
+  else if(loopAnchor===null){loopAnchor=d.start;updateLoopUI();}
+  else finishPracticeRange(loopAnchor,d.end);
+},true);
+for(const name of ['pointercancel','lostpointercapture'])$('score').addEventListener(name,cancelPracticeDrag,true);
+$('score').addEventListener('click',event=>{
+  if(performance.now()<suppressDragClickUntil){event.preventDefault();event.stopImmediatePropagation();}
+  else if(choosingLoop){const bar=event.target.closest('.bar');if(!bar)return;event.preventDefault();event.stopImmediatePropagation();const b=Number(bar.dataset.bar);if(loopAnchor===null){loopAnchor=b;updateLoopUI();}else finishPracticeRange(loopAnchor,b);}
+},true);
+window.addEventListener('blur',cancelPracticeDrag);
+document.addEventListener('keydown',event=>{if(event.key==='Escape')cancelPracticeDrag();});
+$('repeatSelected').onclick=()=>{
+  if(barSelection.size){const bars=[...barSelection];finishPracticeRange(Math.min(...bars),Math.max(...bars));}
+  if(!loop)return;engine.stop();engine.startBar=loop.start;engine.start();
+};
 let lastPointerType='mouse';
 const cellAddress=cell=>({b:Number(cell.dataset.bar),s:Number(cell.dataset.string),c:Number(cell.dataset.cell)});
 function setDropTarget(cell){
