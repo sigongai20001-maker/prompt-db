@@ -166,6 +166,7 @@ body.score-fit .cell,body.score-fit .subdiv-16 .cell{font-size:min(var(--overvie
 body.score-fit .score .cell.has-technique .tech-mark{font-size:min(14px,calc(9px * var(--overview-zoom)));line-height:1.05}
 .meter-badge{font:10px var(--mono);color:white;padding:0 3px}.bar-options select{max-width:32%}
 body.selecting-practice #score .bar{touch-action:none;user-select:none;cursor:crosshair}body.selecting-practice #score .bar *{cursor:crosshair}.bar.practice-preview{background:#2a3a52;outline:2px solid #f0a830;outline-offset:-2px}#repeatSelected:not(:disabled){border-color:#f0a830;color:#f0a830}
+.select-score-line{min-height:28px;padding:2px 8px;margin-right:auto;white-space:nowrap;color:#f0a830}.select-score-line[aria-pressed="true"]{background:#2a3a52;border-color:#f0a830}body.score-fit .select-score-line{min-height:16px;padding:0 3px;font-size:10px}
 </style>
 </head>
 <body>
@@ -454,7 +455,7 @@ function refreshSectionColors(){
 function renderRowText(start){
   const row=barViews[start]?.row;if(!row)return;const bars=activeSong().bars.slice(start,start+4);
   let heading=row.querySelector('.section-row');if(!heading){heading=document.createElement('div');heading.className='section-row';row.prepend(heading);}const title=document.createElement('h3');title.textContent=bars.map((bar,i)=>bar.section?`${bar.section}${i?' · '+(start+i+1)+'마디':''}`:'').filter(Boolean).join(' / ');
-  const edit=document.createElement('button');edit.className='row-text-edit';edit.dataset.editRow=start;edit.textContent='구간·가사 ✎';edit.setAttribute('aria-label',`${start+1}–${start+bars.length}마디 구간과 가사 편집`);heading.replaceChildren(title,edit);heading.classList.toggle('has-section',Boolean(title.textContent));
+  const edit=document.createElement('button');edit.className='row-text-edit';edit.dataset.editRow=start;edit.textContent='구간·가사 ✎';edit.setAttribute('aria-label',`${start+1}–${start+bars.length}마디 구간과 가사 편집`);heading.replaceChildren(title,edit);if(start%8===0){const end=Math.min(start+7,activeSong().bars.length-1),pick=document.createElement('button');pick.className='select-score-line';pick.dataset.lineStart=start;pick.dataset.lineEnd=end;pick.textContent=`□ ${end-start+1}마디 선택`;pick.setAttribute('aria-label',`${start+1}–${end+1}마디 한 줄 선택`);pick.setAttribute('aria-pressed','false');pick.onclick=()=>{if(choosingLoop){finishPracticeRange(start,end);return;}barSelection=new Set(Array.from({length:end-start+1},(_,i)=>start+i));barAnchor=start;refreshBarSelection();toast(`${start+1}–${end+1}마디 선택 · 반복 재생·복사·이동 가능`);};heading.prepend(pick);}heading.classList.toggle('has-section',Boolean(title.textContent));
   barViews[start].scoreLine.classList.toggle('has-section',!!barViews[start].scoreLine.querySelector('.section-row.has-section'));
   let lyrics=row.querySelector('.lyrics-row');if(!lyrics){lyrics=document.createElement('div');lyrics.className='lyrics-row';row.append(lyrics);}const fragment=document.createDocumentFragment();
   for(let i=0;i<bars.length;i++){if(!bars[i].lyrics)continue;let end=i+1;while(end<bars.length&&!bars[end].lyrics)end++;const segment=document.createElement('button');segment.className='lyric-segment';segment.dataset.editRow=start;segment.dataset.lyricBar=start+i;segment.style.gridColumn=`${i+1} / span ${end-i}`;segment.textContent=bars[i].lyrics;segment.title=bars[i].lyrics;segment.setAttribute('aria-label',`${start+i+1}마디 가사: ${bars[i].lyrics}`);fragment.append(segment);}lyrics.replaceChildren(fragment);lyrics.hidden=!lyrics.children.length;if(cursorBar>=start&&cursorBar<start+4)updateLyricsFocus(cursorBar);
@@ -674,6 +675,8 @@ function setSelectedBlockColor(color){
 $('applyBlockColor').onclick=()=>setSelectedBlockColor($('blockColor').value);
 $('resetBlockColor').onclick=()=>setSelectedBlockColor(null);
 function refreshBarSelection(){
+  for(const button of $('score').querySelectorAll('.select-score-line')){const start=Number(button.dataset.lineStart),end=Number(button.dataset.lineEnd),all=Array.from({length:end-start+1},(_,i)=>start+i).every(b=>barSelection.has(b));button.setAttribute('aria-pressed',String(all));button.textContent=`${all?'☑':'□'} ${end-start+1}마디 선택`;}
+
   barViews.forEach((v,i)=>{v.article.classList.toggle('bar-selected',barSelection.has(i));const b=v.article.querySelector('.bar-select');b.setAttribute('aria-pressed',String(barSelection.has(i)));b.textContent=barSelection.has(i)?'☑':'□';});
   $('barSelectionCount').textContent=barSelection.size?`${barSelection.size}마디 선택`:'마디 블록 ⠿ 드래그';
   $('applyBlockColor').disabled=$('resetBlockColor').disabled=!barSelection.size;
